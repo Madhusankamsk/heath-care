@@ -1,0 +1,195 @@
+// Prisma schema for Health Backend (Supabase PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. ACCESS CONTROL
+model Role {
+  id          String       @id @default(uuid())
+  roleName    String       @unique
+  description String?
+  profiles    Profile[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id            String           @id @default(uuid())
+  permissionKey String           @unique
+  roles         RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+// 2. USER & PROFILE MANAGEMENT
+model Profile {
+  id                  String          @id @default(uuid())
+  fullName            String
+  email               String          @unique
+  phoneNumber         String?
+  baseConsultationFee Decimal         @default(0)
+  roleId              String
+  role                Role            @relation(fields: [roleId], references: [id])
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+
+  teamMembers        TeamMember[]
+  transfersPerformed StockTransfer[] @relation("TransferredBy")
+  dispensedMedicines DispensedMedicine[]
+}
+
+// 3. DYNAMIC TEAM & FLEET
+model Vehicle {
+  id           String        @id @default(uuid())
+  vehicleNo    String        @unique
+  model        String?
+  status       String        @default("Available")
+  medicalTeams MedicalTeam[]
+}
+
+model MedicalTeam {
+  id        String       @id @default(uuid())
+  teamName  String?
+  vehicleId String
+  vehicle   Vehicle      @relation(fields: [vehicleId], references: [id])
+  members   TeamMember[]
+  bookings  Booking[]
+}
+
+model TeamMember {
+  id        String      @id @default(uuid())
+  teamId    String
+  profileId String
+  isLead    Boolean     @default(false)
+  team      MedicalTeam @relation(fields: [teamId], references: [id])
+  profile   Profile     @relation(fields: [profileId], references: [id])
+
+  @@unique([teamId, profileId])
+}
+
+// 4. PATIENT & VISITS
+model Patient {
+  id            String         @id @default(uuid())
+  nicOrPassport String?        @unique
+  fullName      String
+  dob           DateTime?
+  contactNo     String?
+  bookings      Booking[]
+  opdQueue      OpdQueue[]
+  visitRecords  VisitRecord[]
+  invoices      Invoice[]
+}
+
+model Booking {
+  id            String       @id @default(uuid())
+  patientId     String
+  teamId        String
+  scheduledDate DateTime
+  status        String       @default("Pending")
+  patient       Patient      @relation(fields: [patientId], references: [id])
+  team          MedicalTeam  @relation(fields: [teamId], references: [id])
+  visitRecord   VisitRecord?
+  invoice       Invoice[]
+}
+
+model VisitRecord {
+  id          String              @id @default(uuid())
+  bookingId   String              @unique
+  patientId   String
+  diagnosis   String?
+  vitals      Json?
+  booking     Booking             @relation(fields: [bookingId], references: [id])
+  patient     Patient             @relation(fields: [patientId], references: [id])
+  medicines   DispensedMedicine[]
+}
+
+// 5. INVENTORY & DISPENSING
+model Medicine {
+  id                 String             @id @default(uuid())
+  name               String
+  sellingPrice       Decimal
+  uom                String?
+  inventoryBatches   InventoryBatch[]
+  stockTransfers     StockTransfer[]
+  dispensedMedicines DispensedMedicine[]
+}
+
+model InventoryBatch {
+  id           String          @id @default(uuid())
+  medicineId   String
+  batchNo      String
+  expiryDate   DateTime
+  quantity     Int
+  buyingPrice  Decimal
+  locationType String          // Warehouse, Vehicle, Nurse
+  locationId   String          // Profile ID (Nurse) or Vehicle ID
+  medicine     Medicine        @relation(fields: [medicineId], references: [id])
+  transfers    StockTransfer[] @relation("BatchInTransfer")
+  dispensings  DispensedMedicine[]
+}
+
+model StockTransfer {
+  id              String         @id @default(uuid())
+  medicineId      String
+  batchId         String
+  fromLocationId  String
+  toLocationId    String
+  quantity        Int
+  status          String         @default("Completed")
+  transferredById String
+  medicine        Medicine       @relation(fields: [medicineId], references: [id])
+  batch           InventoryBatch @relation("BatchInTransfer", fields: [batchId], references: [id])
+  transferredBy   Profile        @relation("TransferredBy", fields: [transferredById], references: [id])
+  createdAt       DateTime       @default(now())
+}
+
+model DispensedMedicine {
+  id              String         @id @default(uuid())
+  visitId         String
+  medicineId      String
+  batchId         String
+  quantity        Int
+  dispensedById   String
+  unitPriceAtTime Decimal
+  visit           VisitRecord    @relation(fields: [visitId], references: [id])
+  medicine        Medicine       @relation(fields: [medicineId], references: [id])
+  batch           InventoryBatch @relation(fields: [batchId], references: [id])
+  dispensedBy     Profile        @relation(fields: [dispensedById], references: [id])
+}
+
+// 6. BILLING
+model Invoice {
+  id                String   @id @default(uuid())
+  bookingId         String?
+  patientId         String
+  totalAmount       Decimal
+  consultationTotal Decimal
+  medicineTotal     Decimal
+  travelCost        Decimal
+  paymentStatus     String   @default("Unpaid")
+  booking           Booking? @relation(fields: [bookingId], references: [id])
+  patient           Patient  @relation(fields: [patientId], references: [id])
+  createdAt         DateTime @default(now())
+}
+
+model OpdQueue {
+  id        String   @id @default(uuid())
+  patientId String
+  tokenNo   Int      @default(autoincrement())
+  status    String   @default("Waiting")
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  visitDate DateTime @default(now())
+}
+
