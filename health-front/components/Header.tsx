@@ -5,13 +5,30 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 export type HeaderProps = {
   title?: string;
+  isMenuButtonVisible?: boolean;
+  onMenuClick?: () => void;
 };
 
-export function Header({ title = "Health Dashboard" }: HeaderProps) {
+export function Header({
+  title = "Health Dashboard",
+  isMenuButtonVisible,
+  onMenuClick,
+}: HeaderProps) {
   return (
     <header className="border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-black/50">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-6">
+          {isMenuButtonVisible ? (
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-50 md:hidden"
+              aria-label="Open navigation"
+              onClick={onMenuClick}
+            >
+              <span className="text-lg leading-none">☰</span>
+            </button>
+          ) : null}
+
           <Link
             href="/dashboard"
             className="text-sm font-semibold text-zinc-950 hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-200"

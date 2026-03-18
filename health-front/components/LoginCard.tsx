@@ -12,12 +12,22 @@ type FormState = {
   password: string;
 };
 
+type TouchedState = {
+  email: boolean;
+  password: boolean;
+};
+
 export function LoginCard() {
   const router = useRouter();
   const [formState, setFormState] = useState<FormState>({
     email: "",
     password: "",
   });
+  const [touched, setTouched] = useState<TouchedState>({
+    email: false,
+    password: false,
+  });
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -44,6 +54,8 @@ export function LoginCard() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitError(null);
+    setHasSubmitted(true);
+    setTouched({ email: true, password: true });
 
     if (!canSubmit) {
       return;
@@ -93,7 +105,10 @@ export function LoginCard() {
               email: event.target.value,
             }))
           }
-          errorMessage={validationErrors.email}
+          onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
+          errorMessage={
+            touched.email || hasSubmitted ? validationErrors.email : undefined
+          }
           autoComplete="email"
         />
         <Input
@@ -108,7 +123,12 @@ export function LoginCard() {
               password: event.target.value,
             }))
           }
-          errorMessage={validationErrors.password}
+          onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
+          errorMessage={
+            touched.password || hasSubmitted
+              ? validationErrors.password
+              : undefined
+          }
           autoComplete="current-password"
         />
 
