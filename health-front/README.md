@@ -56,6 +56,18 @@ From `health-front/`:
 
 - **`POST /api/logout`** clears the `health_front_auth_token` cookie.
 
+## API proxy routes (frontend → backend)
+
+To avoid exposing backend URLs to the browser and to automatically attach the JWT from the httpOnly cookie, the frontend provides proxy endpoints:
+
+- `GET /api/me` → `health-back GET /api/me`
+- `GET/POST /api/roles` → `health-back /api/roles`
+- `GET/POST /api/permissions` → `health-back /api/permissions`
+
+Implementation helpers:
+
+- `lib/backend.ts` attaches `Authorization: Bearer <token>` (from cookie) to backend requests.
+
 ## Backend connection (smoke check)
 
 The dashboard page fetches `GET ${HEALTH_BACKEND_URL}/health` (server-side) and displays its response.
@@ -83,6 +95,26 @@ The layout is designed so:
 
 - header + footer remain visible
 - only the center content scrolls
+
+### Admin area (RBAC)
+
+Admin pages are located under `app/dashboard/admin/*` and are restricted:
+
+- The Admin link/tab is **not shown** unless the user can access admin.
+- Server-side gating is applied in `app/dashboard/admin/layout.tsx`.
+- Current implementation considers a user an admin when:
+  - their role name is `admin`/`superadmin` (role-based override), or
+  - they have one of the configured permission keys (fallback until permission keys are standardized).
+
+Admin routes:
+
+- `/dashboard/admin/roles`
+- `/dashboard/admin/permissions`
+
+Admin actions:
+
+- Create role (via `/api/roles`)
+- Create permission (via `/api/permissions`)
 
 ### Dark/light theme
 
@@ -130,4 +162,11 @@ Then open `http://localhost:3000` and inspect:
 ### Hydration warning about `<html class="dark">`
 
 - The project intentionally sets the theme class before hydration. `app/layout.tsx` suppresses the warning using `suppressHydrationWarning`.
+
+### PWA build error mentioning Turbopack/webpack
+
+`next-pwa` injects webpack configuration. This project forces webpack mode:
+
+- `npm run dev` uses `next dev --webpack`
+- `npm run build` uses `next build --webpack`
 

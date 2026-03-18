@@ -1,16 +1,11 @@
 import { redirect } from "next/navigation";
 
-import { AdminTabs } from "@/components/AdminTabs";
 import { Card } from "@/components/Card";
-import { getIsAuthenticated } from "@/lib/auth";
+import { SuperAdminTabs } from "@/components/SuperAdminTabs";
 import type { BackendMeResponse } from "@/lib/backend";
-import { hasAnyPermission, isAdminRole } from "@/lib/rbac";
+import { getIsAuthenticated } from "@/lib/auth";
+import { canAccessSuperAdmin } from "@/lib/adminAccess";
 import { getSiteOrigin } from "@/lib/siteUrl";
-
-const PERMS = {
-  viewRoles: ["roles:read", "role:read", "roles:list"],
-  viewPermissions: ["permissions:read", "permission:read", "permissions:list"],
-} as const;
 
 async function getMe(): Promise<BackendMeResponse | null> {
   const origin = await getSiteOrigin();
@@ -21,7 +16,7 @@ async function getMe(): Promise<BackendMeResponse | null> {
   return (await res.json().catch(() => null)) as BackendMeResponse | null;
 }
 
-export default async function AdminLayout({
+export default async function SuperAdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const isAuthenticated = await getIsAuthenticated();
@@ -30,28 +25,18 @@ export default async function AdminLayout({
   const me = await getMe();
   if (!me) redirect("/dashboard");
 
-  const canViewRoles =
-    isAdminRole(me.user.role) ||
-    hasAnyPermission(me.permissions, [...PERMS.viewRoles]);
-  const canViewPermissions =
-    isAdminRole(me.user.role) ||
-    hasAnyPermission(me.permissions, [...PERMS.viewPermissions]);
-
-  if (!canViewRoles && !canViewPermissions) {
+  if (!canAccessSuperAdmin(me.user.role, me.permissions)) {
     redirect("/dashboard");
   }
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Super Admin</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Admin actions are restricted by role/permissions.
+          High-privilege settings for system configuration.
         </p>
-        <AdminTabs
-          canViewRoles={canViewRoles}
-          canViewPermissions={canViewPermissions}
-        />
+        <SuperAdminTabs />
       </header>
 
       <Card>

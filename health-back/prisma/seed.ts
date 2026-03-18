@@ -4,36 +4,101 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = "aaa@bbb.com";
-  const plainPassword = "123456";
+  const superAdminEmail = "superadmin@health.local";
+  const superAdminPassword = "SuperAdmin@123";
 
-  // Ensure an Admin role exists
-  const adminRole = await prisma.role.upsert({
+  // Ensure core roles exist
+  await prisma.role.upsert({
     where: { roleName: "Admin" },
-    update: {},
+    update: { description: "System administrator" },
+    create: { roleName: "Admin", description: "System administrator" },
+  });
+
+  const superAdminRole = await prisma.role.upsert({
+    where: { roleName: "SuperAdmin" },
+    update: { description: "Super administrator (all privileges)" },
     create: {
-      roleName: "Admin",
-      description: "System administrator",
+      roleName: "SuperAdmin",
+      description: "Super administrator (all privileges)",
     },
   });
 
-  const passwordHash = await bcrypt.hash(plainPassword, 10);
+  // Ensure a baseline permission list exists (extend as needed)
+  const permissionKeys = [
+    "admin:access",
+    "super_admin:access",
 
-  // Create admin user if not exists
+    "roles:list",
+    "roles:read",
+    "roles:create",
+    "roles:update",
+    "roles:delete",
+
+    "permissions:list",
+    "permissions:read",
+    "permissions:create",
+    "permissions:attach",
+    "permissions:detach",
+
+    "profiles:list",
+    "profiles:read",
+    "profiles:create",
+    "profiles:update",
+    "profiles:deactivate",
+
+    "files:upload",
+    "files:delete",
+  ] as const;
+
+  for (const permissionKey of permissionKeys) {
+    await prisma.permission.upsert({
+      where: { permissionKey },
+      update: {},
+      create: { permissionKey },
+    });
+  }
+
+  // Attach ALL permissions to SuperAdmin role (idempotent)
+  const allPermissions = await prisma.permission.findMany({
+    select: { id: true },
+  });
+
+  await prisma.rolePermission.createMany({
+    data: allPermissions.map((p) => ({
+      roleId: superAdminRole.id,
+      permissionId: p.id,
+    })),
+    skipDuplicates: true,
+  });
+
+  const passwordHash = await bcrypt.hash(superAdminPassword, 10);
+
+  // Create super admin user if not exists (with full details)
   await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {},
+    where: { email: superAdminEmail },
+    update: {
+      fullName: "Super Admin",
+      phoneNumber: "+10000000000",
+      roleId: superAdminRole.id,
+      isActive: true,
+      baseConsultationFee: 0,
+    },
     create: {
-      fullName: "Admin",
-      email: adminEmail,
+      fullName: "Super Admin",
+      email: superAdminEmail,
       password: passwordHash,
-      roleId: adminRole.id,
+      phoneNumber: "+10000000000",
+      roleId: superAdminRole.id,
       isActive: true,
       baseConsultationFee: 0,
     },
   });
 
-  console.log("Admin user seeded with email:", adminEmail);
+  console.log("Super admin seeded.");
+  console.log("Email:", superAdminEmail);
+  console.log("Password:", superAdminPassword);
+  console.log("Role:", superAdminRole.roleName);
+  console.log("Permissions attached:", allPermissions.length);
 }
 
 main()

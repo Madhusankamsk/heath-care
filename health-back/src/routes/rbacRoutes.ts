@@ -20,11 +20,49 @@ import {
   listProfiles,
   updateProfileHandler,
 } from "../controllers/profileController";
+import prisma from "../prisma/client";
 
 const router = Router();
 
 // Protect RBAC routes with auth middleware
 router.use(requireAuth);
+
+// Current user + permissions (for frontend privilege checks)
+router.get("/me", async (req, res) => {
+  const userId = req.authUser?.sub;
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      role: {
+        include: {
+          permissions: { include: { permission: true } },
+        },
+      },
+    },
+  });
+
+  if (!user || !user.isActive) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const permissionKeys =
+    user.role?.permissions?.map((rp) => rp.permission.permissionKey) ?? [];
+
+  return res.json({
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role?.roleName ?? null,
+      isActive: user.isActive,
+    },
+    permissions: permissionKeys,
+  });
+});
 
 // Roles
 router.get("/roles", listRoles);

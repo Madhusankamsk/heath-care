@@ -3,14 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { canAccessAdmin, canAccessSuperAdmin } from "@/lib/adminAccess";
+import { useMe } from "@/lib/useMe";
+
 type NavItem = {
   href: string;
   label: string;
+  requiresAdmin?: boolean;
+  requiresSuperAdmin?: boolean;
 };
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/admin", label: "Admin" },
+  { href: "/dashboard/admin", label: "Admin", requiresAdmin: true },
+  {
+    href: "/dashboard/super-admin",
+    label: "Super Admin",
+    requiresSuperAdmin: true,
+  },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -24,8 +34,17 @@ export type SidebarProps = {
 
 export function Sidebar({ variant = "desktop", onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const meState = useMe();
 
   const isDesktop = variant === "desktop";
+  const canSeeAdmin =
+    meState.status === "authenticated"
+      ? canAccessAdmin(meState.me.user.role, meState.me.permissions)
+      : false;
+  const canSeeSuperAdmin =
+    meState.status === "authenticated"
+      ? canAccessSuperAdmin(meState.me.user.role, meState.me.permissions)
+      : false;
 
   return (
     <aside
@@ -43,7 +62,13 @@ export function Sidebar({ variant = "desktop", onNavigate }: SidebarProps) {
         </div>
 
         <nav className="flex flex-col gap-1">
-          {navItems.map((item) => {
+          {navItems
+            .filter((item) => {
+              if (item.requiresAdmin) return canSeeAdmin;
+              if (item.requiresSuperAdmin) return canSeeSuperAdmin;
+              return true;
+            })
+            .map((item) => {
             const active = isActive(pathname, item.href);
             return (
               <Link

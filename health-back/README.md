@@ -119,6 +119,12 @@ If the token is missing/invalid/expired, the server returns `401`.
 
 All are mounted under `/api` and protected by `requireAuth`:
 
+#### Current user
+
+- `GET /api/me`
+  - Returns the current user plus their role-derived permission keys:
+    - `{ user: { id, fullName, email, role, isActive }, permissions: string[] }`
+
 #### Roles
 
 - `GET /api/roles`
@@ -200,5 +206,13 @@ npm run dev
 ```
 
 Frontend calls backend at `HEALTH_BACKEND_URL` (default `http://localhost:4000`).
+
+## Notes
+
+### TypeScript vs `dist/`
+
+- Backend source code lives in `src/**/*.ts`.
+- `npm run build` compiles TypeScript into `dist/` (JavaScript) for production.
+- `dist/` is build output and is safe to delete; it is typically ignored by git.
 
 

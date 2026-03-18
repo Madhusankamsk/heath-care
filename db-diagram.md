@@ -1,26 +1,44 @@
 // =========================================================
-// MOBILE HEALTHCARE - MASTER SCHEMA (v2.0)
-// WITH DYNAMIC LOOKUPS & SELF-AUTH
+// MOBILE HEALTHCARE - ENTERPRISE MASTER SCHEMA (v3.0)
+// FEATURES: WHITE-LABEL, LOOKUPS, SELF-AUTH, INVENTORY
 // =========================================================
 
-// 1. DYNAMIC LOOKUP SYSTEM (No more hardcoding)
+// 1. SYSTEM & COMPANY CONFIGURATION (For White-labeling)
+Table company_settings {
+  id uuid [pk]
+  company_name text [not null]
+  company_email text
+  company_phone text
+  company_address text
+  logo_url text              // R2 Storage Link
+  primary_color varchar      // e.g., "#3498db"
+  secondary_color varchar    // e.g., "#2ecc71"
+  currency_code varchar      // e.g., "LKR"
+  travel_cost_per_km decimal [default: 0]
+  tax_percentage decimal     [default: 0]
+  invoice_prefix varchar     [default: "INV-"]
+  is_setup_completed boolean [default: false]
+  updated_at timestamptz [default: `now()`]
+}
+
+// 2. DYNAMIC LOOKUP SYSTEM (Replaces Hardcoding)
 Table lookup_categories {
   id uuid [pk]
-  category_name varchar [unique, note: "e.g., VEHICLE_STATUS, BOOKING_STATUS, UOM, GENDER, LOCATION_TYPE"]
+  category_name varchar [unique, note: "VEHICLE_STATUS, BOOKING_STATUS, UOM, GENDER, PAY_STATUS"]
 }
 
 Table lookups {
   id uuid [pk]
   category_id uuid [ref: > lookup_categories.id]
-  lookup_key varchar [note: "e.g., ACTIVE, PENDING, TABLETS, WAREHOUSE, NURSE"]
+  lookup_key varchar [note: "ACTIVE, PENDING, TABLETS, WAREHOUSE, NURSE"]
   lookup_value text [note: "Display Name: e.g., Tablets, In-Progress"]
   is_active boolean [default: true]
 }
 
-// 2. AUTH & ROLE MANAGEMENT
+// 3. AUTH & ROLE MANAGEMENT
 Table roles {
   id uuid [pk]
-  role_name varchar [unique, note: "Admin, Doctor, Nurse, Driver"]
+  role_name varchar [unique, note: "SuperAdmin, Admin, Doctor, Nurse, Driver"]
   description text
 }
 
@@ -37,7 +55,7 @@ Table role_permissions {
   }
 }
 
-// 3. USER MANAGEMENT (Self-Managed Auth)
+// 4. USER MANAGEMENT (Self-Managed Auth)
 Table users {
   id uuid [pk]
   full_name text [not null]
@@ -50,12 +68,12 @@ Table users {
   created_at timestamptz [default: `now()`]
 }
 
-// 4. FLEET & TEAMS
+// 5. FLEET & TEAMS
 Table vehicles {
   id uuid [pk]
   vehicle_no text [unique, not null]
   model text
-  status_id uuid [ref: > lookups.id] // Dynamic Status
+  status_id uuid [ref: > lookups.id]
 }
 
 Table medical_teams {
@@ -72,13 +90,13 @@ Table team_members {
   is_lead boolean [default: false]
 }
 
-// 5. PATIENT & OPD
+// 6. PATIENT & OPD
 Table patients {
   id uuid [pk]
   nic_or_passport text [unique]
   full_name text [not null]
   dob date
-  gender_id uuid [ref: > lookups.id] // Dynamic Gender
+  gender_id uuid [ref: > lookups.id]
   address text
   contact_no text
 }
@@ -87,17 +105,17 @@ Table opd_queue {
   id uuid [pk]
   patient_id uuid [ref: > patients.id]
   token_no serial
-  status_id uuid [ref: > lookups.id] // Dynamic Queue Status
+  status_id uuid [ref: > lookups.id]
   visit_date date [default: `now()`]
 }
 
-// 6. BOOKINGS & CLINICAL VISITS
+// 7. BOOKINGS & CLINICAL VISITS
 Table bookings {
   id uuid [pk]
   patient_id uuid [ref: > patients.id]
   team_id uuid [ref: > medical_teams.id]
   scheduled_date timestamptz
-  status_id uuid [ref: > lookups.id] // Dynamic Booking Status
+  status_id uuid [ref: > lookups.id]
   location_gps text
 }
 
@@ -111,13 +129,13 @@ Table visit_records {
   completed_at timestamptz
 }
 
-// 7. INVENTORY (THE NURSE STOCK LOGIC)
+// 8. INVENTORY (THE NURSE STOCK LOGIC)
 Table medicines {
   id uuid [pk]
   name text [not null]
   generic_name text
   selling_price decimal [not null]
-  uom_id uuid [ref: > lookups.id] // Dynamic Units (Tablets, Syrup, etc)
+  uom_id uuid [ref: > lookups.id]
   min_stock_level int
 }
 
@@ -128,7 +146,7 @@ Table inventory_batches {
   expiry_date date [not null]
   quantity int [not null]
   buying_price decimal [not null]
-  location_type_id uuid [ref: > lookups.id] // Dynamic (Warehouse, Nurse, Vehicle)
+  location_type_id uuid [ref: > lookups.id] // Warehouse, Nurse, Vehicle
   location_id uuid [note: "Points to User ID if location is Nurse"]
 }
 
@@ -139,12 +157,12 @@ Table stock_transfers {
   from_location_id uuid
   to_location_id uuid // Target Nurse's User ID
   quantity int
-  status_id uuid [ref: > lookups.id] // Dynamic Transfer Status
+  status_id uuid [ref: > lookups.id]
   transferred_by uuid [ref: > users.id]
   created_at timestamptz [default: `now()`]
 }
 
-// 8. BILLING & DISPENSING
+// 9. BILLING & DISPENSING
 Table invoices {
   id uuid [pk]
   booking_id uuid [ref: > bookings.id]
@@ -153,8 +171,8 @@ Table invoices {
   consultation_total decimal
   medicine_total decimal
   travel_cost decimal
-  payment_status_id uuid [ref: > lookups.id] // Dynamic (Paid, Unpaid, Partial)
-  created_at timestamptz
+  payment_status_id uuid [ref: > lookups.id]
+  created_at timestamptz [default: `now()`]
 }
 
 Table dispensed_medicines {

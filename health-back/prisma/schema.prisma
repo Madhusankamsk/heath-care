@@ -57,6 +57,8 @@ model Vehicle {
   vehicleNo    String        @unique
   model        String?
   status       String        @default("Available")
+  statusId     String?
+  statusLookup Lookup?       @relation("VehicleStatus", fields: [statusId], references: [id])
   medicalTeams MedicalTeam[]
 }
 
@@ -88,6 +90,8 @@ model Patient {
   dob           DateTime?
   contactNo     String?
   gender        String?
+  genderId      String?
+  genderLookup  Lookup?        @relation("PatientGender", fields: [genderId], references: [id])
   address       String?
   bookings      Booking[]
   opdQueue      OpdQueue[]
@@ -101,6 +105,8 @@ model Booking {
   teamId        String
   scheduledDate DateTime
   status        String       @default("Pending")
+  statusId      String?
+  statusLookup  Lookup?      @relation("BookingStatus", fields: [statusId], references: [id])
    locationGps   String?
   patient       Patient      @relation(fields: [patientId], references: [id])
   team          MedicalTeam  @relation(fields: [teamId], references: [id])
@@ -128,6 +134,8 @@ model Medicine {
   genericName        String?
   sellingPrice       Decimal
   uom                String?
+  uomId              String?
+  uomLookup          Lookup?            @relation("MedicineUom", fields: [uomId], references: [id])
   minStockLevel      Int?
   inventoryBatches   InventoryBatch[]
   stockTransfers     StockTransfer[]
@@ -142,6 +150,8 @@ model InventoryBatch {
   quantity     Int
   buyingPrice  Decimal
   locationType String          // Warehouse, Vehicle, Nurse
+  locationTypeId String?
+  locationTypeLookup Lookup?   @relation("InventoryLocationType", fields: [locationTypeId], references: [id])
   locationId   String?         // User ID (Nurse) or Vehicle ID
   medicine     Medicine        @relation(fields: [medicineId], references: [id])
   transfers    StockTransfer[] @relation("BatchInTransfer")
@@ -156,6 +166,8 @@ model StockTransfer {
   toLocationId    String
   quantity        Int
   status          String         @default("Pending")
+  statusId        String?
+  statusLookup    Lookup?        @relation("TransferStatus", fields: [statusId], references: [id])
   transferredById String
   medicine        Medicine       @relation(fields: [medicineId], references: [id])
   batch           InventoryBatch @relation("BatchInTransfer", fields: [batchId], references: [id])
@@ -187,6 +199,8 @@ model Invoice {
   medicineTotal     Decimal
   travelCost        Decimal
   paymentStatus     String   @default("Unpaid")
+  paymentStatusId   String?
+  paymentStatusLookup Lookup? @relation("InvoicePaymentStatus", fields: [paymentStatusId], references: [id])
   booking           Booking? @relation(fields: [bookingId], references: [id])
   patient           Patient  @relation(fields: [patientId], references: [id])
   createdAt         DateTime @default(now())
@@ -197,7 +211,55 @@ model OpdQueue {
   patientId String
   tokenNo   Int      @default(autoincrement())
   status    String   @default("Waiting")
+  statusId  String?
+  statusLookup Lookup? @relation("OpdStatus", fields: [statusId], references: [id])
   patient   Patient  @relation(fields: [patientId], references: [id])
   visitDate DateTime @default(now())
+}
+
+// 0. COMPANY CONFIGURATION (White-label)
+model CompanySettings {
+  id               String   @id @default(uuid())
+  companyName      String
+  companyEmail     String?
+  companyPhone     String?
+  companyAddress   String?
+  logoUrl          String?
+  primaryColor     String?
+  secondaryColor   String?
+  currencyCode     String?
+  travelCostPerKm  Decimal  @default(0)
+  taxPercentage    Decimal  @default(0)
+  invoicePrefix    String   @default("INV-")
+  isSetupCompleted Boolean  @default(false)
+  updatedAt        DateTime @default(now())
+}
+
+// 0. LOOKUPS (Dynamic enums)
+model LookupCategory {
+  id           String   @id @default(uuid())
+  categoryName String   @unique
+  lookups      Lookup[]
+}
+
+model Lookup {
+  id           String         @id @default(uuid())
+  categoryId   String
+  lookupKey    String
+  lookupValue  String
+  isActive     Boolean        @default(true)
+  category     LookupCategory @relation(fields: [categoryId], references: [id])
+
+  vehicleStatuses         Vehicle[]       @relation("VehicleStatus")
+  patientGenders          Patient[]       @relation("PatientGender")
+  bookingStatuses         Booking[]       @relation("BookingStatus")
+  medicineUoms            Medicine[]      @relation("MedicineUom")
+  inventoryLocationTypes  InventoryBatch[] @relation("InventoryLocationType")
+  transferStatuses        StockTransfer[] @relation("TransferStatus")
+  invoicePaymentStatuses  Invoice[]       @relation("InvoicePaymentStatus")
+  opdStatuses             OpdQueue[]      @relation("OpdStatus")
+
+  @@index([categoryId])
+  @@unique([categoryId, lookupKey])
 }
 
