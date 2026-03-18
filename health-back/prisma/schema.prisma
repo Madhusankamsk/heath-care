@@ -14,7 +14,7 @@ model Role {
   id          String       @id @default(uuid())
   roleName    String       @unique
   description String?
-  profiles    Profile[]
+  users       User[]
   permissions RolePermission[]
 }
 
@@ -33,11 +33,12 @@ model RolePermission {
   @@id([roleId, permissionId])
 }
 
-// 2. USER & PROFILE MANAGEMENT
-model Profile {
+// 2. USER MANAGEMENT (Manual Auth Users)
+model User {
   id                  String          @id @default(uuid())
   fullName            String
   email               String          @unique
+  password            String
   phoneNumber         String?
   baseConsultationFee Decimal         @default(0)
   roleId              String
@@ -71,12 +72,12 @@ model MedicalTeam {
 model TeamMember {
   id        String      @id @default(uuid())
   teamId    String
-  profileId String
+  userId    String
   isLead    Boolean     @default(false)
   team      MedicalTeam @relation(fields: [teamId], references: [id])
-  profile   Profile     @relation(fields: [profileId], references: [id])
+  user      User        @relation(fields: [userId], references: [id])
 
-  @@unique([teamId, profileId])
+  @@unique([teamId, userId])
 }
 
 // 4. PATIENT & VISITS
@@ -86,6 +87,8 @@ model Patient {
   fullName      String
   dob           DateTime?
   contactNo     String?
+  gender        String?
+  address       String?
   bookings      Booking[]
   opdQueue      OpdQueue[]
   visitRecords  VisitRecord[]
@@ -98,6 +101,7 @@ model Booking {
   teamId        String
   scheduledDate DateTime
   status        String       @default("Pending")
+   locationGps   String?
   patient       Patient      @relation(fields: [patientId], references: [id])
   team          MedicalTeam  @relation(fields: [teamId], references: [id])
   visitRecord   VisitRecord?
@@ -110,6 +114,8 @@ model VisitRecord {
   patientId   String
   diagnosis   String?
   vitals      Json?
+  clinicalNotes String?
+  completedAt   DateTime?
   booking     Booking             @relation(fields: [bookingId], references: [id])
   patient     Patient             @relation(fields: [patientId], references: [id])
   medicines   DispensedMedicine[]
@@ -119,8 +125,10 @@ model VisitRecord {
 model Medicine {
   id                 String             @id @default(uuid())
   name               String
+  genericName        String?
   sellingPrice       Decimal
   uom                String?
+  minStockLevel      Int?
   inventoryBatches   InventoryBatch[]
   stockTransfers     StockTransfer[]
   dispensedMedicines DispensedMedicine[]
@@ -134,7 +142,7 @@ model InventoryBatch {
   quantity     Int
   buyingPrice  Decimal
   locationType String          // Warehouse, Vehicle, Nurse
-  locationId   String          // Profile ID (Nurse) or Vehicle ID
+  locationId   String?         // User ID (Nurse) or Vehicle ID
   medicine     Medicine        @relation(fields: [medicineId], references: [id])
   transfers    StockTransfer[] @relation("BatchInTransfer")
   dispensings  DispensedMedicine[]
@@ -147,11 +155,11 @@ model StockTransfer {
   fromLocationId  String
   toLocationId    String
   quantity        Int
-  status          String         @default("Completed")
+  status          String         @default("Pending")
   transferredById String
   medicine        Medicine       @relation(fields: [medicineId], references: [id])
   batch           InventoryBatch @relation("BatchInTransfer", fields: [batchId], references: [id])
-  transferredBy   Profile        @relation("TransferredBy", fields: [transferredById], references: [id])
+  transferredBy   User           @relation("TransferredBy", fields: [transferredById], references: [id])
   createdAt       DateTime       @default(now())
 }
 
@@ -166,7 +174,7 @@ model DispensedMedicine {
   visit           VisitRecord    @relation(fields: [visitId], references: [id])
   medicine        Medicine       @relation(fields: [medicineId], references: [id])
   batch           InventoryBatch @relation(fields: [batchId], references: [id])
-  dispensedBy     Profile        @relation(fields: [dispensedById], references: [id])
+  dispensedBy     User           @relation(fields: [dispensedById], references: [id])
 }
 
 // 6. BILLING

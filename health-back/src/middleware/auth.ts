@@ -16,7 +16,7 @@ declare global {
   }
 }
 
-const JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+const JWT_SECRET = process.env.AUTH_JWT_SECRET;
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!JWT_SECRET) {

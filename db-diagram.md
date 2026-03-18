@@ -1,195 +1,154 @@
-// This is your Prisma schema file
+// =========================================================
+// MOBILE HEALTHCARE - SELF-MANAGED AUTH & INVENTORY (v1.8)
+// =========================================================
 
-generator client {
-  provider = "prisma-client-js"
+// 1. AUTH & ROLE MANAGEMENT
+Table roles {
+  id uuid [pk]
+  role_name varchar [unique, note: "Admin, Doctor, Nurse, Driver"]
+  description text
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL") // Supabase connection string eka methanata enne
+Table permissions {
+  id uuid [pk]
+  permission_key varchar [unique]
 }
 
-// 1. ACCESS CONTROL
-model Role {
-  id          String       @id @default(uuid())
-  roleName    String       @unique
-  description String?
-  profiles    Profile[]
-  permissions RolePermission[]
+Table role_permissions {
+  role_id uuid [ref: > roles.id]
+  permission_id uuid [ref: > permissions.id]
+  indexes {
+    (role_id, permission_id) [pk]
+  }
 }
 
-model Permission {
-  id            String           @id @default(uuid())
-  permissionKey String           @unique
-  roles         RolePermission[]
+// 2. USER MANAGEMENT (Replacing Profiles for Manual Auth)
+Table users {
+  id uuid [pk]
+  full_name text [not null]
+  email text [unique, not null]
+  password text [not null, note: "Hashed with Bcrypt"]
+  role_id uuid [ref: > roles.id]
+  phone_number text
+  base_consultation_fee decimal [default: 0]
+  is_active boolean [default: true]
+  created_at timestamptz [default: `now()`]
 }
 
-model RolePermission {
-  roleId       String
-  permissionId String
-  role         Role       @relation(fields: [roleId], references: [id])
-  permission   Permission @relation(fields: [permissionId], references: [id])
-
-  @@id([roleId, permissionId])
+// 3. FLEET & TEAMS
+Table vehicles {
+  id uuid [pk]
+  vehicle_no text [unique, not null]
+  model text
+  status varchar [note: "Available, In-Visit, Maintenance"]
 }
 
-// 2. USER & PROFILE MANAGEMENT
-model Profile {
-  id                    String          @id @default(uuid())
-  fullName              String
-  email                 String          @unique
-  phoneNumber           String?
-  baseConsultationFee   Decimal         @default(0)
-  roleId                String
-  role                  Role            @relation(fields: [roleId], references: [id])
-  isActive              Boolean         @default(true)
-  createdAt             DateTime        @default(now())
-  
-  // Relations
-  teamMembers           TeamMember[]
-  transfersPerformed    StockTransfer[] @relation("TransferredBy")
-  dispensedMedicines    DispensedMedicine[]
+Table medical_teams {
+  id uuid [pk]
+  team_name text
+  vehicle_id uuid [ref: > vehicles.id]
+  created_at timestamptz [default: `now()`]
 }
 
-// 3. DYNAMIC TEAM & FLEET
-model Vehicle {
-  id               String        @id @default(uuid())
-  vehicleNo        String        @unique
-  model            String?
-  status           String        @default("Available")
-  medicalTeams     MedicalTeam[]
+Table team_members {
+  id uuid [pk]
+  team_id uuid [ref: > medical_teams.id]
+  user_id uuid [ref: > users.id]
+  is_lead boolean [default: false]
 }
 
-model MedicalTeam {
-  id         String       @id @default(uuid())
-  teamName   String?
-  vehicleId  String
-  vehicle    Vehicle      @relation(fields: [vehicleId], references: [id])
-  members    TeamMember[]
-  bookings   Booking[]
+// 4. PATIENT & OPD
+Table patients {
+  id uuid [pk]
+  nic_or_passport text [unique]
+  full_name text [not null]
+  dob date
+  gender text
+  address text
+  contact_no text
 }
 
-model TeamMember {
-  id        String      @id @default(uuid())
-  teamId    String
-  profileId String
-  isLead    Boolean     @default(false)
-  team      MedicalTeam @relation(fields: [teamId], references: [id])
-  profile   Profile     @relation(fields: [profileId], references: [id])
-
-  @@unique([teamId, profileId])
+Table opd_queue {
+  id uuid [pk]
+  patient_id uuid [ref: > patients.id]
+  token_no serial
+  status varchar [note: "Waiting, In-Consultation, Completed"]
+  visit_date date [default: `now()`]
 }
 
-// 4. PATIENT & VISITS
-model Patient {
-  id             String         @id @default(uuid())
-  nicOrPassport  String?        @unique
-  fullName       String
-  dob            DateTime?
-  contactNo      String?
-  bookings       Booking[]
-  opdQueue       OpdQueue[]
-  visitRecords   VisitRecord[]
-  invoices       Invoice[]
+// 5. BOOKINGS & CLINICAL VISITS
+Table bookings {
+  id uuid [pk]
+  patient_id uuid [ref: > patients.id]
+  team_id uuid [ref: > medical_teams.id]
+  scheduled_date timestamptz
+  status varchar [note: "Pending, Dispatched, Ongoing, Completed"]
+  location_gps text
 }
 
-model Booking {
-  id            String       @id @default(uuid())
-  patientId     String
-  teamId        String
-  scheduledDate DateTime
-  status        String       @default("Pending")
-  patient       Patient      @relation(fields: [patientId], references: [id])
-  team          MedicalTeam  @relation(fields: [teamId], references: [id])
-  visitRecord   VisitRecord?
-  invoice       Invoice[]
+Table visit_records {
+  id uuid [pk]
+  booking_id uuid [ref: - bookings.id]
+  patient_id uuid [ref: > patients.id]
+  diagnosis text
+  clinical_notes text
+  vitals jsonb 
+  completed_at timestamptz
 }
 
-model VisitRecord {
-  id            String              @id @default(uuid())
-  bookingId     String              @unique
-  patientId     String
-  diagnosis     String?
-  vitals        Json?
-  booking       Booking             @relation(fields: [bookingId], references: [id])
-  patient       Patient             @relation(fields: [patientId], references: [id])
-  medicines     DispensedMedicine[]
+// 6. INVENTORY (THE NURSE STOCK LOGIC)
+Table medicines {
+  id uuid [pk]
+  name text [not null]
+  generic_name text
+  selling_price decimal [not null]
+  uom text 
+  min_stock_level int
 }
 
-// 5. INVENTORY & DISPENSING (The Nurse Stock Logic)
-model Medicine {
-  id                String             @id @default(uuid())
-  name              String
-  sellingPrice      Decimal
-  uom               String?
-  inventoryBatches  InventoryBatch[]
-  stockTransfers    StockTransfer[]
-  dispensedMedicines DispensedMedicine[]
+Table inventory_batches {
+  id uuid [pk]
+  medicine_id uuid [ref: > medicines.id]
+  batch_no text [not null]
+  expiry_date date [not null]
+  quantity int [not null]
+  buying_price decimal [not null]
+  location_type varchar [note: "Warehouse, Vehicle, Nurse"] 
+  // location_id will point to User ID if location_type is 'Nurse'
+  location_id uuid 
 }
 
-model InventoryBatch {
-  id             String          @id @default(uuid())
-  medicineId     String
-  batchNo        String
-  expiryDate     DateTime
-  quantity       Int
-  buyingPrice    Decimal
-  locationType   String          // Warehouse, Vehicle, Nurse
-  locationId     String          // Points to Profile ID (Nurse) or Vehicle ID
-  medicine       Medicine        @relation(fields: [medicineId], references: [id])
-  transfers      StockTransfer[] @relation("BatchInTransfer")
-  dispensings    DispensedMedicine[]
+Table stock_transfers {
+  id uuid [pk]
+  medicine_id uuid [ref: > medicines.id]
+  batch_id uuid [ref: > inventory_batches.id]
+  from_location_id uuid
+  to_location_id uuid // Target Nurse's User ID
+  quantity int
+  status varchar [note: "Pending, Completed"]
+  transferred_by uuid [ref: > users.id]
+  created_at timestamptz [default: `now()`]
 }
 
-model StockTransfer {
-  id                String         @id @default(uuid())
-  medicineId        String
-  batchId           String
-  fromLocationId    String
-  toLocationId      String
-  quantity          Int
-  status            String         @default("Completed")
-  transferredById   String
-  medicine          Medicine       @relation(fields: [medicineId], references: [id])
-  batch             InventoryBatch @relation("BatchInTransfer", fields: [batchId], references: [id])
-  transferredBy     Profile        @relation("TransferredBy", fields: [transferredById], references: [id])
-  createdAt         DateTime       @default(now())
+// 7. BILLING & DISPENSING
+Table invoices {
+  id uuid [pk]
+  booking_id uuid [ref: > bookings.id]
+  patient_id uuid [ref: > patients.id]
+  total_amount decimal
+  consultation_total decimal
+  medicine_total decimal
+  travel_cost decimal
+  payment_status varchar [note: "Unpaid, Paid"]
+  created_at timestamptz
 }
 
-model DispensedMedicine {
-  id                String         @id @default(uuid())
-  visitId           String
-  medicineId        String
-  batchId           String         // Specific Nurse batch eken adu karanna
-  quantity          Int
-  dispensedById     String
-  unitPriceAtTime   Decimal
-  visit             VisitRecord    @relation(fields: [visitId], references: [id])
-  medicine          Medicine       @relation(fields: [medicineId], references: [id])
-  batch             InventoryBatch @relation(fields: [batchId], references: [id])
-  dispensedBy       Profile        @relation(fields: [dispensedById], references: [id])
-}
-
-// 6. BILLING
-model Invoice {
-  id                String    @id @default(uuid())
-  bookingId         String?
-  patientId         String
-  totalAmount       Decimal
-  consultationTotal Decimal
-  medicineTotal     Decimal
-  travelCost        Decimal
-  paymentStatus     String    @default("Unpaid")
-  booking           Booking?  @relation(fields: [bookingId], references: [id])
-  patient           Patient   @relation(fields: [patientId], references: [id])
-  createdAt         DateTime  @default(now())
-}
-
-model OpdQueue {
-  id        String   @id @default(uuid())
-  patientId String
-  tokenNo   Int      @default(autoincrement())
-  status    String   @default("Waiting")
-  patient   Patient  @relation(fields: [patientId], references: [id])
-  visitDate DateTime @default(now())
+Table dispensed_medicines {
+  id uuid [pk]
+  visit_id uuid [ref: > visit_records.id]
+  medicine_id uuid [ref: > medicines.id]
+  batch_id uuid [ref: > inventory_batches.id] // Deduct from Nurse's specific batch
+  quantity int
+  dispensed_by uuid [ref: > users.id] // The Nurse's User ID
+  unit_price_at_time decimal
 }
