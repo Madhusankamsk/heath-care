@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import {
   createProfile,
+  deleteProfile,
   deactivateProfile,
   getProfileById,
   getProfiles,
@@ -13,13 +14,16 @@ export async function listProfiles(_req: Request, res: Response) {
 }
 
 export async function createProfileHandler(req: Request, res: Response) {
-  const { fullName, email, phoneNumber, baseConsultationFee, roleId } = req.body;
-  if (!fullName || !email || !roleId) {
-    return res.status(400).json({ message: "fullName, email and roleId are required" });
+  const { fullName, email, password, phoneNumber, baseConsultationFee, roleId } = req.body;
+  if (!fullName || !email || !password || !roleId) {
+    return res
+      .status(400)
+      .json({ message: "fullName, email, password and roleId are required" });
   }
   const profile = await createProfile({
     fullName,
     email,
+    password,
     phoneNumber,
     baseConsultationFee,
     roleId,
@@ -53,5 +57,17 @@ export async function deactivateProfileHandler(req: Request, res: Response) {
   const { id } = req.params;
   const profile = await deactivateProfile(id);
   res.json(profile);
+}
+
+export async function deleteProfileHandler(req: Request, res: Response) {
+  const { id } = req.params;
+  try {
+    await deleteProfile(id);
+    return res.status(204).send();
+  } catch (error) {
+    return res.status(409).json({
+      message: "Unable to delete profile. Deactivate instead if referenced elsewhere.",
+    });
+  }
 }
 

@@ -17,10 +17,12 @@ import {
 import {
   createProfileHandler,
   deactivateProfileHandler,
+  deleteProfileHandler,
   getProfileHandler,
   listProfiles,
   updateProfileHandler,
 } from "../controllers/profileController";
+import { requireAnyPermission } from "../middleware/permissions";
 import prisma from "../prisma/client";
 
 const router = Router();
@@ -144,11 +146,16 @@ router.post("/permissions/attach", attachPermissionHandler);
 router.post("/permissions/detach", detachPermissionHandler);
 
 // Profiles
-router.get("/profiles", listProfiles);
-router.post("/profiles", createProfileHandler);
-router.get("/profiles/:id", getProfileHandler);
-router.put("/profiles/:id", updateProfileHandler);
-router.post("/profiles/:id/deactivate", deactivateProfileHandler);
+router.get("/profiles", requireAnyPermission(["profiles:list"]), listProfiles);
+router.post("/profiles", requireAnyPermission(["profiles:create"]), createProfileHandler);
+router.get("/profiles/:id", requireAnyPermission(["profiles:read"]), getProfileHandler);
+router.put("/profiles/:id", requireAnyPermission(["profiles:update"]), updateProfileHandler);
+router.post(
+  "/profiles/:id/deactivate",
+  requireAnyPermission(["profiles:deactivate"]),
+  deactivateProfileHandler,
+);
+router.delete("/profiles/:id", requireAnyPermission(["profiles:delete"]), deleteProfileHandler);
 
 export default router;
 

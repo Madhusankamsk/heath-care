@@ -17,3 +17,12 @@ alwaysApply: false
 - PWA: dev/build must use webpack (`next dev --webpack`, `next build --webpack`).
 - If you delete/move components and dev shows missing-file errors, clear `health-front/.next/`.
 
+## Layout + navigation UI conventions
+
+- Header layout: keep primary nav/title **left-aligned** and user menu/fullscreen **right-aligned** using `justify-between`.
+- Header container: avoid hard `max-w-*` wrappers when you want true left/right alignment; use responsive padding (`px-4 sm:px-6 lg:px-8`) instead.
+- Sidebar:
+  - Desktop: `md:block` with responsive widths (`md:w-*` / `lg:w-*`) and `h-full`.
+  - Collapsed mode: hide section labels (e.g. don’t show “Nav/Navigation” when collapsed).
+  - Mobile: render sidebar in the `md:hidden` overlay/drawer and ensure overlay z-index sits above sticky header/footer (`z-60`).
+

@@ -45,6 +45,7 @@ async function main() {
     "profiles:create",
     "profiles:update",
     "profiles:deactivate",
+    "profiles:delete",
 
     "files:upload",
     "files:delete",
