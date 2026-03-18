@@ -10,6 +10,7 @@ export function DashboardChrome({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -28,11 +29,18 @@ export function DashboardChrome({
   return (
     <div className="flex h-screen flex-col bg-zinc-50 text-zinc-950 dark:bg-black dark:text-zinc-50">
       <div className="sticky top-0 z-50">
-        <Header onMenuClick={() => setIsMobileNavOpen(true)} isMenuButtonVisible />
+        <Header
+          onMenuClick={() => setIsMobileNavOpen(true)}
+          isMenuButtonVisible
+          isFullscreenButtonVisible
+        />
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
+        <Sidebar
+          collapsed={isSidebarCollapsed}
+          onToggleCollapsed={() => setIsSidebarCollapsed((v) => !v)}
+        />
 
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
