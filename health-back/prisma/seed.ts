@@ -47,6 +47,12 @@ async function main() {
     "profiles:deactivate",
     "profiles:delete",
 
+    "vehicles:list",
+    "vehicles:read",
+    "vehicles:create",
+    "vehicles:update",
+    "vehicles:delete",
+
     "files:upload",
     "files:delete",
   ] as const;

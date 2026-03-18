@@ -22,6 +22,13 @@ import {
   listProfiles,
   updateProfileHandler,
 } from "../controllers/profileController";
+import {
+  createVehicleHandler,
+  deleteVehicleHandler,
+  getVehicleHandler,
+  listVehiclesHandler,
+  updateVehicleHandler,
+} from "../controllers/vehicleController";
 import { requireAnyPermission } from "../middleware/permissions";
 import prisma from "../prisma/client";
 
@@ -156,6 +163,13 @@ router.post(
   deactivateProfileHandler,
 );
 router.delete("/profiles/:id", requireAnyPermission(["profiles:delete"]), deleteProfileHandler);
+
+// Vehicles
+router.get("/vehicles", requireAnyPermission(["vehicles:list"]), listVehiclesHandler);
+router.post("/vehicles", requireAnyPermission(["vehicles:create"]), createVehicleHandler);
+router.get("/vehicles/:id", requireAnyPermission(["vehicles:read"]), getVehicleHandler);
+router.put("/vehicles/:id", requireAnyPermission(["vehicles:update"]), updateVehicleHandler);
+router.delete("/vehicles/:id", requireAnyPermission(["vehicles:delete"]), deleteVehicleHandler);
 
 export default router;
 

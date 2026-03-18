@@ -12,12 +12,14 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ShieldCheck,
+  Truck,
   Users,
 } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { ThemeToggle } from "@/components/auth/ThemeToggle";
 import { canAccessAdmin, canAccessSuperAdmin } from "@/lib/adminAccess";
+import { hasAnyPermission } from "@/lib/rbac";
 import { useMe } from "@/lib/useMe";
 
 type NavItem = {
@@ -26,7 +28,12 @@ type NavItem = {
   icon?: React.ReactNode;
   requiresAdmin?: boolean;
   requiresSuperAdmin?: boolean;
-  children?: { href: string; label: string; icon?: React.ReactNode }[];
+  children?: {
+    href: string;
+    label: string;
+    icon?: React.ReactNode;
+    requiresAnyPermissions?: string[];
+  }[];
 };
 
 const navItems: NavItem[] = [
@@ -45,6 +52,13 @@ const navItems: NavItem[] = [
         href: "/dashboard/admin/staff",
         label: "Staff",
         icon: <Users className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["profiles:list", "profiles:read"],
+      },
+      {
+        href: "/dashboard/admin/vehicles",
+        label: "Vehicles",
+        icon: <Truck className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["vehicles:list", "vehicles:read"],
       },
     ],
   },
@@ -103,14 +117,27 @@ export function Sidebar({
     meState.status === "authenticated"
       ? canAccessSuperAdmin(meState.me.user.role, meState.me.permissions)
       : false;
+  const userPermissions = meState.status === "authenticated" ? meState.me.permissions : undefined;
 
   const visibleItems = useMemo(() => {
-    return navItems.filter((item) => {
+    return navItems
+      .filter((item) => {
       if (item.requiresAdmin) return canSeeAdmin;
       if (item.requiresSuperAdmin) return canSeeSuperAdmin;
       return true;
-    });
-  }, [canSeeAdmin, canSeeSuperAdmin]);
+      })
+      .map((item) => {
+        if (!item.children?.length) return item;
+        const nextChildren = item.children.filter((child) => {
+          if (!child.requiresAnyPermissions?.length) return true;
+          return hasAnyPermission(userPermissions, child.requiresAnyPermissions);
+        });
+        return {
+          ...item,
+          children: nextChildren.length ? nextChildren : undefined,
+        };
+      });
+  }, [canSeeAdmin, canSeeSuperAdmin, userPermissions]);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
