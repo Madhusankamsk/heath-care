@@ -1,0 +1,18 @@
+---
+description: Backend (health-back) API + Prisma conventions
+globs: health-back/**/*.{ts,prisma}
+alwaysApply: false
+---
+
+# health-back rules
+
+- Source of truth is TypeScript in `src/**/*.ts`. Don’t add/edit compiled JS in `dist/`.
+- Prisma workflow:
+  - schema changes go in `prisma/schema.prisma`
+  - apply via `npm run prisma:migrate`
+  - run `npm run prisma:generate` after schema updates
+- Auth:
+  - protected routes must use `requireAuth`
+  - super-admin-only routes must use `requireSuperAdmin` (403 if not allowed)
+- When adding new endpoints, keep response shape stable and update `health-front` proxy routes when needed.
+

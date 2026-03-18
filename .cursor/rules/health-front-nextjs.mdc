@@ -1,0 +1,19 @@
+---
+description: Next.js (health-front) patterns and file locations
+globs: health-front/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# health-front rules
+
+- App Router: prefer server components by default; use `"use client"` only when needed.
+- Don’t fetch `/api/me` from server components via relative `fetch()` unless you know cookies are included. Prefer `lib/backend.ts` helpers.
+- Component imports should use the structured paths:
+  - UI: `@/components/ui/*`
+  - Layout: `@/components/layout/*`
+  - Nav: `@/components/nav/*`
+  - Auth: `@/components/auth/*`
+  - Forms: `@/components/forms/*`
+- PWA: dev/build must use webpack (`next dev --webpack`, `next build --webpack`).
+- If you delete/move components and dev shows missing-file errors, clear `health-front/.next/`.
+

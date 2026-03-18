@@ -71,6 +71,7 @@ To avoid exposing backend URLs to the browser and to automatically attach the JW
 - `GET /api/me` → `health-back GET /api/me`
 - `GET/POST /api/roles` → `health-back /api/roles`
 - `GET/POST /api/permissions` → `health-back /api/permissions`
+- `GET/PUT /api/company-settings` → `health-back /api/company-settings` (super-admin)
 
 Implementation helpers:
 
@@ -89,15 +90,15 @@ If this shows an error, verify:
 
 ### Dashboard chrome (persistent layout)
 
-Dashboard routes are wrapped by `app/dashboard/layout.tsx`, which renders `components/DashboardChrome.tsx`:
+Dashboard routes are wrapped by `app/dashboard/layout.tsx`, which renders `components/layout/DashboardChrome.tsx`:
 
-- **Header**: `components/Header.tsx`
+- **Header**: `components/layout/Header.tsx`
   - Theme toggle + logout
   - Mobile hamburger opens drawer sidebar
-- **Sidebar**: `components/Sidebar.tsx`
+- **Sidebar**: `components/nav/Sidebar.tsx`
   - Desktop: fixed left nav
   - Mobile: drawer menu (closes when navigating)
-- **Footer**: `components/Footer.tsx`
+- **Footer**: `components/layout/Footer.tsx`
 
 The layout is designed so:
 
@@ -116,8 +117,7 @@ Admin pages are located under `app/dashboard/admin/*` and are restricted:
 
 Admin routes:
 
-- `/dashboard/admin/roles`
-- `/dashboard/admin/permissions`
+- `/dashboard/admin/staff`
 
 Admin actions:
 
@@ -126,7 +126,7 @@ Admin actions:
 
 ### Dark/light theme
 
-- Toggle: `components/ThemeToggle.tsx`
+- Toggle: `components/auth/ThemeToggle.tsx`
 - Persists to `localStorage` key: `health_front_theme`
 - Applies theme by toggling `.dark` class on `<html>`
 - Root layout sets `suppressHydrationWarning` to avoid hydration warnings when the theme script sets the class before hydration.

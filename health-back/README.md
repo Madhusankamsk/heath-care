@@ -125,6 +125,15 @@ All are mounted under `/api` and protected by `requireAuth`:
   - Returns the current user plus their role-derived permission keys:
     - `{ user: { id, fullName, email, role, isActive }, permissions: string[] }`
 
+#### Company settings (super-admin only)
+
+- `GET /api/company-settings`
+- `PUT /api/company-settings`
+
+These are protected by `requireSuperAdmin` and back the frontend page:
+
+- `health-front/app/dashboard/super-admin/company-setup/page.tsx`
+
 #### Roles
 
 - `GET /api/roles`
@@ -206,6 +215,13 @@ npm run dev
 ```
 
 Frontend calls backend at `HEALTH_BACKEND_URL` (default `http://localhost:4000`).
+
+## Seeded accounts
+
+The seed creates a default **Super Admin** user:
+
+- Email: `superadmin@health.local`
+- Password: `SuperAdmin@123`
 
 ## Notes
 

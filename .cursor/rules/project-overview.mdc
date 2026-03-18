@@ -1,0 +1,22 @@
+---
+description: Repo overview + core conventions for Moodify Health
+alwaysApply: true
+---
+
+# Moodify Health (monorepo) conventions
+
+- Repo apps:
+  - `health-back/`: Express + Prisma (PostgreSQL), TypeScript source in `src/**/*.ts`
+  - `health-front/`: Next.js App Router, Tailwind v4, PWA via `next-pwa` (webpack mode)
+- Prefer **TypeScript** everywhere. Don’t add compiled outputs (`dist/`, `.next/`) to git.
+- Keep API changes consistent across:
+  - backend route + middleware
+  - frontend proxy route (if needed)
+  - frontend pages/components consuming it
+- Auth model:
+  - backend issues JWT
+  - frontend stores JWT in **httpOnly cookie** and attaches `Authorization: Bearer <token>` when calling backend server-side.
+- RBAC model:
+  - UI should hide/disable admin/super-admin entry points if user lacks access
+  - server layouts/pages must still enforce access (redirect/403) even if UI hides links
+
