@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { Breadcrumbs } from "@/components/nav/Breadcrumbs";
 import { getIsAuthenticated } from "@/lib/auth";
 import { backendJson, type BackendMeResponse } from "@/lib/backend";
 import { canAccessAdmin } from "@/lib/adminAccess";

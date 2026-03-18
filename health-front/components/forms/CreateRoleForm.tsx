@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 export function CreateRoleForm() {
   const router = useRouter();

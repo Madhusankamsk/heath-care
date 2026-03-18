@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { LoginCard } from "@/components/LoginCard";
+import { LoginCard } from "@/components/auth/LoginCard";
 import { getIsAuthenticated } from "@/lib/auth";
 
 export default async function LoginPage() {

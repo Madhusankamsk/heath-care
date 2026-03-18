@@ -1,4 +1,4 @@
-import { DashboardChrome } from "@/components/DashboardChrome";
+import { DashboardChrome } from "@/components/layout/DashboardChrome";
 
 export default function DashboardLayout({
   children,

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { Card } from "@/components/Card";
-import { CreatePermissionForm } from "@/components/CreatePermissionForm";
+import { Card } from "@/components/ui/Card";
+import { CreatePermissionForm } from "@/components/forms/CreatePermissionForm";
 import { getIsAuthenticated } from "@/lib/auth";
 import { backendJson, type BackendMeResponse } from "@/lib/backend";
 import { canAccessSuperAdmin } from "@/lib/adminAccess";

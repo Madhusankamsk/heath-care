@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { Card } from "@/components/Card";
+import { Card } from "@/components/ui/Card";
 import { getIsAuthenticated } from "@/lib/auth";
 
 type BackendHealth =

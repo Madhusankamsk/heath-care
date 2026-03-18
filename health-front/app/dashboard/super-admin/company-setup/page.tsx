@@ -1,8 +1,8 @@
-import { Card } from "@/components/Card";
+import { Card } from "@/components/ui/Card";
 import {
   CompanySettingsForm,
   type CompanySettingsDto,
-} from "@/components/CompanySettingsForm";
+} from "@/components/forms/CompanySettingsForm";
 import { backendJson } from "@/lib/backend";
 
 export default async function CompanySetupPage() {

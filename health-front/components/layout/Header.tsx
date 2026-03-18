@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { LogoutButton } from "@/components/LogoutButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { LogoutButton } from "@/components/auth/LogoutButton";
+import { ThemeToggle } from "@/components/auth/ThemeToggle";
 import { canAccessAdmin, canAccessSuperAdmin } from "@/lib/adminAccess";
 import { useMe } from "@/lib/useMe";
 

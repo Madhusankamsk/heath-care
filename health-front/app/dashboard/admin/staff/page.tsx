@@ -1,4 +1,4 @@
-import { Card } from "@/components/Card";
+import { Card } from "@/components/ui/Card";
 
 export default function AdminStaffPage() {
   return (

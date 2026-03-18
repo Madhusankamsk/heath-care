@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/Button";
 
 type Theme = "light" | "dark";
 
