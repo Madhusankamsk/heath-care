@@ -19,7 +19,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-1">
         <Breadcrumbs />
         <h1 className="text-lg font-semibold tracking-tight">Admin</h1>
