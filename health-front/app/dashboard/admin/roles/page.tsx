@@ -3,9 +3,8 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/Card";
 import { CreateRoleForm } from "@/components/CreateRoleForm";
 import { getIsAuthenticated } from "@/lib/auth";
-import type { BackendMeResponse } from "@/lib/backend";
+import { backendJson, type BackendMeResponse } from "@/lib/backend";
 import { hasAnyPermission, isAdminRole } from "@/lib/rbac";
-import { getSiteOrigin } from "@/lib/siteUrl";
 
 type Role = {
   id: string;
@@ -18,29 +17,15 @@ const PERMS = {
   create: ["roles:create", "role:create", "roles:write", "role:write"],
 } as const;
 
-async function getMe(): Promise<BackendMeResponse | null> {
-  const origin = await getSiteOrigin();
-  const res = await fetch(`${origin}/api/me`, {
-    cache: "no-store",
-  }).catch(() => null);
-  if (!res?.ok) return null;
-  return (await res.json().catch(() => null)) as BackendMeResponse | null;
-}
-
 async function getRoles(): Promise<Role[] | null> {
-  const origin = await getSiteOrigin();
-  const res = await fetch(`${origin}/api/roles`, {
-    cache: "no-store",
-  }).catch(() => null);
-  if (!res?.ok) return null;
-  return (await res.json().catch(() => null)) as Role[] | null;
+  return backendJson<Role[]>("/api/roles");
 }
 
 export default async function AdminRolesPage() {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
-  const me = await getMe();
+  const me = await backendJson<BackendMeResponse>("/api/me");
   if (!me) redirect("/dashboard");
 
   const canViewRoles =

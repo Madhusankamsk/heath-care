@@ -31,3 +31,9 @@ export async function backendFetch(path: string, init?: RequestInit) {
   });
 }
 
+export async function backendJson<T>(path: string, init?: RequestInit): Promise<T | null> {
+  const res = await backendFetch(path, init).catch(() => null);
+  if (!res?.ok) return null;
+  return (await res.json().catch(() => null)) as T | null;
+}
+

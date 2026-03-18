@@ -3,23 +3,13 @@ import { redirect } from "next/navigation";
 import { AdminTabs } from "@/components/AdminTabs";
 import { Card } from "@/components/Card";
 import { getIsAuthenticated } from "@/lib/auth";
-import type { BackendMeResponse } from "@/lib/backend";
+import { backendJson, type BackendMeResponse } from "@/lib/backend";
 import { hasAnyPermission, isAdminRole } from "@/lib/rbac";
-import { getSiteOrigin } from "@/lib/siteUrl";
 
 const PERMS = {
   viewRoles: ["roles:read", "role:read", "roles:list"],
   viewPermissions: ["permissions:read", "permission:read", "permissions:list"],
 } as const;
-
-async function getMe(): Promise<BackendMeResponse | null> {
-  const origin = await getSiteOrigin();
-  const res = await fetch(`${origin}/api/me`, { cache: "no-store" }).catch(
-    () => null,
-  );
-  if (!res?.ok) return null;
-  return (await res.json().catch(() => null)) as BackendMeResponse | null;
-}
 
 export default async function AdminLayout({
   children,
@@ -27,7 +17,7 @@ export default async function AdminLayout({
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
-  const me = await getMe();
+  const me = await backendJson<BackendMeResponse>("/api/me");
   if (!me) redirect("/dashboard");
 
   const canViewRoles =

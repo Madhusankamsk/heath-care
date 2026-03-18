@@ -3,9 +3,8 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/Card";
 import { CreatePermissionForm } from "@/components/CreatePermissionForm";
 import { getIsAuthenticated } from "@/lib/auth";
-import type { BackendMeResponse } from "@/lib/backend";
+import { backendJson, type BackendMeResponse } from "@/lib/backend";
 import { hasAnyPermission, isAdminRole } from "@/lib/rbac";
-import { getSiteOrigin } from "@/lib/siteUrl";
 
 type Permission = {
   id: string;
@@ -22,29 +21,15 @@ const PERMS = {
   ],
 } as const;
 
-async function getMe(): Promise<BackendMeResponse | null> {
-  const origin = await getSiteOrigin();
-  const res = await fetch(`${origin}/api/me`, { cache: "no-store" }).catch(
-    () => null,
-  );
-  if (!res?.ok) return null;
-  return (await res.json().catch(() => null)) as BackendMeResponse | null;
-}
-
 async function getPermissions(): Promise<Permission[] | null> {
-  const origin = await getSiteOrigin();
-  const res = await fetch(`${origin}/api/permissions`, {
-    cache: "no-store",
-  }).catch(() => null);
-  if (!res?.ok) return null;
-  return (await res.json().catch(() => null)) as Permission[] | null;
+  return backendJson<Permission[]>("/api/permissions");
 }
 
 export default async function AdminPermissionsPage() {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
-  const me = await getMe();
+  const me = await backendJson<BackendMeResponse>("/api/me");
   if (!me) redirect("/dashboard");
   const canViewPermissions =
     isAdminRole(me.user.role) ||

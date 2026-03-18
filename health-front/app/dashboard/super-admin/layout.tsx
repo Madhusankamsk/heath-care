@@ -2,19 +2,9 @@ import { redirect } from "next/navigation";
 
 import { Card } from "@/components/Card";
 import { SuperAdminTabs } from "@/components/SuperAdminTabs";
-import type { BackendMeResponse } from "@/lib/backend";
+import { backendJson, type BackendMeResponse } from "@/lib/backend";
 import { getIsAuthenticated } from "@/lib/auth";
 import { canAccessSuperAdmin } from "@/lib/adminAccess";
-import { getSiteOrigin } from "@/lib/siteUrl";
-
-async function getMe(): Promise<BackendMeResponse | null> {
-  const origin = await getSiteOrigin();
-  const res = await fetch(`${origin}/api/me`, { cache: "no-store" }).catch(
-    () => null,
-  );
-  if (!res?.ok) return null;
-  return (await res.json().catch(() => null)) as BackendMeResponse | null;
-}
 
 export default async function SuperAdminLayout({
   children,
@@ -22,7 +12,7 @@ export default async function SuperAdminLayout({
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
-  const me = await getMe();
+  const me = await backendJson<BackendMeResponse>("/api/me");
   if (!me) redirect("/dashboard");
 
   if (!canAccessSuperAdmin(me.user.role, me.permissions)) {
