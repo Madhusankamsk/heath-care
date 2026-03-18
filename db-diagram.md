@@ -1,8 +1,23 @@
 // =========================================================
-// MOBILE HEALTHCARE - SELF-MANAGED AUTH & INVENTORY (v1.8)
+// MOBILE HEALTHCARE - MASTER SCHEMA (v2.0)
+// WITH DYNAMIC LOOKUPS & SELF-AUTH
 // =========================================================
 
-// 1. AUTH & ROLE MANAGEMENT
+// 1. DYNAMIC LOOKUP SYSTEM (No more hardcoding)
+Table lookup_categories {
+  id uuid [pk]
+  category_name varchar [unique, note: "e.g., VEHICLE_STATUS, BOOKING_STATUS, UOM, GENDER, LOCATION_TYPE"]
+}
+
+Table lookups {
+  id uuid [pk]
+  category_id uuid [ref: > lookup_categories.id]
+  lookup_key varchar [note: "e.g., ACTIVE, PENDING, TABLETS, WAREHOUSE, NURSE"]
+  lookup_value text [note: "Display Name: e.g., Tablets, In-Progress"]
+  is_active boolean [default: true]
+}
+
+// 2. AUTH & ROLE MANAGEMENT
 Table roles {
   id uuid [pk]
   role_name varchar [unique, note: "Admin, Doctor, Nurse, Driver"]
@@ -22,12 +37,12 @@ Table role_permissions {
   }
 }
 
-// 2. USER MANAGEMENT (Replacing Profiles for Manual Auth)
+// 3. USER MANAGEMENT (Self-Managed Auth)
 Table users {
   id uuid [pk]
   full_name text [not null]
   email text [unique, not null]
-  password text [not null, note: "Hashed with Bcrypt"]
+  password text [not null, note: "Bcrypt Hashed"]
   role_id uuid [ref: > roles.id]
   phone_number text
   base_consultation_fee decimal [default: 0]
@@ -35,12 +50,12 @@ Table users {
   created_at timestamptz [default: `now()`]
 }
 
-// 3. FLEET & TEAMS
+// 4. FLEET & TEAMS
 Table vehicles {
   id uuid [pk]
   vehicle_no text [unique, not null]
   model text
-  status varchar [note: "Available, In-Visit, Maintenance"]
+  status_id uuid [ref: > lookups.id] // Dynamic Status
 }
 
 Table medical_teams {
@@ -57,13 +72,13 @@ Table team_members {
   is_lead boolean [default: false]
 }
 
-// 4. PATIENT & OPD
+// 5. PATIENT & OPD
 Table patients {
   id uuid [pk]
   nic_or_passport text [unique]
   full_name text [not null]
   dob date
-  gender text
+  gender_id uuid [ref: > lookups.id] // Dynamic Gender
   address text
   contact_no text
 }
@@ -72,17 +87,17 @@ Table opd_queue {
   id uuid [pk]
   patient_id uuid [ref: > patients.id]
   token_no serial
-  status varchar [note: "Waiting, In-Consultation, Completed"]
+  status_id uuid [ref: > lookups.id] // Dynamic Queue Status
   visit_date date [default: `now()`]
 }
 
-// 5. BOOKINGS & CLINICAL VISITS
+// 6. BOOKINGS & CLINICAL VISITS
 Table bookings {
   id uuid [pk]
   patient_id uuid [ref: > patients.id]
   team_id uuid [ref: > medical_teams.id]
   scheduled_date timestamptz
-  status varchar [note: "Pending, Dispatched, Ongoing, Completed"]
+  status_id uuid [ref: > lookups.id] // Dynamic Booking Status
   location_gps text
 }
 
@@ -96,13 +111,13 @@ Table visit_records {
   completed_at timestamptz
 }
 
-// 6. INVENTORY (THE NURSE STOCK LOGIC)
+// 7. INVENTORY (THE NURSE STOCK LOGIC)
 Table medicines {
   id uuid [pk]
   name text [not null]
   generic_name text
   selling_price decimal [not null]
-  uom text 
+  uom_id uuid [ref: > lookups.id] // Dynamic Units (Tablets, Syrup, etc)
   min_stock_level int
 }
 
@@ -113,9 +128,8 @@ Table inventory_batches {
   expiry_date date [not null]
   quantity int [not null]
   buying_price decimal [not null]
-  location_type varchar [note: "Warehouse, Vehicle, Nurse"] 
-  // location_id will point to User ID if location_type is 'Nurse'
-  location_id uuid 
+  location_type_id uuid [ref: > lookups.id] // Dynamic (Warehouse, Nurse, Vehicle)
+  location_id uuid [note: "Points to User ID if location is Nurse"]
 }
 
 Table stock_transfers {
@@ -125,12 +139,12 @@ Table stock_transfers {
   from_location_id uuid
   to_location_id uuid // Target Nurse's User ID
   quantity int
-  status varchar [note: "Pending, Completed"]
+  status_id uuid [ref: > lookups.id] // Dynamic Transfer Status
   transferred_by uuid [ref: > users.id]
   created_at timestamptz [default: `now()`]
 }
 
-// 7. BILLING & DISPENSING
+// 8. BILLING & DISPENSING
 Table invoices {
   id uuid [pk]
   booking_id uuid [ref: > bookings.id]
@@ -139,7 +153,7 @@ Table invoices {
   consultation_total decimal
   medicine_total decimal
   travel_cost decimal
-  payment_status varchar [note: "Unpaid, Paid"]
+  payment_status_id uuid [ref: > lookups.id] // Dynamic (Paid, Unpaid, Partial)
   created_at timestamptz
 }
 
@@ -147,8 +161,8 @@ Table dispensed_medicines {
   id uuid [pk]
   visit_id uuid [ref: > visit_records.id]
   medicine_id uuid [ref: > medicines.id]
-  batch_id uuid [ref: > inventory_batches.id] // Deduct from Nurse's specific batch
+  batch_id uuid [ref: > inventory_batches.id]
   quantity int
-  dispensed_by uuid [ref: > users.id] // The Nurse's User ID
+  dispensed_by uuid [ref: > users.id]
   unit_price_at_time decimal
 }
