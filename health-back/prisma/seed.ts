@@ -53,6 +53,12 @@ async function main() {
     "vehicles:update",
     "vehicles:delete",
 
+    "patients:list",
+    "patients:read",
+    "patients:create",
+    "patients:update",
+    "patients:delete",
+
     "files:upload",
     "files:delete",
   ] as const;

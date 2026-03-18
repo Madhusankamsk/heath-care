@@ -31,6 +31,13 @@ import {
   listVehiclesHandler,
   updateVehicleHandler,
 } from "../controllers/vehicleController";
+import {
+  createPatientHandler,
+  deletePatientHandler,
+  getPatientHandler,
+  listPatientsHandler,
+  updatePatientHandler,
+} from "../controllers/patientController";
 import { requireAnyPermission } from "../middleware/permissions";
 import prisma from "../prisma/client";
 
@@ -174,6 +181,17 @@ router.post("/vehicles", requireAnyPermission(["vehicles:create"]), createVehicl
 router.get("/vehicles/:id", requireAnyPermission(["vehicles:read"]), getVehicleHandler);
 router.put("/vehicles/:id", requireAnyPermission(["vehicles:update"]), updateVehicleHandler);
 router.delete("/vehicles/:id", requireAnyPermission(["vehicles:delete"]), deleteVehicleHandler);
+
+// Patients
+router.get("/patients", requireAnyPermission(["patients:list"]), listPatientsHandler);
+router.post("/patients", requireAnyPermission(["patients:create"]), createPatientHandler);
+router.get("/patients/:id", requireAnyPermission(["patients:read"]), getPatientHandler);
+router.put("/patients/:id", requireAnyPermission(["patients:update"]), updatePatientHandler);
+router.delete(
+  "/patients/:id",
+  requireAnyPermission(["patients:delete"]),
+  deletePatientHandler,
+);
 
 export default router;
 

@@ -12,6 +12,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ShieldCheck,
+  Stethoscope,
   Truck,
   Users,
 } from "lucide-react";
@@ -28,6 +29,7 @@ type NavItem = {
   icon?: React.ReactNode;
   requiresAdmin?: boolean;
   requiresSuperAdmin?: boolean;
+  requiresAnyPermissions?: string[];
   children?: {
     href: string;
     label: string;
@@ -41,6 +43,20 @@ const navItems: NavItem[] = [
     href: "/dashboard",
     label: "Overview",
     icon: <LayoutDashboard className="h-4 w-4" aria-hidden />,
+  },
+  {
+    href: "/dashboard/clients",
+    label: "Clients",
+    icon: <Users className="h-4 w-4" aria-hidden />,
+    requiresAnyPermissions: ["patients:list", "patients:read"],
+    children: [
+      {
+        href: "/dashboard/clients/patient",
+        label: "Patient",
+        icon: <Stethoscope className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["patients:list", "patients:read"],
+      },
+    ],
   },
   {
     href: "/dashboard/admin",
@@ -122,9 +138,12 @@ export function Sidebar({
   const visibleItems = useMemo(() => {
     return navItems
       .filter((item) => {
-      if (item.requiresAdmin) return canSeeAdmin;
-      if (item.requiresSuperAdmin) return canSeeSuperAdmin;
-      return true;
+        if (item.requiresAdmin) return canSeeAdmin;
+        if (item.requiresSuperAdmin) return canSeeSuperAdmin;
+        if (item.requiresAnyPermissions?.length) {
+          return hasAnyPermission(userPermissions, item.requiresAnyPermissions);
+        }
+        return true;
       })
       .map((item) => {
         if (!item.children?.length) return item;
