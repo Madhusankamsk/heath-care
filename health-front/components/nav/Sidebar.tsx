@@ -76,6 +76,12 @@ const navItems: NavItem[] = [
         icon: <Truck className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["vehicles:list", "vehicles:read"],
       },
+      {
+        href: "/dashboard/admin/medical-teams",
+        label: "Medical Teams",
+        icon: <Users className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["medical_teams:list", "medical_teams:read"],
+      },
     ],
   },
   {

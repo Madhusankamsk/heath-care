@@ -5,12 +5,15 @@ import { usePathname } from "next/navigation";
 
 const labelMap: Record<string, string> = {
   dashboard: "Dashboard",
+  clients: "Clients",
+  patient: "Patient",
   admin: "Admin",
   staff: "Staff",
   "super-admin": "Super Admin",
   "company-setup": "Company Setup",
   roles: "Roles",
   permissions: "Permissions",
+  "medical-teams": "Medical Teams",
 };
 
 export function Breadcrumbs() {

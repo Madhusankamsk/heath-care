@@ -32,6 +32,14 @@ import {
   updateVehicleHandler,
 } from "../controllers/vehicleController";
 import {
+  createMedicalTeamHandler,
+  deleteMedicalTeamHandler,
+  getMedicalTeamHandler,
+  listMedicalTeamMemberCandidatesHandler,
+  listMedicalTeamsHandler,
+  updateMedicalTeamHandler,
+} from "../controllers/medicalTeamController";
+import {
   createPatientHandler,
   deletePatientHandler,
   getPatientHandler,
@@ -181,6 +189,22 @@ router.post("/vehicles", requireAnyPermission(["vehicles:create"]), createVehicl
 router.get("/vehicles/:id", requireAnyPermission(["vehicles:read"]), getVehicleHandler);
 router.put("/vehicles/:id", requireAnyPermission(["vehicles:update"]), updateVehicleHandler);
 router.delete("/vehicles/:id", requireAnyPermission(["vehicles:delete"]), deleteVehicleHandler);
+
+// Medical teams
+router.get("/medical-teams", requireAnyPermission(["medical_teams:list"]), listMedicalTeamsHandler);
+router.get(
+  "/medical-team-members",
+  requireAnyPermission(["medical_teams:create", "medical_teams:update"]),
+  listMedicalTeamMemberCandidatesHandler,
+);
+router.post("/medical-teams", requireAnyPermission(["medical_teams:create"]), createMedicalTeamHandler);
+router.get("/medical-teams/:id", requireAnyPermission(["medical_teams:read"]), getMedicalTeamHandler);
+router.put("/medical-teams/:id", requireAnyPermission(["medical_teams:update"]), updateMedicalTeamHandler);
+router.delete(
+  "/medical-teams/:id",
+  requireAnyPermission(["medical_teams:delete"]),
+  deleteMedicalTeamHandler,
+);
 
 // Patients
 router.get("/patients", requireAnyPermission(["patients:list"]), listPatientsHandler);

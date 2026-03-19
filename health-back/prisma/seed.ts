@@ -59,6 +59,12 @@ async function main() {
     "patients:update",
     "patients:delete",
 
+    "medical_teams:list",
+    "medical_teams:read",
+    "medical_teams:create",
+    "medical_teams:update",
+    "medical_teams:delete",
+
     "files:upload",
     "files:delete",
   ] as const;
