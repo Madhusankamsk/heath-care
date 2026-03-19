@@ -22,7 +22,12 @@ export default async function AdminLayout({
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-1">
         <Breadcrumbs />
-        <h1 className="text-lg font-semibold tracking-tight">Admin</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
+            Admin
+          </h1>
+          <span className="pill pill-info">Operations</span>
+        </div>
       </div>
       {children}
     </div>

@@ -18,7 +18,7 @@ export function Input({
 
   return (
     <label className="flex flex-col gap-2 text-sm">
-      <span className="font-medium text-zinc-800 dark:text-zinc-200">
+      <span className="font-medium text-[var(--text-secondary)]">
         {label}
       </span>
       <input
@@ -27,12 +27,11 @@ export function Input({
         aria-invalid={hasError}
         aria-describedby={hasError ? errorId : undefined}
         className={[
-          "h-11 rounded-xl border px-3 text-sm outline-none",
-          "border-zinc-200 bg-white text-zinc-950 placeholder:text-zinc-400",
-          "focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200",
-          "dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-800",
+          "h-11 rounded-xl border px-3 text-sm outline-none transition-colors",
+          "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]",
+          "focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-primary)_25%,transparent)]",
           hasError
-            ? "border-red-400 focus:ring-red-100 dark:border-red-500 dark:focus:ring-red-950"
+            ? "border-[var(--danger)] focus:ring-[color-mix(in_srgb,var(--danger)_24%,transparent)]"
             : "",
           className,
         ]
@@ -40,7 +39,7 @@ export function Input({
           .join(" ")}
       />
       {hasError ? (
-        <span id={errorId} className="text-xs text-red-600 dark:text-red-400">
+        <span id={errorId} className="text-xs text-[var(--danger)]">
           {errorMessage}
         </span>
       ) : null}

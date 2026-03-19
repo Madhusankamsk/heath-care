@@ -22,7 +22,12 @@ export default async function SuperAdminLayout({
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-1">
         <Breadcrumbs />
-        <h1 className="text-lg font-semibold tracking-tight">Super Admin</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
+            Super Admin
+          </h1>
+          <span className="pill pill-warning">Privileged</span>
+        </div>
       </div>
       {children}
     </div>

@@ -10,11 +10,11 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClassName: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--brand-primary)] text-white hover:opacity-90",
+    "bg-[var(--brand-primary)] text-white shadow-sm hover:bg-[var(--brand-primary-strong)]",
   secondary:
-    "bg-zinc-100 text-zinc-950 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800",
+    "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-2)]",
   ghost:
-    "bg-transparent text-zinc-950 hover:bg-zinc-100 dark:text-zinc-50 dark:hover:bg-zinc-900",
+    "bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-2)]",
 };
 
 export function Button({
@@ -33,8 +33,8 @@ export function Button({
       {...rest}
       disabled={isDisabled}
       className={[
-        "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold",
-        "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400",
+        "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold tracking-wide",
+        "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]",
         "disabled:cursor-not-allowed disabled:opacity-60",
         variantClassName[variant],
         className,

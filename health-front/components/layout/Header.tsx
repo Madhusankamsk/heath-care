@@ -65,13 +65,13 @@ export function Header({
   }
 
   return (
-    <header className="border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-black/50">
+    <header className="border-b border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur">
       <div className="flex w-full items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-6">
           {isMenuButtonVisible ? (
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-50 md:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] md:hidden"
               aria-label="Open navigation"
               onClick={onMenuClick}
             >
@@ -81,7 +81,7 @@ export function Header({
 
           <Link
             href="/dashboard"
-            className="text-sm font-semibold text-zinc-950 hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-200"
+            className="text-sm font-semibold tracking-wide text-[var(--text-primary)] hover:text-[var(--brand-primary-strong)]"
           >
             {title}
           </Link>
@@ -89,7 +89,7 @@ export function Header({
           <nav className="hidden items-center gap-4 text-sm sm:flex">
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-2 text-zinc-600 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-50"
+              className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
             >
               <LayoutDashboard className="h-4 w-4" aria-hidden />
               Home
@@ -97,7 +97,7 @@ export function Header({
             {canSeeAdmin ? (
               <Link
                 href="/dashboard/admin"
-                className="inline-flex items-center gap-2 text-zinc-600 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-50"
+                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
               >
                 <ShieldCheck className="h-4 w-4" aria-hidden />
                 Admin
@@ -106,7 +106,7 @@ export function Header({
             {canSeeSuperAdmin ? (
               <Link
                 href="/dashboard/super-admin"
-                className="inline-flex items-center gap-2 text-zinc-600 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-50"
+                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
               >
                 <Crown className="h-4 w-4" aria-hidden />
                 Super Admin
@@ -119,7 +119,7 @@ export function Header({
           {isFullscreenButtonVisible ? (
             <button
               type="button"
-              className="hidden h-11 w-11 items-center justify-center rounded-xl text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-50 md:inline-flex"
+              className="hidden h-11 w-11 items-center justify-center rounded-xl text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] md:inline-flex"
               aria-label={fullscreenLabel}
               onClick={handleToggleFullscreen}
             >

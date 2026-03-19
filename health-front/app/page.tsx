@@ -10,23 +10,23 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white px-6 py-16 text-zinc-950 dark:from-zinc-950 dark:to-black dark:text-zinc-50">
+    <div className="min-h-screen bg-[linear-gradient(180deg,var(--surface-2),var(--background))] px-6 py-16 text-[var(--text-primary)]">
       <div className="mx-auto flex w-full max-w-md flex-col gap-10">
         <header className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
             Health Front
           </p>
           <h1 className="text-3xl font-semibold tracking-tight">
             Sign in to your account
           </h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-[var(--text-secondary)]">
             Sign in using credentials from the backend.
           </p>
         </header>
 
         <LoginCard />
 
-        <footer className="text-xs text-zinc-500 dark:text-zinc-500">
+        <footer className="text-xs text-[var(--text-muted)]">
           By continuing, you agree to the terms of service and privacy policy.
         </footer>
       </div>

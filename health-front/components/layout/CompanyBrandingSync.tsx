@@ -19,9 +19,13 @@ function normalizeHexColor(value: unknown): string | null {
 function applyBranding(settings: CompanySettingsDto) {
   const primary = normalizeHexColor(settings?.primaryColor);
   const secondary = normalizeHexColor(settings?.secondaryColor);
-  if (primary) document.documentElement.style.setProperty("--brand-primary", primary);
-  if (secondary)
+  if (primary) {
+    document.documentElement.style.setProperty("--brand-primary", primary);
+    document.documentElement.style.setProperty("--brand-primary-strong", primary);
+  }
+  if (secondary) {
     document.documentElement.style.setProperty("--brand-secondary", secondary);
+  }
 }
 
 export function CompanyBrandingSync() {

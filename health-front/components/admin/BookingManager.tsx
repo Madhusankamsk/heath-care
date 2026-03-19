@@ -212,7 +212,7 @@ export function BookingManager({
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="tbl-shell overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
             <tr>

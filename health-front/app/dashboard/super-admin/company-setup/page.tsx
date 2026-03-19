@@ -11,7 +11,7 @@ export default async function CompanySetupPage() {
     <div className="flex flex-col gap-6">
       <Card title="Company settings" description="Super Admin only.">
         {settings === null ? (
-          <div className="text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="text-sm text-[var(--text-secondary)]">
             No company settings found yet.
           </div>
         ) : (

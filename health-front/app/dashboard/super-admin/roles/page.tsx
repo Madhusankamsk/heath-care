@@ -53,11 +53,11 @@ export default async function SuperAdminRolesPage() {
 
       <Card title="All roles" description="Fetched from health-back.">
         {!roles ? (
-          <div className="text-sm text-red-700 dark:text-red-300">
+          <div className="text-sm text-[var(--danger)]">
             Failed to load roles.
           </div>
         ) : roles.length === 0 ? (
-          <div className="text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="text-sm text-[var(--text-secondary)]">
             No roles found.
           </div>
         ) : (

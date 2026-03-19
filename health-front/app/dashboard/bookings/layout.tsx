@@ -23,7 +23,12 @@ export default async function BookingsLayout({
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-1">
         <Breadcrumbs />
-        <h1 className="text-lg font-semibold tracking-tight">Bookings</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
+            Bookings
+          </h1>
+          <span className="pill pill-info">Scheduling</span>
+        </div>
       </div>
       {children}
     </div>

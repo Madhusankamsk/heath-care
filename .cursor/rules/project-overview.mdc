@@ -7,7 +7,7 @@ alwaysApply: true
 
 - Repo apps:
   - `health-back/`: Express + Prisma (PostgreSQL), TypeScript source in `src/**/*.ts`
-  - `health-front/`: Next.js App Router, Tailwind v4, PWA via `next-pwa` (webpack mode)
+  - `health-front/`: Next.js App Router, Tailwind v4, webpack mode for dev/build scripts
 - Prefer **TypeScript** everywhere. Don’t add compiled outputs (`dist/`, `.next/`) to git.
 - Keep API changes consistent across:
   - backend route + middleware

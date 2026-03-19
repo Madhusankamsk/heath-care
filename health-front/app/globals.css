@@ -2,27 +2,112 @@
 @config "../tailwind.config.ts";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --brand-primary: #09090b;
-  --brand-secondary: #27272a;
+  --background: #f3f7f9;
+  --foreground: #0f2b39;
+  --surface: #ffffff;
+  --surface-2: #f8fbfc;
+  --border: #dce7ec;
+  --border-strong: #c9dbe3;
+  --text-primary: #0f2b39;
+  --text-secondary: #355667;
+  --text-muted: #6d8795;
+  --brand-primary: #14b8a6;
+  --brand-primary-strong: #0f766e;
+  --brand-secondary: #3b82f6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --purple: #8b5cf6;
+  --shadow-soft: 0 8px 24px rgba(15, 43, 57, 0.08);
 }
 
 :root.dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #07161f;
+  --foreground: #ebf4f7;
+  --surface: #0d1f2a;
+  --surface-2: #102734;
+  --border: #1f3a4a;
+  --border-strong: #2b4a5c;
+  --text-primary: #ebf4f7;
+  --text-secondary: #bfd4df;
+  --text-muted: #8ea9b8;
+  --brand-primary: #2dd4bf;
+  --brand-primary-strong: #14b8a6;
+  --brand-secondary: #60a5fa;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --purple: #a78bfa;
+  --shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-app-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: var(--text-primary);
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
     Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  letter-spacing: 0.01em;
+}
+
+.surface-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.pill-success {
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
+}
+
+.pill-warning {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning);
+}
+
+.pill-danger {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+}
+
+.pill-info {
+  background: color-mix(in srgb, var(--brand-secondary) 16%, transparent);
+  color: var(--brand-secondary);
+}
+
+.tbl-shell {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.tbl-shell thead {
+  background: var(--surface-2);
+}
+
+.tbl-shell tbody tr:hover {
+  background: color-mix(in srgb, var(--brand-primary) 8%, transparent);
 }

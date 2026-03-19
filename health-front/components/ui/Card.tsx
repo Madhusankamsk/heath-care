@@ -8,12 +8,14 @@ export type CardProps = {
 
 export function Card({ title, description, children }: CardProps) {
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <section className="surface-card p-6">
       {title ? (
-        <header className="mb-6 flex flex-col gap-1">
-          <h2 className="text-lg font-semibold">{title}</h2>
+        <header className="mb-6 flex flex-col gap-1 border-b border-[var(--border)] pb-4">
+          <h2 className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
+            {title}
+          </h2>
           {description ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-[var(--text-secondary)]">
               {description}
             </p>
           ) : null}

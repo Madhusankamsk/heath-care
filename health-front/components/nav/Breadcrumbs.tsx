@@ -29,16 +29,16 @@ export function Breadcrumbs() {
   });
 
   return (
-    <nav className="text-xs text-zinc-500 dark:text-zinc-400">
-      <ol className="flex flex-wrap items-center gap-1">
+    <nav className="text-xs text-[var(--text-muted)]">
+      <ol className="flex flex-wrap items-center gap-1.5">
         {crumbs.map((c) => (
           <li key={c.href} className="flex items-center gap-1">
             {c.isLast ? (
-              <span className="font-medium text-zinc-700 dark:text-zinc-200">
+              <span className="font-semibold tracking-wide text-[var(--text-secondary)]">
                 {c.label}
               </span>
             ) : (
-              <Link className="hover:underline" href={c.href}>
+              <Link className="hover:text-[var(--text-primary)] hover:underline" href={c.href}>
                 {c.label}
               </Link>
             )}

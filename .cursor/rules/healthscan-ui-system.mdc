@@ -1,0 +1,34 @@
+---
+description: Healthscan-v4 UI system conventions for frontend
+alwaysApply: true
+---
+
+# Healthscan-v4 UI conventions
+
+- Visual direction: use the Healthscan-v4 look for all frontend UI updates.
+- Keep behavior intact: do not weaken auth, RBAC checks, or route guards while styling.
+
+## Tokens first
+
+- Prefer theme tokens/CSS variables over hardcoded colors:
+  - `--surface`, `--surface-2`, `--border`, `--text-primary`, `--text-secondary`, `--text-muted`
+  - `--brand-primary`, `--brand-primary-strong`, `--brand-secondary`
+  - semantic: `--success`, `--warning`, `--danger`, `--purple`
+- Reuse shared utilities from `app/globals.css` (`surface-card`, `pill*`, `tbl-shell`) before creating one-off styles.
+
+## Component styling
+
+- Use shared primitives (`Button`, `Card`, `Input`) instead of ad-hoc page-specific styling.
+- Keep cards/tables compact and consistent (rounded-xl/2xl, soft shadow, subtle borders).
+- Statuses should use semantic pills (success/warning/danger/info), not plain text color only.
+
+## Layout and shell
+
+- Maintain the dashboard shell hierarchy: strong topbar, fixed-feel sidebar, clean content surfaces.
+- Keep spacing system consistent (`gap-2/4/6`, `px-4 sm:px-6 lg:px-8`) and avoid random size jumps.
+- Mobile drawer/overlay interactions must remain accessible and keyboard-dismissable.
+
+## Scope and safety
+
+- Avoid broad rewrites when small token/primitive updates can achieve the same visual result.
+- When updating UI in feature modules, keep existing API contracts and data flow unchanged.

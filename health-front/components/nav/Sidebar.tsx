@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CalendarCheck2,
   Building2,
@@ -181,17 +181,6 @@ export function Sidebar({
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  // Auto-expand the group matching the current route.
-  useEffect(() => {
-    const next: Record<string, boolean> = {};
-    for (const item of visibleItems) {
-      if (item.children?.length) {
-        next[item.href] = pathname.startsWith(item.href);
-      }
-    }
-    setOpenGroups((prev) => ({ ...next, ...prev }));
-  }, [pathname, visibleItems]);
-
   function toggleGroup(href: string) {
     setOpenGroups((prev) => ({ ...prev, [href]: !prev[href] }));
   }
@@ -201,7 +190,7 @@ export function Sidebar({
       className={[
         isDesktop
           ? [
-              "hidden h-full shrink-0 border-r border-zinc-200 bg-white/60 backdrop-blur dark:border-zinc-800 dark:bg-black/30 md:block",
+              "hidden h-full shrink-0 border-r border-[var(--border)] bg-[var(--surface)] md:block",
               isCollapsed ? "md:w-16 lg:w-20" : "md:w-60 lg:w-64",
             ].join(" ")
           : "h-full w-full",
@@ -216,7 +205,7 @@ export function Sidebar({
       >
         <div className="relative px-2 pt-2">
           {isCollapsed ? null : (
-            <p className="pr-10 pt-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <p className="pr-10 pt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
               Navigation
             </p>
           )}
@@ -224,7 +213,7 @@ export function Sidebar({
           {isDesktop && onToggleCollapsed ? (
             <button
               type="button"
-              className="absolute right-1 top-1 inline-flex h-9 w-9 items-center justify-center rounded-xl text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
+              className="absolute right-1 top-1 inline-flex h-9 w-9 items-center justify-center rounded-xl text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               onClick={onToggleCollapsed}
             >
@@ -241,7 +230,7 @@ export function Sidebar({
           {visibleItems.map((item) => {
             const hasChildren = Boolean(item.children?.length);
             const active = isActive(pathname, item.href);
-            const isOpen = Boolean(openGroups[item.href]);
+            const isOpen = openGroups[item.href] ?? pathname.startsWith(item.href);
 
             if (!hasChildren) {
               return (
@@ -251,14 +240,14 @@ export function Sidebar({
                   className={[
                     "flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors",
                     active
-                      ? "bg-(--brand-primary) text-white"
-                      : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900",
+                      ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                      : "text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]",
                   ].join(" ")}
                   onClick={() => onNavigate?.()}
                   title={isCollapsed ? item.label : undefined}
                 >
-                  {item.icon ? (
-                    <span className="text-zinc-500 dark:text-zinc-400">
+                    {item.icon ? (
+                    <span className="text-[var(--text-muted)]">
                       {item.icon}
                     </span>
                   ) : null}
@@ -274,15 +263,15 @@ export function Sidebar({
                   className={[
                     "flex items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors",
                     active
-                      ? "bg-(--brand-primary) text-white"
-                      : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900",
+                      ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                      : "text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]",
                   ].join(" ")}
                   onClick={() => toggleGroup(item.href)}
                   title={isCollapsed ? item.label : undefined}
                 >
                   <span className="flex items-center gap-2">
                     {item.icon ? (
-                      <span className="text-zinc-500 dark:text-zinc-400">
+                      <span className="text-[var(--text-muted)]">
                         {item.icon}
                       </span>
                     ) : null}
@@ -291,7 +280,7 @@ export function Sidebar({
                   {isCollapsed ? null : (
                     <ChevronRight
                       className={[
-                        "h-4 w-4 text-zinc-500 transition-transform dark:text-zinc-400",
+                        "h-4 w-4 text-[var(--text-muted)] transition-transform",
                         isOpen ? "rotate-90" : "",
                       ].join(" ")}
                       aria-hidden
@@ -300,7 +289,7 @@ export function Sidebar({
                 </button>
 
                 {isCollapsed ? null : isOpen ? (
-                  <div className="ml-2 flex flex-col gap-1 border-l border-zinc-200 pl-2 dark:border-zinc-800">
+                  <div className="ml-2 flex flex-col gap-1 border-l border-[var(--border)] pl-2">
                     {item.children!.map((child) => {
                       const childActive = pathname === child.href;
                       return (
@@ -310,13 +299,13 @@ export function Sidebar({
                           className={[
                             "flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors",
                             childActive
-                              ? "bg-zinc-100 text-zinc-950 dark:bg-zinc-900 dark:text-zinc-50"
-                              : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900",
+                              ? "bg-[var(--surface-2)] text-[var(--text-primary)]"
+                              : "text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]",
                           ].join(" ")}
                           onClick={() => onNavigate?.()}
                         >
                           {child.icon ? (
-                            <span className="text-zinc-500 dark:text-zinc-400">
+                            <span className="text-[var(--text-muted)]">
                               {child.icon}
                             </span>
                           ) : null}
@@ -332,12 +321,12 @@ export function Sidebar({
         </nav>
 
         {variant === "mobile" ? (
-          <div className="mt-auto flex flex-col gap-2 border-t border-zinc-200 px-2 pt-4 dark:border-zinc-800">
+          <div className="mt-auto flex flex-col gap-2 border-t border-[var(--border)] px-2 pt-4">
             <ThemeToggle />
             <LogoutButton />
           </div>
         ) : isDesktop ? (
-          <div className="mt-auto px-2 pb-2 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="mt-auto px-2 pb-2 text-xs text-[var(--text-muted)]">
             Signed-in area
           </div>
         ) : null}

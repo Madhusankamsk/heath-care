@@ -21,15 +21,15 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "light";
+    const saved = window.localStorage.getItem(storageKey) as Theme | null;
+    return saved === "dark" || saved === "light" ? saved : getSystemTheme();
+  });
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(storageKey) as Theme | null;
-    const initialTheme: Theme =
-      saved === "dark" || saved === "light" ? saved : getSystemTheme();
-    setTheme(initialTheme);
-    applyTheme(initialTheme);
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
   const label = useMemo(() => {
     return theme === "dark" ? "Light mode" : "Dark mode";
