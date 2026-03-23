@@ -10,10 +10,16 @@ export type Vehicle = {
   vehicleNo: string;
   model?: string | null;
   status: string;
+  statusId?: string | null;
+  currentDriverId?: string | null;
+  currentDriver?: { id: string; fullName: string; email?: string | null } | null;
 };
+
+type DriverOption = { id: string; fullName: string };
 
 type VehicleManagerProps = {
   initialVehicles: Vehicle[];
+  drivers: DriverOption[];
   canPreview: boolean;
   canCreate: boolean;
   canEdit: boolean;
@@ -24,6 +30,7 @@ type Mode = "none" | "create" | "edit" | "preview";
 
 export function VehicleManager({
   initialVehicles,
+  drivers,
   canPreview,
   canCreate,
   canEdit,
@@ -114,6 +121,7 @@ export function VehicleManager({
         <VehicleForm
           title="Create vehicle"
           submitLabel="Create"
+          drivers={drivers}
           onCancel={() => setMode("none")}
           onSubmit={async (data) => {
             setError(null);
@@ -136,10 +144,12 @@ export function VehicleManager({
         <VehicleForm
           title="Edit vehicle"
           submitLabel="Save changes"
+          drivers={drivers}
           initial={{
             vehicleNo: selected.vehicleNo,
             model: selected.model ?? "",
             status: selected.status,
+            currentDriverId: selected.currentDriverId ?? "",
           }}
           onCancel={() => setMode("none")}
           onSubmit={async (data) => {
@@ -185,6 +195,10 @@ export function VehicleManager({
               <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Status</dt>
               <dd className="font-medium">{selected.status}</dd>
             </div>
+            <div>
+              <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Current Driver</dt>
+              <dd className="font-medium">{selected.currentDriver?.fullName ?? "—"}</dd>
+            </div>
           </dl>
         </div>
       ) : null}
@@ -196,6 +210,7 @@ export function VehicleManager({
               <th className="px-4 py-3">Vehicle No</th>
               <th className="px-4 py-3">Model</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Current Driver</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -207,6 +222,9 @@ export function VehicleManager({
                   <td className="px-4 py-3 font-medium">{v.vehicleNo}</td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{v.model ?? "—"}</td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{v.status}</td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                    {v.currentDriver?.fullName ?? "—"}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
                       {canPreview ? (
@@ -266,17 +284,20 @@ type VehicleFormValues = {
   vehicleNo: string;
   model?: string;
   status?: string;
+  currentDriverId?: string;
 };
 
 function VehicleForm({
   title,
   submitLabel,
+  drivers,
   onCancel,
   onSubmit,
   initial,
 }: {
   title: string;
   submitLabel: string;
+  drivers: DriverOption[];
   onCancel: () => void;
   onSubmit: (values: VehicleFormValues) => Promise<void>;
   initial?: Partial<VehicleFormValues>;
@@ -285,6 +306,7 @@ function VehicleForm({
     vehicleNo: initial?.vehicleNo ?? "",
     model: initial?.model ?? "",
     status: initial?.status ?? "Available",
+    currentDriverId: initial?.currentDriverId ?? "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -315,6 +337,7 @@ function VehicleForm({
               vehicleNo: values.vehicleNo.trim(),
               model: values.model?.trim() ? values.model.trim() : undefined,
               status: values.status?.trim() ? values.status.trim() : undefined,
+              currentDriverId: values.currentDriverId?.trim() ? values.currentDriverId : "",
             };
             await onSubmit(payload);
           } catch (e) {
@@ -348,6 +371,22 @@ function VehicleForm({
             {["Available", "In Service", "Maintenance", "Inactive"].map((s) => (
               <option key={s} value={s}>
                 {s}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-2 text-sm sm:col-span-2">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">Current Driver</span>
+          <select
+            className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-800"
+            value={values.currentDriverId ?? ""}
+            onChange={(e) => setValues((v) => ({ ...v, currentDriverId: e.target.value }))}
+          >
+            <option value="">Unassigned</option>
+            {drivers.map((driver) => (
+              <option key={driver.id} value={driver.id}>
+                {driver.fullName}
               </option>
             ))}
           </select>

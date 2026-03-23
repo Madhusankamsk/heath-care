@@ -21,10 +21,12 @@ export async function getVehicleHandler(req: Request, res: Response) {
 }
 
 export async function createVehicleHandler(req: Request, res: Response) {
-  const { vehicleNo, model, status } = req.body as Partial<{
+  const { vehicleNo, model, status, statusId, currentDriverId } = req.body as Partial<{
     vehicleNo: string;
     model: string;
     status: string;
+    statusId: string | null;
+    currentDriverId: string | null;
   }>;
 
   const cleanedVehicleNo = vehicleNo?.trim() ?? "";
@@ -36,6 +38,9 @@ export async function createVehicleHandler(req: Request, res: Response) {
     vehicleNo: cleanedVehicleNo,
     model: model?.trim() ? model.trim() : undefined,
     status: status?.trim() ? status.trim() : undefined,
+    statusId: typeof statusId === "string" ? statusId.trim() || null : null,
+    currentDriverId:
+      typeof currentDriverId === "string" ? currentDriverId.trim() || null : null,
   });
 
   return res.status(201).json(vehicle);
@@ -43,21 +48,33 @@ export async function createVehicleHandler(req: Request, res: Response) {
 
 export async function updateVehicleHandler(req: Request, res: Response) {
   const { id } = req.params;
-  const { vehicleNo, model, status } = req.body as Partial<{
+  const { vehicleNo, model, status, statusId, currentDriverId } = req.body as Partial<{
     vehicleNo: string;
     model: string | null;
     status: string;
+    statusId: string | null;
+    currentDriverId: string | null;
   }>;
 
   const cleanedVehicleNo = typeof vehicleNo === "string" ? vehicleNo.trim() : undefined;
   const cleanedModel =
     model === null ? null : typeof model === "string" ? model.trim() : undefined;
   const cleanedStatus = typeof status === "string" ? status.trim() : undefined;
+  const cleanedStatusId =
+    statusId === null ? null : typeof statusId === "string" ? statusId.trim() || null : undefined;
+  const cleanedCurrentDriverId =
+    currentDriverId === null
+      ? null
+      : typeof currentDriverId === "string"
+        ? currentDriverId.trim() || null
+        : undefined;
 
   const vehicle = await updateVehicle(id, {
     vehicleNo: cleanedVehicleNo ? cleanedVehicleNo : undefined,
     model: cleanedModel,
     status: cleanedStatus,
+    statusId: cleanedStatusId,
+    currentDriverId: cleanedCurrentDriverId,
   });
 
   return res.json(vehicle);

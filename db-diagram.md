@@ -1,44 +1,44 @@
 // =========================================================
-// MOBILE HEALTHCARE - ENTERPRISE MASTER SCHEMA (v3.0)
-// FEATURES: WHITE-LABEL, LOOKUPS, SELF-AUTH, INVENTORY
+// MOBILE HEALTHCARE - ENTERPRISE MASTER SCHEMA (v3.7)
+// FEATURES: GROUP SUBS (FAMILY/CORP), DIAGNOSTICS, INVENTORY
 // =========================================================
 
-// 1. SYSTEM & COMPANY CONFIGURATION (For White-labeling)
+// 1. SYSTEM & COMPANY CONFIGURATION
 Table company_settings {
   id uuid [pk]
   company_name text [not null]
   company_email text
   company_phone text
   company_address text
-  logo_url text              // R2 Storage Link
-  primary_color varchar      // e.g., "#3498db"
-  secondary_color varchar    // e.g., "#2ecc71"
-  currency_code varchar      // e.g., "LKR"
+  logo_url text               // Cloudflare R2 Link
+  primary_color varchar       
+  secondary_color varchar     
+  currency_code varchar       [default: "LKR"]
   travel_cost_per_km decimal [default: 0]
-  tax_percentage decimal     [default: 0]
-  invoice_prefix varchar     [default: "INV-"]
+  tax_percentage decimal      [default: 0]
+  invoice_prefix varchar      [default: "INV-"]
   is_setup_completed boolean [default: false]
   updated_at timestamptz [default: `now()`]
 }
 
-// 2. DYNAMIC LOOKUP SYSTEM (Replaces Hardcoding)
+// 2. DYNAMIC LOOKUP SYSTEM
 Table lookup_categories {
   id uuid [pk]
-  category_name varchar [unique, note: "VEHICLE_STATUS, BOOKING_STATUS, UOM, GENDER, PAY_STATUS"]
+  category_name varchar [unique, note: "SUB_TYPE: INDIVIDUAL, FAMILY, CORPORATE"]
 }
 
 Table lookups {
   id uuid [pk]
   category_id uuid [ref: > lookup_categories.id]
-  lookup_key varchar [note: "ACTIVE, PENDING, TABLETS, WAREHOUSE, NURSE"]
-  lookup_value text [note: "Display Name: e.g., Tablets, In-Progress"]
+  lookup_key varchar 
+  lookup_value text 
   is_active boolean [default: true]
 }
 
 // 3. AUTH & ROLE MANAGEMENT
 Table roles {
   id uuid [pk]
-  role_name varchar [unique, note: "SuperAdmin, Admin, Doctor, Nurse, Driver"]
+  role_name varchar [unique]
   description text
 }
 
@@ -50,17 +50,15 @@ Table permissions {
 Table role_permissions {
   role_id uuid [ref: > roles.id]
   permission_id uuid [ref: > permissions.id]
-  indexes {
-    (role_id, permission_id) [pk]
-  }
+  indexes { (role_id, permission_id) [pk] }
 }
 
-// 4. USER MANAGEMENT (Self-Managed Auth)
+// 4. USER MANAGEMENT (Staff)
 Table users {
   id uuid [pk]
   full_name text [not null]
   email text [unique, not null]
-  password text [not null, note: "Bcrypt Hashed"]
+  password text [not null]
   role_id uuid [ref: > roles.id]
   phone_number text
   base_consultation_fee decimal [default: 0]
@@ -68,19 +66,48 @@ Table users {
   created_at timestamptz [default: `now()`]
 }
 
-// 5. FLEET & TEAMS
+// 5. SUBSCRIPTION MODULE (v3.7 Updated for Groups)
+Table subscription_plans {
+  id uuid [pk]
+  plan_name varchar [not null]
+  plan_type_id uuid [ref: > lookups.id] // INDIVIDUAL, FAMILY, CORPORATE
+  price decimal [not null]
+  max_members int [default: 1, note: "Max patients allowed in this plan"]
+  duration_days int [not null]
+  is_active boolean [default: true]
+}
+
+// Instance of a subscription (e.g., "The Perera Family" or "ABC Corp")
+Table subscription_accounts {
+  id uuid [pk]
+  account_name text [note: "Family Name or Company Name"]
+  plan_id uuid [ref: > subscription_plans.id]
+  primary_contact_id uuid [ref: > patients.id] // The person responsible for the account
+  start_date date
+  end_date date
+  status_id uuid [ref: > lookups.id] // ACTIVE, EXPIRED
+}
+
+Table subscription_members {
+  id uuid [pk]
+  subscription_account_id uuid [ref: > subscription_accounts.id]
+  patient_id uuid [ref: > patients.id]
+  joined_at timestamptz [default: `now()`]
+}
+
+// 6. FLEET & TEAMS
 Table vehicles {
   id uuid [pk]
   vehicle_no text [unique, not null]
   model text
   status_id uuid [ref: > lookups.id]
+  current_driver_id uuid [ref: > users.id]
 }
 
 Table medical_teams {
   id uuid [pk]
   team_name text
   vehicle_id uuid [ref: > vehicles.id]
-  created_at timestamptz [default: `now()`]
 }
 
 Table team_members {
@@ -90,17 +117,27 @@ Table team_members {
   is_lead boolean [default: false]
 }
 
-// 6. PATIENT & OPD
+// 7. PATIENT MODULE
 Table patients {
   id uuid [pk]
   nic_or_passport text [unique]
   full_name text [not null]
+  short_name text
   dob date
   gender_id uuid [ref: > lookups.id]
+  patient_type_id uuid [ref: > lookups.id] // SUBSCRIPTION vs ONE_TIME
   address text
   contact_no text
+  has_insurance boolean [default: false]
+  has_guardian boolean [default: false]
+  guardian_name text
+  guardian_nic text
+  guardian_contact_no text
+  guardian_relationship text
+  billing_recipient_id uuid [ref: > lookups.id]
 }
 
+// 8. OPD & QUEUE
 Table opd_queue {
   id uuid [pk]
   patient_id uuid [ref: > patients.id]
@@ -109,14 +146,13 @@ Table opd_queue {
   visit_date date [default: `now()`]
 }
 
-// 7. BOOKINGS & CLINICAL VISITS
+// 9. BOOKINGS & CLINICAL VISITS
 Table bookings {
   id uuid [pk]
   patient_id uuid [ref: > patients.id]
   team_id uuid [ref: > medical_teams.id]
   scheduled_date timestamptz
   status_id uuid [ref: > lookups.id]
-  location_gps text
 }
 
 Table visit_records {
@@ -129,14 +165,37 @@ Table visit_records {
   completed_at timestamptz
 }
 
-// 8. INVENTORY (THE NURSE STOCK LOGIC)
+// 10. DIAGNOSTICS & LABS
+Table diagnostic_reports {
+  id uuid [pk]
+  patient_id uuid [ref: > patients.id]
+  visit_id uuid [ref: > visit_records.id, null]
+  report_name text [not null]
+  report_type_id uuid [ref: > lookups.id]
+  file_url text [not null] 
+  uploaded_by uuid [ref: > users.id]
+  uploaded_at timestamptz [default: `now()`]
+}
+
+Table lab_samples {
+  id uuid [pk]
+  patient_id uuid [ref: > patients.id]
+  visit_id uuid [ref: > visit_records.id, null]
+  sample_type text [not null]
+  collected_at timestamptz [default: `now()`]
+  collected_by uuid [ref: > users.id]
+  status_id uuid [ref: > lookups.id] 
+  lab_name text
+  result_report_url text 
+  result_received_at timestamptz
+}
+
+// 11. INVENTORY & NURSE STOCK
 Table medicines {
   id uuid [pk]
   name text [not null]
-  generic_name text
   selling_price decimal [not null]
   uom_id uuid [ref: > lookups.id]
-  min_stock_level int
 }
 
 Table inventory_batches {
@@ -146,8 +205,8 @@ Table inventory_batches {
   expiry_date date [not null]
   quantity int [not null]
   buying_price decimal [not null]
-  location_type_id uuid [ref: > lookups.id] // Warehouse, Nurse, Vehicle
-  location_id uuid [note: "Points to User ID if location is Nurse"]
+  location_type_id uuid [ref: > lookups.id] 
+  location_id uuid 
 }
 
 Table stock_transfers {
@@ -155,17 +214,17 @@ Table stock_transfers {
   medicine_id uuid [ref: > medicines.id]
   batch_id uuid [ref: > inventory_batches.id]
   from_location_id uuid
-  to_location_id uuid // Target Nurse's User ID
+  to_location_id uuid 
   quantity int
   status_id uuid [ref: > lookups.id]
   transferred_by uuid [ref: > users.id]
   created_at timestamptz [default: `now()`]
 }
 
-// 9. BILLING & DISPENSING
+// 12. BILLING & DISPENSING
 Table invoices {
   id uuid [pk]
-  booking_id uuid [ref: > bookings.id]
+  booking_id uuid [ref: > bookings.id, null]
   patient_id uuid [ref: > patients.id]
   total_amount decimal
   consultation_total decimal

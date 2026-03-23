@@ -11,8 +11,8 @@ datasource db {
 
 // 1. ACCESS CONTROL
 model Role {
-  id          String       @id @default(uuid())
-  roleName    String       @unique
+  id          String           @id @default(uuid())
+  roleName    String           @unique
   description String?
   users       User[]
   permissions RolePermission[]
@@ -35,31 +35,36 @@ model RolePermission {
 
 // 2. USER MANAGEMENT (Manual Auth Users)
 model User {
-  id                  String          @id @default(uuid())
+  id                  String   @id @default(uuid())
   fullName            String
-  email               String          @unique
+  email               String   @unique
   password            String
   phoneNumber         String?
-  baseConsultationFee Decimal         @default(0)
+  baseConsultationFee Decimal  @default(0)
   roleId              String
-  role                Role            @relation(fields: [roleId], references: [id])
-  isActive            Boolean         @default(true)
-  createdAt           DateTime        @default(now())
+  role                Role     @relation(fields: [roleId], references: [id])
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
 
-  teamMembers        TeamMember[]
-  transfersPerformed StockTransfer[] @relation("TransferredBy")
-  dispensedMedicines DispensedMedicine[]
+  teamMembers               TeamMember[]
+  transfersPerformed        StockTransfer[]     @relation("TransferredBy")
+  dispensedMedicines        DispensedMedicine[]
+  currentDriverForVehicles  Vehicle[]           @relation("VehicleCurrentDriver")
+  uploadedDiagnosticReports DiagnosticReport[]  @relation("DiagnosticUploadedBy")
+  collectedLabSamples       LabSample[]         @relation("LabCollectedBy")
 }
 
 // 3. DYNAMIC TEAM & FLEET
 model Vehicle {
-  id           String        @id @default(uuid())
-  vehicleNo    String        @unique
-  model        String?
-  status       String        @default("Available")
-  statusId     String?
-  statusLookup Lookup?       @relation("VehicleStatus", fields: [statusId], references: [id])
-  medicalTeams MedicalTeam[]
+  id              String        @id @default(uuid())
+  vehicleNo       String        @unique
+  model           String?
+  status          String        @default("Available")
+  statusId        String?
+  statusLookup    Lookup?       @relation("VehicleStatus", fields: [statusId], references: [id])
+  currentDriverId String?
+  currentDriver   User?         @relation("VehicleCurrentDriver", fields: [currentDriverId], references: [id])
+  medicalTeams    MedicalTeam[]
 }
 
 model MedicalTeam {
@@ -72,31 +77,46 @@ model MedicalTeam {
 }
 
 model TeamMember {
-  id        String      @id @default(uuid())
-  teamId    String
-  userId    String
-  isLead    Boolean     @default(false)
-  team      MedicalTeam @relation(fields: [teamId], references: [id])
-  user      User        @relation(fields: [userId], references: [id])
+  id     String      @id @default(uuid())
+  teamId String
+  userId String
+  isLead Boolean     @default(false)
+  team   MedicalTeam @relation(fields: [teamId], references: [id])
+  user   User        @relation(fields: [userId], references: [id])
 
   @@unique([teamId, userId])
 }
 
 // 4. PATIENT & VISITS
 model Patient {
-  id            String         @id @default(uuid())
-  nicOrPassport String?        @unique
-  fullName      String
-  dob           DateTime?
-  contactNo     String?
-  gender        String?
-  genderId      String?
-  genderLookup  Lookup?        @relation("PatientGender", fields: [genderId], references: [id])
-  address       String?
-  bookings      Booking[]
-  opdQueue      OpdQueue[]
-  visitRecords  VisitRecord[]
-  invoices      Invoice[]
+  id                             String                @id @default(uuid())
+  nicOrPassport                  String?               @unique
+  fullName                       String
+  shortName                      String?
+  dob                            DateTime?
+  contactNo                      String?
+  gender                         String?
+  genderId                       String?
+  genderLookup                   Lookup?               @relation("PatientGender", fields: [genderId], references: [id])
+  patientTypeId                  String?
+  patientTypeLookup              Lookup?               @relation("PatientType", fields: [patientTypeId], references: [id])
+  address                        String?
+  hasInsurance                   Boolean               @default(false)
+  hasGuardian                    Boolean               @default(false)
+  guardianName                   String?
+  guardianNic                    String?
+  guardianContactNo              String?
+  guardianRelationship           String?
+  billingRecipientId             String?
+  billingRecipientLookup         Lookup?               @relation("PatientBillingRecipient", fields: [billingRecipientId], references: [id])
+  bookings                       Booking[]
+  opdQueue                       OpdQueue[]
+  visitRecords                   VisitRecord[]
+  invoices                       Invoice[]
+  primaryForSubscriptionAccounts SubscriptionAccount[] @relation("SubscriptionPrimaryContact")
+  subscriptionMemberships        SubscriptionMember[]
+  diagnosticReports              DiagnosticReport[]
+  labSamples                     LabSample[]
 }
 
 model Booking {
@@ -107,7 +127,7 @@ model Booking {
   status        String       @default("Pending")
   statusId      String?
   statusLookup  Lookup?      @relation("BookingStatus", fields: [statusId], references: [id])
-   locationGps   String?
+  locationGps   String?
   patient       Patient      @relation(fields: [patientId], references: [id])
   team          MedicalTeam  @relation(fields: [teamId], references: [id])
   visitRecord   VisitRecord?
@@ -115,27 +135,103 @@ model Booking {
 }
 
 model VisitRecord {
-  id          String              @id @default(uuid())
-  bookingId   String              @unique
-  patientId   String
-  diagnosis   String?
-  vitals      Json?
-  clinicalNotes String?
-  completedAt   DateTime?
-  booking     Booking             @relation(fields: [bookingId], references: [id])
-  patient     Patient             @relation(fields: [patientId], references: [id])
-  medicines   DispensedMedicine[]
+  id                String              @id @default(uuid())
+  bookingId         String              @unique
+  patientId         String
+  diagnosis         String?
+  vitals            Json?
+  clinicalNotes     String?
+  completedAt       DateTime?
+  booking           Booking             @relation(fields: [bookingId], references: [id])
+  patient           Patient             @relation(fields: [patientId], references: [id])
+  medicines         DispensedMedicine[]
+  diagnosticReports DiagnosticReport[]
+  labSamples        LabSample[]
+}
+
+model SubscriptionPlan {
+  id           String  @id @default(uuid())
+  planName     String
+  planTypeId   String
+  price        Decimal
+  maxMembers   Int     @default(1)
+  durationDays Int
+  isActive     Boolean @default(true)
+
+  planTypeLookup Lookup                @relation("SubscriptionPlanType", fields: [planTypeId], references: [id])
+  accounts       SubscriptionAccount[]
+}
+
+model SubscriptionAccount {
+  id               String    @id @default(uuid())
+  accountName      String?
+  planId           String
+  primaryContactId String
+  startDate        DateTime?
+  endDate          DateTime?
+  statusId         String?
+
+  plan           SubscriptionPlan     @relation(fields: [planId], references: [id])
+  primaryContact Patient              @relation("SubscriptionPrimaryContact", fields: [primaryContactId], references: [id])
+  statusLookup   Lookup?              @relation("SubscriptionAccountStatus", fields: [statusId], references: [id])
+  members        SubscriptionMember[]
+}
+
+model SubscriptionMember {
+  id                    String   @id @default(uuid())
+  subscriptionAccountId String
+  patientId             String
+  joinedAt              DateTime @default(now())
+
+  subscriptionAccount SubscriptionAccount @relation(fields: [subscriptionAccountId], references: [id])
+  patient             Patient             @relation(fields: [patientId], references: [id])
+
+  @@unique([subscriptionAccountId, patientId])
+}
+
+model DiagnosticReport {
+  id           String   @id @default(uuid())
+  patientId    String
+  visitId      String?
+  reportName   String
+  reportTypeId String?
+  fileUrl      String
+  uploadedById String
+  uploadedAt   DateTime @default(now())
+
+  patient          Patient      @relation(fields: [patientId], references: [id])
+  visit            VisitRecord? @relation(fields: [visitId], references: [id])
+  reportTypeLookup Lookup?      @relation("DiagnosticReportType", fields: [reportTypeId], references: [id])
+  uploadedBy       User         @relation("DiagnosticUploadedBy", fields: [uploadedById], references: [id])
+}
+
+model LabSample {
+  id               String    @id @default(uuid())
+  patientId        String
+  visitId          String?
+  sampleType       String
+  collectedAt      DateTime  @default(now())
+  collectedById    String
+  statusId         String?
+  labName          String?
+  resultReportUrl  String?
+  resultReceivedAt DateTime?
+
+  patient      Patient      @relation(fields: [patientId], references: [id])
+  visit        VisitRecord? @relation(fields: [visitId], references: [id])
+  collectedBy  User         @relation("LabCollectedBy", fields: [collectedById], references: [id])
+  statusLookup Lookup?      @relation("LabSampleStatus", fields: [statusId], references: [id])
 }
 
 // 5. INVENTORY & DISPENSING
 model Medicine {
-  id                 String             @id @default(uuid())
+  id                 String              @id @default(uuid())
   name               String
   genericName        String?
   sellingPrice       Decimal
   uom                String?
   uomId              String?
-  uomLookup          Lookup?            @relation("MedicineUom", fields: [uomId], references: [id])
+  uomLookup          Lookup?             @relation("MedicineUom", fields: [uomId], references: [id])
   minStockLevel      Int?
   inventoryBatches   InventoryBatch[]
   stockTransfers     StockTransfer[]
@@ -143,19 +239,19 @@ model Medicine {
 }
 
 model InventoryBatch {
-  id           String          @id @default(uuid())
-  medicineId   String
-  batchNo      String
-  expiryDate   DateTime
-  quantity     Int
-  buyingPrice  Decimal
-  locationType String          // Warehouse, Vehicle, Nurse
-  locationTypeId String?
-  locationTypeLookup Lookup?   @relation("InventoryLocationType", fields: [locationTypeId], references: [id])
-  locationId   String?         // User ID (Nurse) or Vehicle ID
-  medicine     Medicine        @relation(fields: [medicineId], references: [id])
-  transfers    StockTransfer[] @relation("BatchInTransfer")
-  dispensings  DispensedMedicine[]
+  id                 String              @id @default(uuid())
+  medicineId         String
+  batchNo            String
+  expiryDate         DateTime
+  quantity           Int
+  buyingPrice        Decimal
+  locationType       String // Warehouse, Vehicle, Nurse
+  locationTypeId     String?
+  locationTypeLookup Lookup?             @relation("InventoryLocationType", fields: [locationTypeId], references: [id])
+  locationId         String? // User ID (Nurse) or Vehicle ID
+  medicine           Medicine            @relation(fields: [medicineId], references: [id])
+  transfers          StockTransfer[]     @relation("BatchInTransfer")
+  dispensings        DispensedMedicine[]
 }
 
 model StockTransfer {
@@ -191,30 +287,30 @@ model DispensedMedicine {
 
 // 6. BILLING
 model Invoice {
-  id                String   @id @default(uuid())
-  bookingId         String?
-  patientId         String
-  totalAmount       Decimal
-  consultationTotal Decimal
-  medicineTotal     Decimal
-  travelCost        Decimal
-  paymentStatus     String   @default("Unpaid")
-  paymentStatusId   String?
-  paymentStatusLookup Lookup? @relation("InvoicePaymentStatus", fields: [paymentStatusId], references: [id])
-  booking           Booking? @relation(fields: [bookingId], references: [id])
-  patient           Patient  @relation(fields: [patientId], references: [id])
-  createdAt         DateTime @default(now())
+  id                  String   @id @default(uuid())
+  bookingId           String?
+  patientId           String
+  totalAmount         Decimal
+  consultationTotal   Decimal
+  medicineTotal       Decimal
+  travelCost          Decimal
+  paymentStatus       String   @default("Unpaid")
+  paymentStatusId     String?
+  paymentStatusLookup Lookup?  @relation("InvoicePaymentStatus", fields: [paymentStatusId], references: [id])
+  booking             Booking? @relation(fields: [bookingId], references: [id])
+  patient             Patient  @relation(fields: [patientId], references: [id])
+  createdAt           DateTime @default(now())
 }
 
 model OpdQueue {
-  id        String   @id @default(uuid())
-  patientId String
-  tokenNo   Int      @default(autoincrement())
-  status    String   @default("Waiting")
-  statusId  String?
-  statusLookup Lookup? @relation("OpdStatus", fields: [statusId], references: [id])
-  patient   Patient  @relation(fields: [patientId], references: [id])
-  visitDate DateTime @default(now())
+  id           String   @id @default(uuid())
+  patientId    String
+  tokenNo      Int      @default(autoincrement())
+  status       String   @default("Waiting")
+  statusId     String?
+  statusLookup Lookup?  @relation("OpdStatus", fields: [statusId], references: [id])
+  patient      Patient  @relation(fields: [patientId], references: [id])
+  visitDate    DateTime @default(now())
 }
 
 // 0. COMPANY CONFIGURATION (White-label)
@@ -243,23 +339,28 @@ model LookupCategory {
 }
 
 model Lookup {
-  id           String         @id @default(uuid())
-  categoryId   String
-  lookupKey    String
-  lookupValue  String
-  isActive     Boolean        @default(true)
-  category     LookupCategory @relation(fields: [categoryId], references: [id])
+  id          String         @id @default(uuid())
+  categoryId  String
+  lookupKey   String
+  lookupValue String
+  isActive    Boolean        @default(true)
+  category    LookupCategory @relation(fields: [categoryId], references: [id])
 
-  vehicleStatuses         Vehicle[]       @relation("VehicleStatus")
-  patientGenders          Patient[]       @relation("PatientGender")
-  bookingStatuses         Booking[]       @relation("BookingStatus")
-  medicineUoms            Medicine[]      @relation("MedicineUom")
-  inventoryLocationTypes  InventoryBatch[] @relation("InventoryLocationType")
-  transferStatuses        StockTransfer[] @relation("TransferStatus")
-  invoicePaymentStatuses  Invoice[]       @relation("InvoicePaymentStatus")
-  opdStatuses             OpdQueue[]      @relation("OpdStatus")
+  vehicleStatuses             Vehicle[]             @relation("VehicleStatus")
+  patientGenders              Patient[]             @relation("PatientGender")
+  bookingStatuses             Booking[]             @relation("BookingStatus")
+  medicineUoms                Medicine[]            @relation("MedicineUom")
+  inventoryLocationTypes      InventoryBatch[]      @relation("InventoryLocationType")
+  transferStatuses            StockTransfer[]       @relation("TransferStatus")
+  invoicePaymentStatuses      Invoice[]             @relation("InvoicePaymentStatus")
+  opdStatuses                 OpdQueue[]            @relation("OpdStatus")
+  subscriptionPlanTypes       SubscriptionPlan[]    @relation("SubscriptionPlanType")
+  subscriptionAccountStatuses SubscriptionAccount[] @relation("SubscriptionAccountStatus")
+  patientTypes                Patient[]             @relation("PatientType")
+  patientBillingRecipients    Patient[]             @relation("PatientBillingRecipient")
+  diagnosticReportTypes       DiagnosticReport[]    @relation("DiagnosticReportType")
+  labSampleStatuses           LabSample[]           @relation("LabSampleStatus")
 
-  @@index([categoryId])
   @@unique([categoryId, lookupKey])
+  @@index([categoryId])
 }
-

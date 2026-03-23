@@ -19,6 +19,11 @@ async function getVehicles() {
   return backendJson<Vehicle[]>("/api/vehicles");
 }
 
+type DriverOption = { id: string; fullName: string; isActive: boolean };
+async function getDrivers() {
+  return backendJson<DriverOption[]>("/api/profiles");
+}
+
 export default async function AdminVehiclesPage() {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -35,7 +40,7 @@ export default async function AdminVehiclesPage() {
   const canEdit = hasAnyPermission(me.permissions, [...PERMS.edit]);
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
 
-  const vehicles = await getVehicles();
+  const [vehicles, drivers] = await Promise.all([getVehicles(), getDrivers()]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,6 +52,7 @@ export default async function AdminVehiclesPage() {
         ) : (
           <VehicleManager
             initialVehicles={vehicles}
+            drivers={(drivers ?? []).filter((d) => d.isActive)}
             canPreview={canPreview}
             canCreate={canCreate}
             canEdit={canEdit}
