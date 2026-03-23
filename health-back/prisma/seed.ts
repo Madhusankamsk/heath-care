@@ -107,6 +107,73 @@ async function main() {
     });
   }
 
+  const genderCategory = await prisma.lookupCategory.upsert({
+    where: { categoryName: "GENDER" },
+    update: {},
+    create: { categoryName: "GENDER" },
+  });
+  for (const item of [
+    { lookupKey: "MALE", lookupValue: "Male" },
+    { lookupKey: "FEMALE", lookupValue: "Female" },
+    { lookupKey: "OTHER", lookupValue: "Other" },
+  ] as const) {
+    await prisma.lookup.upsert({
+      where: { categoryId_lookupKey: { categoryId: genderCategory.id, lookupKey: item.lookupKey } },
+      update: { lookupValue: item.lookupValue, isActive: true },
+      create: {
+        categoryId: genderCategory.id,
+        lookupKey: item.lookupKey,
+        lookupValue: item.lookupValue,
+        isActive: true,
+      },
+    });
+  }
+
+  const patientTypeCategory = await prisma.lookupCategory.upsert({
+    where: { categoryName: "PATIENT_TYPE" },
+    update: {},
+    create: { categoryName: "PATIENT_TYPE" },
+  });
+  for (const item of [
+    { lookupKey: "SUBSCRIPTION", lookupValue: "Subscription" },
+    { lookupKey: "ONE_TIME", lookupValue: "One Time" },
+  ] as const) {
+    await prisma.lookup.upsert({
+      where: { categoryId_lookupKey: { categoryId: patientTypeCategory.id, lookupKey: item.lookupKey } },
+      update: { lookupValue: item.lookupValue, isActive: true },
+      create: {
+        categoryId: patientTypeCategory.id,
+        lookupKey: item.lookupKey,
+        lookupValue: item.lookupValue,
+        isActive: true,
+      },
+    });
+  }
+
+  const billingRecipientCategory = await prisma.lookupCategory.upsert({
+    where: { categoryName: "BILLING_RECIPIENT" },
+    update: {},
+    create: { categoryName: "BILLING_RECIPIENT" },
+  });
+  for (const item of [
+    { lookupKey: "PATIENT", lookupValue: "Patient" },
+    { lookupKey: "GUARDIAN", lookupValue: "Guardian" },
+    { lookupKey: "COMPANY", lookupValue: "Company" },
+  ] as const) {
+    await prisma.lookup.upsert({
+      where: {
+        categoryId_lookupKey: { categoryId: billingRecipientCategory.id, lookupKey: item.lookupKey },
+      },
+      update: { lookupValue: item.lookupValue, isActive: true },
+      create: {
+        categoryId: billingRecipientCategory.id,
+        lookupKey: item.lookupKey,
+        lookupValue: item.lookupValue,
+        isActive: true,
+      },
+    });
+  }
+
   // Attach ALL permissions to SuperAdmin role (idempotent)
   const allPermissions = await prisma.permission.findMany({
     select: { id: true },
@@ -209,12 +276,18 @@ async function main() {
       fullName: "Nimal Perera",
       contactNo: "+94771234567",
       address: "Colombo 05",
+      shortName: "Nimal",
+      hasInsurance: true,
+      hasGuardian: false,
     },
     create: {
       nicOrPassport: "NIC-900001",
       fullName: "Nimal Perera",
       contactNo: "+94771234567",
       address: "Colombo 05",
+      shortName: "Nimal",
+      hasInsurance: true,
+      hasGuardian: false,
     },
   });
 

@@ -21,13 +21,42 @@ export async function getPatientHandler(req: Request, res: Response) {
 }
 
 export async function createPatientHandler(req: Request, res: Response) {
-  const { nicOrPassport, fullName, dob, contactNo, gender, address } = req.body as Partial<{
+  const {
+    nicOrPassport,
+    fullName,
+    shortName,
+    dob,
+    contactNo,
+    gender,
+    genderId,
+    patientTypeId,
+    address,
+    hasInsurance,
+    hasGuardian,
+    guardianName,
+    guardianNic,
+    guardianContactNo,
+    guardianRelationship,
+    billingRecipientId,
+    subscriptionPlanId,
+  } = req.body as Partial<{
     nicOrPassport: string | null;
     fullName: string;
+    shortName: string | null;
     dob: string | null;
     contactNo: string | null;
     gender: string | null;
+    genderId: string | null;
+    patientTypeId: string | null;
     address: string | null;
+    hasInsurance: boolean;
+    hasGuardian: boolean;
+    guardianName: string | null;
+    guardianNic: string | null;
+    guardianContactNo: string | null;
+    guardianRelationship: string | null;
+    billingRecipientId: string | null;
+    subscriptionPlanId: string | null;
   }>;
 
   if (!fullName) {
@@ -37,10 +66,21 @@ export async function createPatientHandler(req: Request, res: Response) {
   const patient = await createPatient({
     nicOrPassport: nicOrPassport ?? undefined,
     fullName: fullName.trim(),
+    shortName: shortName ?? undefined,
     dob: dob ?? undefined,
     contactNo: contactNo ?? undefined,
     gender: gender ?? undefined,
+    genderId: genderId ?? undefined,
+    patientTypeId: patientTypeId ?? undefined,
     address: address ?? undefined,
+    hasInsurance: Boolean(hasInsurance),
+    hasGuardian: Boolean(hasGuardian),
+    guardianName: guardianName ?? undefined,
+    guardianNic: guardianNic ?? undefined,
+    guardianContactNo: guardianContactNo ?? undefined,
+    guardianRelationship: guardianRelationship ?? undefined,
+    billingRecipientId: billingRecipientId ?? undefined,
+    subscriptionPlanId: subscriptionPlanId ?? undefined,
   });
 
   return res.status(201).json(patient);
@@ -48,23 +88,60 @@ export async function createPatientHandler(req: Request, res: Response) {
 
 export async function updatePatientHandler(req: Request, res: Response) {
   const { id } = req.params;
-  const { nicOrPassport, fullName, dob, contactNo, gender, address } = req.body as Partial<{
+  const {
+    nicOrPassport,
+    fullName,
+    shortName,
+    dob,
+    contactNo,
+    gender,
+    genderId,
+    patientTypeId,
+    address,
+    hasInsurance,
+    hasGuardian,
+    guardianName,
+    guardianNic,
+    guardianContactNo,
+    guardianRelationship,
+    billingRecipientId,
+  } = req.body as Partial<{
     nicOrPassport: string | null;
     fullName: string;
+    shortName: string | null;
     dob: string | null;
     contactNo: string | null;
     gender: string | null;
+    genderId: string | null;
+    patientTypeId: string | null;
     address: string | null;
+    hasInsurance: boolean;
+    hasGuardian: boolean;
+    guardianName: string | null;
+    guardianNic: string | null;
+    guardianContactNo: string | null;
+    guardianRelationship: string | null;
+    billingRecipientId: string | null;
   }>;
 
   try {
     const patient = await updatePatient(id, {
       nicOrPassport: nicOrPassport ?? undefined,
       fullName: fullName ? fullName.trim() : undefined,
+      shortName: shortName ?? undefined,
       dob: dob ?? undefined,
       contactNo: contactNo ?? undefined,
       gender: gender ?? undefined,
+      genderId: genderId ?? undefined,
+      patientTypeId: patientTypeId ?? undefined,
       address: address ?? undefined,
+      hasInsurance: typeof hasInsurance === "boolean" ? hasInsurance : undefined,
+      hasGuardian: typeof hasGuardian === "boolean" ? hasGuardian : undefined,
+      guardianName: guardianName ?? undefined,
+      guardianNic: guardianNic ?? undefined,
+      guardianContactNo: guardianContactNo ?? undefined,
+      guardianRelationship: guardianRelationship ?? undefined,
+      billingRecipientId: billingRecipientId ?? undefined,
     });
     return res.json(patient);
   } catch (error) {

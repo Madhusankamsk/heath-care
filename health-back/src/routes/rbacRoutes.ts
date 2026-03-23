@@ -46,6 +46,7 @@ import {
   listPatientsHandler,
   updatePatientHandler,
 } from "../controllers/patientController";
+import { listLookupsHandler } from "../controllers/lookupController";
 import {
   createBookingHandler,
   deleteBookingHandler,
@@ -231,6 +232,7 @@ router.delete(
   requireAnyPermission(["patients:delete"]),
   deletePatientHandler,
 );
+router.get("/lookups", requireAnyPermission(["patients:list", "patients:read"]), listLookupsHandler);
 
 // Bookings
 router.get("/bookings", requireAnyPermission(["bookings:list"]), listBookingsHandler);
@@ -247,7 +249,7 @@ router.get(
 );
 router.get(
   "/subscription-plans",
-  requireAnyPermission(["profiles:list"]),
+  requireAnyPermission(["profiles:list", "patients:create", "patients:update", "patients:read"]),
   listSubscriptionPlansHandler,
 );
 router.post(
@@ -257,7 +259,7 @@ router.post(
 );
 router.get(
   "/subscription-plans/:id",
-  requireAnyPermission(["profiles:read"]),
+  requireAnyPermission(["profiles:read", "patients:create", "patients:update", "patients:read"]),
   getSubscriptionPlanHandler,
 );
 router.put(

@@ -9,24 +9,47 @@ export type Patient = {
   id: string;
   nicOrPassport?: string | null;
   fullName: string;
+  shortName?: string | null;
   dob?: string | Date | null;
   contactNo?: string | null;
   gender?: string | null;
+  genderId?: string | null;
+  patientTypeId?: string | null;
   address?: string | null;
+  hasInsurance?: boolean;
+  hasGuardian?: boolean;
+  guardianName?: string | null;
+  guardianNic?: string | null;
+  guardianContactNo?: string | null;
+  guardianRelationship?: string | null;
+  billingRecipientId?: string | null;
+  genderLookup?: { id: string; lookupValue: string } | null;
+  patientTypeLookup?: { id: string; lookupValue: string } | null;
+  billingRecipientLookup?: { id: string; lookupValue: string } | null;
 };
 
 type PatientManagerProps = {
   initialPatients: Patient[];
+  genders: LookupOption[];
+  patientTypes: LookupOption[];
+  billingRecipients: LookupOption[];
+  subscriptionPlans: SubscriptionPlanOption[];
   canPreview: boolean;
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
 };
+type LookupOption = { id: string; lookupKey: string; lookupValue: string };
+type SubscriptionPlanOption = { id: string; planName: string };
 
 type Mode = "none" | "create" | "edit" | "preview";
 
 export function PatientManager({
   initialPatients,
+  genders,
+  patientTypes,
+  billingRecipients,
+  subscriptionPlans,
   canPreview,
   canCreate,
   canEdit,
@@ -117,6 +140,11 @@ export function PatientManager({
         <PatientForm
           title="Create patient"
           submitLabel="Create"
+          genders={genders}
+          patientTypes={patientTypes}
+          billingRecipients={billingRecipients}
+          subscriptionPlans={subscriptionPlans}
+          includeSubscriptionPlan
           onCancel={() => setMode("none")}
           onSubmit={async (values) => {
             setError(null);
@@ -139,13 +167,27 @@ export function PatientManager({
         <PatientForm
           title="Edit patient"
           submitLabel="Save changes"
+          genders={genders}
+          patientTypes={patientTypes}
+          billingRecipients={billingRecipients}
+          subscriptionPlans={subscriptionPlans}
           initial={{
             nicOrPassport: selected.nicOrPassport ?? "",
             fullName: selected.fullName,
+            shortName: selected.shortName ?? "",
             dob: selected.dob ? String(selected.dob) : "",
             contactNo: selected.contactNo ?? "",
             gender: selected.gender ?? "",
+            genderId: selected.genderId ?? "",
+            patientTypeId: selected.patientTypeId ?? "",
             address: selected.address ?? "",
+            hasInsurance: Boolean(selected.hasInsurance),
+            hasGuardian: Boolean(selected.hasGuardian),
+            guardianName: selected.guardianName ?? "",
+            guardianNic: selected.guardianNic ?? "",
+            guardianContactNo: selected.guardianContactNo ?? "",
+            guardianRelationship: selected.guardianRelationship ?? "",
+            billingRecipientId: selected.billingRecipientId ?? "",
           }}
           onCancel={() => setMode("none")}
           onSubmit={async (values) => {
@@ -194,11 +236,35 @@ export function PatientManager({
             </div>
             <div>
               <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Gender</dt>
-              <dd className="font-medium">{selected.gender ?? "—"}</dd>
+              <dd className="font-medium">
+                {selected.genderLookup?.lookupValue ?? selected.gender ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Patient Type</dt>
+              <dd className="font-medium">{selected.patientTypeLookup?.lookupValue ?? "—"}</dd>
             </div>
             <div className="sm:col-span-2">
               <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Address</dt>
               <dd className="font-medium">{selected.address ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Has Insurance</dt>
+              <dd className="font-medium">{selected.hasInsurance ? "Yes" : "No"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Has Guardian</dt>
+              <dd className="font-medium">{selected.hasGuardian ? "Yes" : "No"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Guardian Name</dt>
+              <dd className="font-medium">{selected.guardianName ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Billing Recipient</dt>
+              <dd className="font-medium">
+                {selected.billingRecipientLookup?.lookupValue ?? "—"}
+              </dd>
             </div>
           </dl>
           <div className="mt-4 flex justify-end">
@@ -233,7 +299,7 @@ export function PatientManager({
                     {p.contactNo ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {p.gender ?? "—"}
+                    {p.genderLookup?.lookupValue ?? p.gender ?? "—"}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
@@ -293,21 +359,42 @@ export function PatientManager({
 type PatientFormValues = {
   nicOrPassport?: string;
   fullName: string;
+  shortName?: string;
   dob?: string;
   contactNo?: string;
   gender?: string;
+  genderId?: string;
+  patientTypeId?: string;
   address?: string;
+  hasInsurance?: boolean;
+  hasGuardian?: boolean;
+  guardianName?: string;
+  guardianNic?: string;
+  guardianContactNo?: string;
+  guardianRelationship?: string;
+  billingRecipientId?: string;
+  subscriptionPlanId?: string;
 };
 
 function PatientForm({
   title,
   submitLabel,
+  genders,
+  patientTypes,
+  billingRecipients,
+  subscriptionPlans,
+  includeSubscriptionPlan,
   onCancel,
   onSubmit,
   initial,
 }: {
   title: string;
   submitLabel: string;
+  genders: LookupOption[];
+  patientTypes: LookupOption[];
+  billingRecipients: LookupOption[];
+  subscriptionPlans: SubscriptionPlanOption[];
+  includeSubscriptionPlan?: boolean;
   onCancel: () => void;
   onSubmit: (values: PatientFormValues) => Promise<void>;
   initial?: Partial<PatientFormValues>;
@@ -315,10 +402,21 @@ function PatientForm({
   const [values, setValues] = useState<PatientFormValues>({
     nicOrPassport: initial?.nicOrPassport ?? "",
     fullName: initial?.fullName ?? "",
+    shortName: initial?.shortName ?? "",
     dob: initial?.dob ?? "",
     contactNo: initial?.contactNo ?? "",
     gender: initial?.gender ?? "",
+    genderId: initial?.genderId ?? genders[0]?.id ?? "",
+    patientTypeId: initial?.patientTypeId ?? patientTypes[0]?.id ?? "",
     address: initial?.address ?? "",
+    hasInsurance: Boolean(initial?.hasInsurance),
+    hasGuardian: Boolean(initial?.hasGuardian),
+    guardianName: initial?.guardianName ?? "",
+    guardianNic: initial?.guardianNic ?? "",
+    guardianContactNo: initial?.guardianContactNo ?? "",
+    guardianRelationship: initial?.guardianRelationship ?? "",
+    billingRecipientId: initial?.billingRecipientId ?? billingRecipients[0]?.id ?? "",
+    subscriptionPlanId: initial?.subscriptionPlanId ?? "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -348,10 +446,21 @@ function PatientForm({
             await onSubmit({
               nicOrPassport: values.nicOrPassport?.trim() || undefined,
               fullName: values.fullName.trim(),
+              shortName: values.shortName?.trim() || undefined,
               dob: values.dob?.trim() || undefined,
               contactNo: values.contactNo?.trim() || undefined,
               gender: values.gender?.trim() || undefined,
+              genderId: values.genderId?.trim() || undefined,
+              patientTypeId: values.patientTypeId?.trim() || undefined,
               address: values.address?.trim() || undefined,
+              hasInsurance: Boolean(values.hasInsurance),
+              hasGuardian: Boolean(values.hasGuardian),
+              guardianName: values.guardianName?.trim() || undefined,
+              guardianNic: values.guardianNic?.trim() || undefined,
+              guardianContactNo: values.guardianContactNo?.trim() || undefined,
+              guardianRelationship: values.guardianRelationship?.trim() || undefined,
+              billingRecipientId: values.billingRecipientId?.trim() || undefined,
+              subscriptionPlanId: values.subscriptionPlanId?.trim() || undefined,
             });
           } catch (e) {
             setError(e instanceof Error ? e.message : "Something went wrong");
@@ -374,6 +483,12 @@ function PatientForm({
           onChange={(e) => setValues((v) => ({ ...v, nicOrPassport: e.target.value }))}
         />
         <Input
+          label="Short name"
+          name="shortName"
+          value={values.shortName ?? ""}
+          onChange={(e) => setValues((v) => ({ ...v, shortName: e.target.value }))}
+        />
+        <Input
           label="DOB (YYYY-MM-DD)"
           name="dob"
           value={values.dob ?? ""}
@@ -391,6 +506,36 @@ function PatientForm({
           value={values.gender ?? ""}
           onChange={(e) => setValues((v) => ({ ...v, gender: e.target.value }))}
         />
+        <label className="flex flex-col gap-2 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">Gender (Lookup)</span>
+          <select
+            className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-800"
+            value={values.genderId ?? ""}
+            onChange={(e) => setValues((v) => ({ ...v, genderId: e.target.value }))}
+          >
+            <option value="">Select</option>
+            {genders.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.lookupValue}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-2 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">Patient Type</span>
+          <select
+            className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-800"
+            value={values.patientTypeId ?? ""}
+            onChange={(e) => setValues((v) => ({ ...v, patientTypeId: e.target.value }))}
+          >
+            <option value="">Select</option>
+            {patientTypes.map((pt) => (
+              <option key={pt.id} value={pt.id}>
+                {pt.lookupValue}
+              </option>
+            ))}
+          </select>
+        </label>
         <Input
           label="Address"
           name="address"
@@ -398,6 +543,86 @@ function PatientForm({
           onChange={(e) => setValues((v) => ({ ...v, address: e.target.value }))}
           className="sm:col-span-2"
         />
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            checked={Boolean(values.hasInsurance)}
+            onChange={(e) => setValues((v) => ({ ...v, hasInsurance: e.target.checked }))}
+          />
+          Has insurance
+        </label>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            checked={Boolean(values.hasGuardian)}
+            onChange={(e) => setValues((v) => ({ ...v, hasGuardian: e.target.checked }))}
+          />
+          Has guardian
+        </label>
+        {values.hasGuardian ? (
+          <>
+            <Input
+              label="Guardian Name"
+              name="guardianName"
+              value={values.guardianName ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, guardianName: e.target.value }))}
+            />
+            <Input
+              label="Guardian NIC"
+              name="guardianNic"
+              value={values.guardianNic ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, guardianNic: e.target.value }))}
+            />
+            <Input
+              label="Guardian Contact No"
+              name="guardianContactNo"
+              value={values.guardianContactNo ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, guardianContactNo: e.target.value }))}
+            />
+            <Input
+              label="Guardian Relationship"
+              name="guardianRelationship"
+              value={values.guardianRelationship ?? ""}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, guardianRelationship: e.target.value }))
+              }
+            />
+          </>
+        ) : null}
+        <label className="flex flex-col gap-2 text-sm sm:col-span-2">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">Billing Recipient</span>
+          <select
+            className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-800"
+            value={values.billingRecipientId ?? ""}
+            onChange={(e) => setValues((v) => ({ ...v, billingRecipientId: e.target.value }))}
+          >
+            <option value="">Select</option>
+            {billingRecipients.map((br) => (
+              <option key={br.id} value={br.id}>
+                {br.lookupValue}
+              </option>
+            ))}
+          </select>
+        </label>
+        {includeSubscriptionPlan ? (
+          <label className="flex flex-col gap-2 text-sm sm:col-span-2">
+            <span className="font-medium text-zinc-800 dark:text-zinc-200">
+              Assign Subscription Plan (optional)
+            </span>
+            <select
+              className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-800"
+              value={values.subscriptionPlanId ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, subscriptionPlanId: e.target.value }))}
+            >
+              <option value="">No plan</option>
+              {subscriptionPlans.map((plan) => (
+                <option key={plan.id} value={plan.id}>
+                  {plan.planName}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <div className="flex items-center justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
             Cancel

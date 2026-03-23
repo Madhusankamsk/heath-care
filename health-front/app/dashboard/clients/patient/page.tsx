@@ -18,6 +18,15 @@ async function getPatients() {
   return backendJson<Patient[]>("/api/patients");
 }
 
+type LookupOption = { id: string; lookupKey: string; lookupValue: string };
+type SubscriptionPlanOption = { id: string; planName: string; isActive: boolean };
+async function getLookups(category: string) {
+  return backendJson<LookupOption[]>(`/api/lookups?category=${encodeURIComponent(category)}`);
+}
+async function getSubscriptionPlans() {
+  return backendJson<SubscriptionPlanOption[]>("/api/subscription-plans");
+}
+
 export default async function PatientPage() {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -33,7 +42,13 @@ export default async function PatientPage() {
   const canEdit = hasAnyPermission(me.permissions, [...PERMS.edit]);
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
 
-  const patients = await getPatients();
+  const [patients, genders, patientTypes, billingRecipients, subscriptionPlans] = await Promise.all([
+    getPatients(),
+    getLookups("GENDER"),
+    getLookups("PATIENT_TYPE"),
+    getLookups("BILLING_RECIPIENT"),
+    getSubscriptionPlans(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,6 +60,10 @@ export default async function PatientPage() {
         ) : (
           <PatientManager
             initialPatients={patients}
+            genders={genders ?? []}
+            patientTypes={patientTypes ?? []}
+            billingRecipients={billingRecipients ?? []}
+            subscriptionPlans={(subscriptionPlans ?? []).filter((p) => p.isActive)}
             canPreview={canPreview}
             canCreate={canCreate}
             canEdit={canEdit}
