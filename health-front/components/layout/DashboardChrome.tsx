@@ -42,8 +42,8 @@ export function DashboardChrome({
           onToggleCollapsed={() => setIsSidebarCollapsed((v) => !v)}
         />
 
-        <main className="flex-1 overflow-y-auto bg-[var(--background)]">
-          <div className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
+        <main className="min-w-0 flex-1 overflow-y-auto bg-[var(--background)]">
+          <div className="w-full px-3 py-4 sm:px-4 sm:py-6">
             {children}
           </div>
         </main>

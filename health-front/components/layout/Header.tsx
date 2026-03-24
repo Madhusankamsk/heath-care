@@ -70,7 +70,7 @@ export function Header({
 
   return (
     <header className="border-b border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur">
-      <div className="flex w-full items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+      <div className="flex w-full items-center justify-between px-3 py-4 sm:px-4 lg:px-5">
         <div className="flex items-center gap-6">
           {isMenuButtonVisible ? (
             <button
