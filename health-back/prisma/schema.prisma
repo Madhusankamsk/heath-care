@@ -95,6 +95,7 @@ model Patient {
   shortName                      String?
   dob                            DateTime?
   contactNo                      String?
+  whatsappNo                     String?
   gender                         String?
   genderId                       String?
   genderLookup                   Lookup?               @relation("PatientGender", fields: [genderId], references: [id])
@@ -104,7 +105,8 @@ model Patient {
   hasInsurance                   Boolean               @default(false)
   hasGuardian                    Boolean               @default(false)
   guardianName                   String?
-  guardianNic                    String?
+  guardianEmail                  String?
+  guardianWhatsappNo             String?
   guardianContactNo              String?
   guardianRelationship           String?
   billingRecipientId             String?

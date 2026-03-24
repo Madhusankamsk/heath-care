@@ -6,6 +6,7 @@ export type PatientCreateInput = {
   shortName?: string | null;
   dob?: string | Date | null;
   contactNo?: string | null;
+  whatsappNo?: string | null;
   gender?: string | null;
   genderId?: string | null;
   patientTypeId?: string | null;
@@ -13,7 +14,8 @@ export type PatientCreateInput = {
   hasInsurance?: boolean;
   hasGuardian?: boolean;
   guardianName?: string | null;
-  guardianNic?: string | null;
+  guardianEmail?: string | null;
+  guardianWhatsappNo?: string | null;
   guardianContactNo?: string | null;
   guardianRelationship?: string | null;
   billingRecipientId?: string | null;
@@ -58,6 +60,7 @@ export async function createPatient(data: PatientCreateInput) {
         shortName: data.shortName ?? undefined,
         dob: dobValue ?? undefined,
         contactNo: data.contactNo ?? undefined,
+        whatsappNo: data.whatsappNo ?? undefined,
         gender: data.gender ?? undefined,
         genderId: data.genderId ?? undefined,
         patientTypeId: data.patientTypeId ?? undefined,
@@ -65,7 +68,8 @@ export async function createPatient(data: PatientCreateInput) {
         hasInsurance: data.hasInsurance ?? false,
         hasGuardian: data.hasGuardian ?? false,
         guardianName: data.guardianName ?? undefined,
-        guardianNic: data.guardianNic ?? undefined,
+        guardianEmail: data.guardianEmail ?? undefined,
+        guardianWhatsappNo: data.guardianWhatsappNo ?? undefined,
         guardianContactNo: data.guardianContactNo ?? undefined,
         guardianRelationship: data.guardianRelationship ?? undefined,
         billingRecipientId: data.billingRecipientId ?? undefined,
@@ -131,6 +135,7 @@ export async function updatePatient(
       shortName: data.shortName ?? undefined,
       dob: dobValue ?? undefined,
       contactNo: data.contactNo ?? undefined,
+      whatsappNo: data.whatsappNo ?? undefined,
       gender: data.gender ?? undefined,
       genderId: data.genderId ?? undefined,
       patientTypeId: data.patientTypeId ?? undefined,
@@ -138,7 +143,8 @@ export async function updatePatient(
       hasInsurance: data.hasInsurance,
       hasGuardian: data.hasGuardian,
       guardianName: data.guardianName ?? undefined,
-      guardianNic: data.guardianNic ?? undefined,
+      guardianEmail: data.guardianEmail ?? undefined,
+      guardianWhatsappNo: data.guardianWhatsappNo ?? undefined,
       guardianContactNo: data.guardianContactNo ?? undefined,
       guardianRelationship: data.guardianRelationship ?? undefined,
       billingRecipientId: data.billingRecipientId ?? undefined,

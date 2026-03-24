@@ -27,6 +27,7 @@ export async function createPatientHandler(req: Request, res: Response) {
     shortName,
     dob,
     contactNo,
+    whatsappNo,
     gender,
     genderId,
     patientTypeId,
@@ -34,7 +35,8 @@ export async function createPatientHandler(req: Request, res: Response) {
     hasInsurance,
     hasGuardian,
     guardianName,
-    guardianNic,
+    guardianEmail,
+    guardianWhatsappNo,
     guardianContactNo,
     guardianRelationship,
     billingRecipientId,
@@ -45,6 +47,7 @@ export async function createPatientHandler(req: Request, res: Response) {
     shortName: string | null;
     dob: string | null;
     contactNo: string | null;
+    whatsappNo: string | null;
     gender: string | null;
     genderId: string | null;
     patientTypeId: string | null;
@@ -52,7 +55,8 @@ export async function createPatientHandler(req: Request, res: Response) {
     hasInsurance: boolean;
     hasGuardian: boolean;
     guardianName: string | null;
-    guardianNic: string | null;
+    guardianEmail: string | null;
+    guardianWhatsappNo: string | null;
     guardianContactNo: string | null;
     guardianRelationship: string | null;
     billingRecipientId: string | null;
@@ -69,6 +73,7 @@ export async function createPatientHandler(req: Request, res: Response) {
     shortName: shortName ?? undefined,
     dob: dob ?? undefined,
     contactNo: contactNo ?? undefined,
+    whatsappNo: whatsappNo ?? undefined,
     gender: gender ?? undefined,
     genderId: genderId ?? undefined,
     patientTypeId: patientTypeId ?? undefined,
@@ -76,7 +81,8 @@ export async function createPatientHandler(req: Request, res: Response) {
     hasInsurance: Boolean(hasInsurance),
     hasGuardian: Boolean(hasGuardian),
     guardianName: guardianName ?? undefined,
-    guardianNic: guardianNic ?? undefined,
+    guardianEmail: guardianEmail ?? undefined,
+    guardianWhatsappNo: guardianWhatsappNo ?? undefined,
     guardianContactNo: guardianContactNo ?? undefined,
     guardianRelationship: guardianRelationship ?? undefined,
     billingRecipientId: billingRecipientId ?? undefined,
@@ -94,6 +100,7 @@ export async function updatePatientHandler(req: Request, res: Response) {
     shortName,
     dob,
     contactNo,
+    whatsappNo,
     gender,
     genderId,
     patientTypeId,
@@ -101,7 +108,8 @@ export async function updatePatientHandler(req: Request, res: Response) {
     hasInsurance,
     hasGuardian,
     guardianName,
-    guardianNic,
+    guardianEmail,
+    guardianWhatsappNo,
     guardianContactNo,
     guardianRelationship,
     billingRecipientId,
@@ -111,6 +119,7 @@ export async function updatePatientHandler(req: Request, res: Response) {
     shortName: string | null;
     dob: string | null;
     contactNo: string | null;
+    whatsappNo: string | null;
     gender: string | null;
     genderId: string | null;
     patientTypeId: string | null;
@@ -118,7 +127,8 @@ export async function updatePatientHandler(req: Request, res: Response) {
     hasInsurance: boolean;
     hasGuardian: boolean;
     guardianName: string | null;
-    guardianNic: string | null;
+    guardianEmail: string | null;
+    guardianWhatsappNo: string | null;
     guardianContactNo: string | null;
     guardianRelationship: string | null;
     billingRecipientId: string | null;
@@ -131,6 +141,7 @@ export async function updatePatientHandler(req: Request, res: Response) {
       shortName: shortName ?? undefined,
       dob: dob ?? undefined,
       contactNo: contactNo ?? undefined,
+      whatsappNo: whatsappNo ?? undefined,
       gender: gender ?? undefined,
       genderId: genderId ?? undefined,
       patientTypeId: patientTypeId ?? undefined,
@@ -138,7 +149,8 @@ export async function updatePatientHandler(req: Request, res: Response) {
       hasInsurance: typeof hasInsurance === "boolean" ? hasInsurance : undefined,
       hasGuardian: typeof hasGuardian === "boolean" ? hasGuardian : undefined,
       guardianName: guardianName ?? undefined,
-      guardianNic: guardianNic ?? undefined,
+      guardianEmail: guardianEmail ?? undefined,
+      guardianWhatsappNo: guardianWhatsappNo ?? undefined,
       guardianContactNo: guardianContactNo ?? undefined,
       guardianRelationship: guardianRelationship ?? undefined,
       billingRecipientId: billingRecipientId ?? undefined,

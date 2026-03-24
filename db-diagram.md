@@ -1,5 +1,5 @@
 // =========================================================
-// MOBILE HEALTHCARE - ENTERPRISE MASTER SCHEMA (v3.7)
+// MOBILE HEALTHCARE - ENTERPRISE MASTER SCHEMA (Prisma-aligned)
 // FEATURES: GROUP SUBS (FAMILY/CORP), DIAGNOSTICS, INVENTORY
 // =========================================================
 
@@ -100,6 +100,7 @@ Table vehicles {
   id uuid [pk]
   vehicle_no text [unique, not null]
   model text
+  status text [default: "Available"]
   status_id uuid [ref: > lookups.id]
   current_driver_id uuid [ref: > users.id]
 }
@@ -123,15 +124,18 @@ Table patients {
   nic_or_passport text [unique]
   full_name text [not null]
   short_name text
-  dob date
+  dob timestamptz
+  contact_no text
+  whatsapp_no text
+  gender text
   gender_id uuid [ref: > lookups.id]
   patient_type_id uuid [ref: > lookups.id] // SUBSCRIPTION vs ONE_TIME
   address text
-  contact_no text
   has_insurance boolean [default: false]
   has_guardian boolean [default: false]
   guardian_name text
-  guardian_nic text
+  guardian_email text
+  guardian_whatsapp_no text
   guardian_contact_no text
   guardian_relationship text
   billing_recipient_id uuid [ref: > lookups.id]
@@ -142,8 +146,9 @@ Table opd_queue {
   id uuid [pk]
   patient_id uuid [ref: > patients.id]
   token_no serial
+  status text [default: "Waiting"]
   status_id uuid [ref: > lookups.id]
-  visit_date date [default: `now()`]
+  visit_date timestamptz [default: `now()`]
 }
 
 // 9. BOOKINGS & CLINICAL VISITS
@@ -152,7 +157,9 @@ Table bookings {
   patient_id uuid [ref: > patients.id]
   team_id uuid [ref: > medical_teams.id]
   scheduled_date timestamptz
+  status text [default: "Pending"]
   status_id uuid [ref: > lookups.id]
+  location_gps text
 }
 
 Table visit_records {
@@ -194,17 +201,21 @@ Table lab_samples {
 Table medicines {
   id uuid [pk]
   name text [not null]
+  generic_name text
   selling_price decimal [not null]
+  uom text
   uom_id uuid [ref: > lookups.id]
+  min_stock_level int
 }
 
 Table inventory_batches {
   id uuid [pk]
   medicine_id uuid [ref: > medicines.id]
   batch_no text [not null]
-  expiry_date date [not null]
+  expiry_date timestamptz [not null]
   quantity int [not null]
   buying_price decimal [not null]
+  location_type text
   location_type_id uuid [ref: > lookups.id] 
   location_id uuid 
 }
@@ -216,6 +227,7 @@ Table stock_transfers {
   from_location_id uuid
   to_location_id uuid 
   quantity int
+  status text [default: "Pending"]
   status_id uuid [ref: > lookups.id]
   transferred_by uuid [ref: > users.id]
   created_at timestamptz [default: `now()`]
@@ -230,6 +242,7 @@ Table invoices {
   consultation_total decimal
   medicine_total decimal
   travel_cost decimal
+  payment_status text [default: "Unpaid"]
   payment_status_id uuid [ref: > lookups.id]
   created_at timestamptz [default: `now()`]
 }

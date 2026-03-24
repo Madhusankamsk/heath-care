@@ -14,6 +14,7 @@ export type Patient = {
   shortName?: string | null;
   dob?: string | Date | null;
   contactNo?: string | null;
+  whatsappNo?: string | null;
   gender?: string | null;
   genderId?: string | null;
   patientTypeId?: string | null;
@@ -21,7 +22,8 @@ export type Patient = {
   hasInsurance?: boolean;
   hasGuardian?: boolean;
   guardianName?: string | null;
-  guardianNic?: string | null;
+  guardianEmail?: string | null;
+  guardianWhatsappNo?: string | null;
   guardianContactNo?: string | null;
   guardianRelationship?: string | null;
   billingRecipientId?: string | null;
@@ -228,14 +230,15 @@ export function PatientManager({
             shortName: selected.shortName ?? "",
             dob: selected.dob ? String(selected.dob) : "",
             contactNo: selected.contactNo ?? "",
-            gender: selected.gender ?? "",
+            whatsappNo: selected.whatsappNo ?? "",
             genderId: selected.genderId ?? "",
             patientTypeId: selected.patientTypeId ?? "",
             address: selected.address ?? "",
             hasInsurance: Boolean(selected.hasInsurance),
             hasGuardian: Boolean(selected.hasGuardian),
             guardianName: selected.guardianName ?? "",
-            guardianNic: selected.guardianNic ?? "",
+            guardianEmail: selected.guardianEmail ?? "",
+            guardianWhatsappNo: selected.guardianWhatsappNo ?? "",
             guardianContactNo: selected.guardianContactNo ?? "",
             guardianRelationship: selected.guardianRelationship ?? "",
             billingRecipientId: selected.billingRecipientId ?? "",
@@ -286,6 +289,12 @@ export function PatientManager({
               <dd className="font-medium">{selected.contactNo ?? "—"}</dd>
             </div>
             <div>
+              <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
+                Patient WhatsApp
+              </dt>
+              <dd className="font-medium">{selected.whatsappNo ?? "—"}</dd>
+            </div>
+            <div>
               <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Gender</dt>
               <dd className="font-medium">
                 {selected.genderLookup?.lookupValue ?? selected.gender ?? "—"}
@@ -310,6 +319,16 @@ export function PatientManager({
             <div>
               <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Guardian Name</dt>
               <dd className="font-medium">{selected.guardianName ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Guardian Email</dt>
+              <dd className="font-medium">{selected.guardianEmail ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
+                Guardian WhatsApp
+              </dt>
+              <dd className="font-medium">{selected.guardianWhatsappNo ?? "—"}</dd>
             </div>
             <div>
               <dt className="text-xs uppercase text-zinc-500 dark:text-zinc-400">Billing Recipient</dt>
@@ -413,14 +432,15 @@ type PatientFormValues = {
   shortName?: string;
   dob?: string;
   contactNo?: string;
-  gender?: string;
+  whatsappNo?: string;
   genderId?: string;
   patientTypeId?: string;
   address?: string;
   hasInsurance?: boolean;
   hasGuardian?: boolean;
   guardianName?: string;
-  guardianNic?: string;
+  guardianEmail?: string;
+  guardianWhatsappNo?: string;
   guardianContactNo?: string;
   guardianRelationship?: string;
   billingRecipientId?: string;
@@ -458,21 +478,37 @@ function PatientForm({
     shortName: initial?.shortName ?? "",
     dob: initial?.dob ?? "",
     contactNo: initial?.contactNo ?? "",
-    gender: initial?.gender ?? "",
+    whatsappNo: initial?.whatsappNo ?? "",
     genderId: initial?.genderId ?? genders[0]?.id ?? "",
     patientTypeId: initial?.patientTypeId ?? patientTypes[0]?.id ?? "",
     address: initial?.address ?? "",
     hasInsurance: Boolean(initial?.hasInsurance),
     hasGuardian: Boolean(initial?.hasGuardian),
     guardianName: initial?.guardianName ?? "",
-    guardianNic: initial?.guardianNic ?? "",
+    guardianEmail: initial?.guardianEmail ?? "",
+    guardianWhatsappNo: initial?.guardianWhatsappNo ?? "",
     guardianContactNo: initial?.guardianContactNo ?? "",
     guardianRelationship: initial?.guardianRelationship ?? "",
     billingRecipientId: initial?.billingRecipientId ?? billingRecipients[0]?.id ?? "",
     subscriptionPlanId: initial?.subscriptionPlanId ?? "",
   });
+  const [isWhatsappSameAsContact, setIsWhatsappSameAsContact] = useState(
+    () =>
+      Boolean(initial?.contactNo) &&
+      Boolean(initial?.whatsappNo) &&
+      String(initial?.contactNo).trim() === String(initial?.whatsappNo).trim(),
+  );
+  const [isGuardianWhatsappSameAsContact, setIsGuardianWhatsappSameAsContact] = useState(
+    () =>
+      Boolean(initial?.guardianContactNo) &&
+      Boolean(initial?.guardianWhatsappNo) &&
+      String(initial?.guardianContactNo).trim() ===
+        String(initial?.guardianWhatsappNo).trim(),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasPatientContactNo = Boolean(values.contactNo?.trim());
+  const hasGuardianContactNo = Boolean(values.guardianContactNo?.trim());
 
   const selectClass =
     "h-11 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)]/25";
@@ -507,14 +543,15 @@ function PatientForm({
               shortName: values.shortName?.trim() || undefined,
               dob: values.dob?.trim() || undefined,
               contactNo: values.contactNo?.trim() || undefined,
-              gender: values.gender?.trim() || undefined,
+              whatsappNo: values.whatsappNo?.trim() || undefined,
               genderId: values.genderId?.trim() || undefined,
               patientTypeId: values.patientTypeId?.trim() || undefined,
               address: values.address?.trim() || undefined,
               hasInsurance: Boolean(values.hasInsurance),
               hasGuardian: Boolean(values.hasGuardian),
               guardianName: values.guardianName?.trim() || undefined,
-              guardianNic: values.guardianNic?.trim() || undefined,
+              guardianEmail: values.guardianEmail?.trim() || undefined,
+              guardianWhatsappNo: values.guardianWhatsappNo?.trim() || undefined,
               guardianContactNo: values.guardianContactNo?.trim() || undefined,
               guardianRelationship: values.guardianRelationship?.trim() || undefined,
               billingRecipientId: values.billingRecipientId?.trim() || undefined,
@@ -556,13 +593,35 @@ function PatientForm({
           label="Contact"
           name="contactNo"
           value={values.contactNo ?? ""}
-          onChange={(e) => setValues((v) => ({ ...v, contactNo: e.target.value }))}
+          onChange={(e) =>
+            setValues((v) => ({
+              ...v,
+              contactNo: e.target.value,
+              ...(isWhatsappSameAsContact ? { whatsappNo: e.target.value } : {}),
+            }))
+          }
         />
+        <label className="flex items-center gap-2 self-end pb-2 text-xs text-[var(--text-secondary)]">
+          <input
+            type="checkbox"
+            checked={isWhatsappSameAsContact}
+            disabled={!hasPatientContactNo}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setIsWhatsappSameAsContact(checked);
+              if (checked) {
+                setValues((v) => ({ ...v, whatsappNo: v.contactNo ?? "" }));
+              }
+            }}
+          />
+          Same as contact number
+        </label>
         <Input
-          label="Gender"
-          name="gender"
-          value={values.gender ?? ""}
-          onChange={(e) => setValues((v) => ({ ...v, gender: e.target.value }))}
+          label="Patient WhatsApp Number"
+          name="whatsappNo"
+          value={values.whatsappNo ?? ""}
+          disabled={isWhatsappSameAsContact}
+          onChange={(e) => setValues((v) => ({ ...v, whatsappNo: e.target.value }))}
         />
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-[var(--text-primary)]">Gender (Lookup)</span>
@@ -626,16 +685,52 @@ function PatientForm({
               onChange={(e) => setValues((v) => ({ ...v, guardianName: e.target.value }))}
             />
             <Input
-              label="Guardian NIC"
-              name="guardianNic"
-              value={values.guardianNic ?? ""}
-              onChange={(e) => setValues((v) => ({ ...v, guardianNic: e.target.value }))}
+              label="Guardian Email"
+              name="guardianEmail"
+              type="email"
+              value={values.guardianEmail ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, guardianEmail: e.target.value }))}
             />
             <Input
               label="Guardian Contact No"
               name="guardianContactNo"
               value={values.guardianContactNo ?? ""}
-              onChange={(e) => setValues((v) => ({ ...v, guardianContactNo: e.target.value }))}
+              onChange={(e) =>
+                setValues((v) => ({
+                  ...v,
+                  guardianContactNo: e.target.value,
+                  ...(isGuardianWhatsappSameAsContact
+                    ? { guardianWhatsappNo: e.target.value }
+                    : {}),
+                }))
+              }
+            />
+            <label className="flex items-center gap-2 self-end pb-2 text-xs text-[var(--text-secondary)]">
+              <input
+                type="checkbox"
+                checked={isGuardianWhatsappSameAsContact}
+                disabled={!hasGuardianContactNo}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setIsGuardianWhatsappSameAsContact(checked);
+                  if (checked) {
+                    setValues((v) => ({
+                      ...v,
+                      guardianWhatsappNo: v.guardianContactNo ?? "",
+                    }));
+                  }
+                }}
+              />
+              Same as guardian contact number
+            </label>
+            <Input
+              label="Guardian WhatsApp Number"
+              name="guardianWhatsappNo"
+              value={values.guardianWhatsappNo ?? ""}
+              disabled={isGuardianWhatsappSameAsContact}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, guardianWhatsappNo: e.target.value }))
+              }
             />
             <Input
               label="Guardian Relationship"
