@@ -27,7 +27,11 @@ async function getSubscriptionPlans() {
   return backendJson<SubscriptionPlanOption[]>("/api/subscription-plans");
 }
 
-export default async function PatientPage() {
+export default async function PatientPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ open?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -41,6 +45,8 @@ export default async function PatientPage() {
   const canCreate = hasAnyPermission(me.permissions, [...PERMS.create]);
   const canEdit = hasAnyPermission(me.permissions, [...PERMS.edit]);
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
+  const params = (await searchParams) ?? {};
+  const openCreateOnMount = params.open === "create";
 
   const [patients, genders, patientTypes, billingRecipients, subscriptionPlans] = await Promise.all([
     getPatients(),
@@ -68,6 +74,7 @@ export default async function PatientPage() {
             canCreate={canCreate}
             canEdit={canEdit}
             canDelete={canDelete}
+            openCreateOnMount={openCreateOnMount}
           />
         )}
       </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -42,6 +42,7 @@ type PatientManagerProps = {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  openCreateOnMount?: boolean;
 };
 type LookupOption = { id: string; lookupKey: string; lookupValue: string };
 type SubscriptionPlanOption = { id: string; planName: string };
@@ -58,6 +59,7 @@ export function PatientManager({
   canCreate,
   canEdit,
   canDelete,
+  openCreateOnMount = false,
 }: PatientManagerProps) {
   const [patients, setPatients] = useState<Patient[]>(initialPatients);
   const [mode, setMode] = useState<Mode>("none");
@@ -69,6 +71,13 @@ export function PatientManager({
     if (!selectedId) return null;
     return patients.find((p) => p.id === selectedId) ?? null;
   }, [patients, selectedId]);
+
+  useEffect(() => {
+    if (!openCreateOnMount || !canCreate) return;
+    setMode("create");
+    setSelectedId(null);
+    setError(null);
+  }, [openCreateOnMount, canCreate]);
 
   useEscapeKey(
     () => {

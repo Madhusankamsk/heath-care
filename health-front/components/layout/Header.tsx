@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  Crown,
   LayoutDashboard,
   Maximize,
   Menu,
@@ -11,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { UserMenu } from "@/components/auth/UserMenu";
 import { canAccessAdmin, canAccessSuperAdmin } from "@/lib/adminAccess";
+import { hasAnyPermission } from "@/lib/rbac";
 import { useMe } from "@/lib/useMe";
 
 export type HeaderProps = {
@@ -34,6 +34,10 @@ export function Header({
   const canSeeSuperAdmin =
     meState.status === "authenticated"
       ? canAccessSuperAdmin(meState.me.user.role, meState.me.permissions)
+      : false;
+  const canCreatePatient =
+    meState.status === "authenticated"
+      ? hasAnyPermission(meState.me.permissions, ["patients:create"])
       : false;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -94,22 +98,13 @@ export function Header({
               <LayoutDashboard className="h-4 w-4" aria-hidden />
               Home
             </Link>
-            {canSeeAdmin ? (
+            {(canSeeAdmin || canSeeSuperAdmin) && canCreatePatient ? (
               <Link
-                href="/dashboard/admin"
+                href="/dashboard/clients/patient?open=create"
                 className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
               >
                 <ShieldCheck className="h-4 w-4" aria-hidden />
-                Admin
-              </Link>
-            ) : null}
-            {canSeeSuperAdmin ? (
-              <Link
-                href="/dashboard/super-admin"
-                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-              >
-                <Crown className="h-4 w-4" aria-hidden />
-                Super Admin
+                Patient
               </Link>
             ) : null}
           </nav>
