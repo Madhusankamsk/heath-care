@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 
+import { useEscapeKey } from "@/lib/useEscapeKey";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CreateRoleForm } from "@/components/forms/CreateRoleForm";
 
 export function CreateRoleModal() {
   const [isOpen, setIsOpen] = useState(false);
+
+  useEscapeKey(() => setIsOpen(false), isOpen);
 
   return (
     <>

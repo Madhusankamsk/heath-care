@@ -28,6 +28,54 @@ alwaysApply: true
 - Keep spacing system consistent (`gap-2/4/6`, `px-4 sm:px-6 lg:px-8`) and avoid random size jumps.
 - Mobile drawer/overlay interactions must remain accessible and keyboard-dismissable.
 
+## Dashboard: create vs edit forms (modal pattern)
+
+For **admin / dashboard** screens that manage entities (CRUD with a table + actions), use this default split:
+
+- **Create**: show the create flow in a **modal dialog**, not a full-width inline form above the table.
+- **Edit**: keep **inline** above the table inside a **`surface-card`** block (unless the product explicitly requires edit-in-modal).
+
+### Modal shell (match super-admin create flows)
+
+Reference implementations:
+
+- `components/forms/CreatePermissionModal.tsx`
+- `components/forms/CreateRoleModal.tsx`
+
+Structure to copy:
+
+- Overlay: `fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8`
+- Scroll container: `max-h-[90vh] w-full max-w-3xl overflow-y-auto` (use `max-w-4xl` if the form is very wide)
+- Inner **`Card`** (from `components/ui/Card.tsx`)
+- Header row: title (`text-[var(--text-primary)]`), short description (`text-[var(--text-secondary)]`), **×** close button (keyboard-focusable, `aria-label="Close"`)
+- Form content below the header (no duplicate “card inside card” chrome)
+
+Accessibility:
+
+- Root overlay: `role="dialog"`, `aria-modal="true"`, `aria-labelledby` pointing at the title element `id`.
+- **Escape closes** the modal: use the shared hook `lib/useEscapeKey.ts` (`useEscapeKey(onClose, isOpen)`) so `Escape` dismisses while the modal is mounted, matching close/× behavior.
+
+### Form component pattern
+
+Prefer a single form component with a layout flag:
+
+- `layout="modal"`: **no** outer title row duplicated in the form (modal supplies the header); render fields + footer actions only.
+- `layout="card"`: include the **inline** title row + Cancel in the form header; wrap with `surface-card p-6` for edit mode.
+
+### Buttons
+
+- Primary **Create …** toolbar buttons should match existing sizing: `className="h-10 px-4 text-xs sm:text-sm"`.
+
+### Form controls + errors (tokens)
+
+- `<select>`: use token borders/surfaces and brand focus ring (same approach as updated admin managers): `border-[var(--border)]`, `bg-[var(--surface)]`, `text-[var(--text-primary)]`, `focus:border-[var(--brand-primary)]`, `focus:ring-[var(--brand-primary)]/25`.
+- Inline form errors: `border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]` (avoid hardcoded `red-50/red-800` for new code).
+
+### Safety
+
+- Do **not** weaken auth/RBAC/route guards when introducing modals.
+- Keep fetch URLs, payloads, and permission gating identical to the previous inline create flow unless the API contract intentionally changes.
+
 ## Scope and safety
 
 - Avoid broad rewrites when small token/primitive updates can achieve the same visual result.

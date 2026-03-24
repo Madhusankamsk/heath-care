@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 
+import { useEscapeKey } from "@/lib/useEscapeKey";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CreatePermissionForm } from "@/components/forms/CreatePermissionForm";
 
 export function CreatePermissionModal() {
   const [isOpen, setIsOpen] = useState(false);
+
+  useEscapeKey(() => setIsOpen(false), isOpen);
 
   return (
     <>

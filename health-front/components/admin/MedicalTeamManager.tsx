@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { useEscapeKey } from "@/lib/useEscapeKey";
 
 export type MedicalTeam = {
   id: string;
@@ -78,6 +80,14 @@ export function MedicalTeamManager({
     return teams.find((t) => t.id === selectedId) ?? null;
   }, [teams, selectedId]);
 
+  useEscapeKey(
+    () => {
+      setMode("none");
+      setError(null);
+    },
+    mode === "create" && canCreate,
+  );
+
   async function refresh() {
     const res = await fetch("/api/medical-teams", { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to refresh medical teams");
@@ -123,6 +133,7 @@ export function MedicalTeamManager({
           {canCreate ? (
             <Button
               variant="primary"
+              className="h-10 px-4 text-xs sm:text-sm"
               onClick={() => {
                 setMode("create");
                 setSelectedId(null);
@@ -148,32 +159,72 @@ export function MedicalTeamManager({
         </div>
       </div>
 
-      {mode === "create" ? (
-        <MedicalTeamForm
-          title="Create medical team"
-          submitLabel="Create"
-          vehicles={vehicles}
-          members={members}
-          onCancel={() => setMode("none")}
-          onSubmit={async (data) => {
-            setError(null);
-            const res = await fetch("/api/medical-teams", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data),
-            });
-            if (!res.ok) {
-              const msg = await res.text().catch(() => "");
-              throw new Error(msg || "Create failed");
-            }
-            await refresh();
-            setMode("none");
-          }}
-        />
+      {mode === "create" && canCreate ? (
+        <div
+          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-medical-team-title"
+        >
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto">
+            <Card>
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2
+                    id="create-medical-team-title"
+                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
+                  >
+                    Create medical team
+                  </h2>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Assign a vehicle and team members. Optionally designate a lead.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+                  onClick={() => {
+                    setMode("none");
+                    setError(null);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              <MedicalTeamForm
+                layout="modal"
+                title="Create medical team"
+                submitLabel="Create"
+                vehicles={vehicles}
+                members={members}
+                onCancel={() => {
+                  setMode("none");
+                  setError(null);
+                }}
+                onSubmit={async (data) => {
+                  setError(null);
+                  const res = await fetch("/api/medical-teams", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                  });
+                  if (!res.ok) {
+                    const msg = await res.text().catch(() => "");
+                    throw new Error(msg || "Create failed");
+                  }
+                  await refresh();
+                  setMode("none");
+                }}
+              />
+            </Card>
+          </div>
+        </div>
       ) : null}
 
       {mode === "edit" && selected ? (
         <MedicalTeamForm
+          layout="card"
           title="Edit medical team"
           submitLabel="Save changes"
           vehicles={vehicles}
@@ -349,6 +400,7 @@ function MedicalTeamForm({
   onCancel,
   onSubmit,
   initial,
+  layout = "card",
 }: {
   title: string;
   submitLabel: string;
@@ -357,6 +409,7 @@ function MedicalTeamForm({
   onCancel: () => void;
   onSubmit: (values: MedicalTeamFormValues) => Promise<void>;
   initial?: Partial<MedicalTeamFormValues>;
+  layout?: "card" | "modal";
 }) {
   const [values, setValues] = useState<MedicalTeamFormValues>({
     teamName: initial?.teamName ?? "",
@@ -367,17 +420,22 @@ function MedicalTeamForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div className="text-lg font-semibold">{title}</div>
-        <Button variant="secondary" onClick={onCancel} disabled={isSubmitting}>
-          Cancel
-        </Button>
-      </div>
+  const selectClass =
+    "h-11 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)]/25";
+
+  const formBody = (
+    <>
+      {layout === "card" ? (
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div className="text-lg font-semibold text-[var(--text-primary)]">{title}</div>
+          <Button variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+            Cancel
+          </Button>
+        </div>
+      ) : null}
 
       {error ? (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+        <div className="mb-4 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-4 py-3 text-sm text-[var(--danger)]">
           {error}
         </div>
       ) : null}
@@ -415,9 +473,9 @@ function MedicalTeamForm({
         />
 
         <label className="flex flex-col gap-2 text-sm">
-          <span className="font-medium text-zinc-800 dark:text-zinc-200">Vehicle</span>
+          <span className="font-medium text-[var(--text-primary)]">Vehicle</span>
           <select
-            className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-800"
+            className={selectClass}
             value={values.vehicleId}
             onChange={(e) => setValues((v) => ({ ...v, vehicleId: e.target.value }))}
             required
@@ -431,10 +489,8 @@ function MedicalTeamForm({
         </label>
 
         <div className="sm:col-span-2">
-          <div className="mb-2 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-            Team Members
-          </div>
-          <div className="grid max-h-52 gap-2 overflow-auto rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
+          <div className="mb-2 text-sm font-medium text-[var(--text-primary)]">Team Members</div>
+          <div className="grid max-h-52 gap-2 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
             {members.map((member) => {
               const checked = values.memberIds.includes(member.id);
               return (
@@ -456,7 +512,7 @@ function MedicalTeamForm({
                       }));
                     }}
                   />
-                  <span className="text-zinc-700 dark:text-zinc-300">
+                  <span className="text-[var(--text-secondary)]">
                     {member.fullName} ({member.email})
                     {member.role?.roleName ? ` - ${member.role.roleName}` : ""}
                   </span>
@@ -467,9 +523,9 @@ function MedicalTeamForm({
         </div>
 
         <label className="flex flex-col gap-2 text-sm sm:col-span-2">
-          <span className="font-medium text-zinc-800 dark:text-zinc-200">Team Lead</span>
+          <span className="font-medium text-[var(--text-primary)]">Team Lead</span>
           <select
-            className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-800"
+            className={selectClass}
             value={values.leadMemberId ?? ""}
             onChange={(e) =>
               setValues((v) => ({
@@ -499,6 +555,12 @@ function MedicalTeamForm({
           </Button>
         </div>
       </form>
-    </div>
+    </>
   );
+
+  if (layout === "modal") {
+    return formBody;
+  }
+
+  return <div className="surface-card p-6">{formBody}</div>;
 }

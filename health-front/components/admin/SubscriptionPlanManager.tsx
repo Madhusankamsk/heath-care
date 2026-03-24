@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { useEscapeKey } from "@/lib/useEscapeKey";
 
 export type SubscriptionPlan = {
   id: string;
@@ -45,6 +47,14 @@ export function SubscriptionPlanManager({
     if (!selectedId) return null;
     return plans.find((p) => p.id === selectedId) ?? null;
   }, [plans, selectedId]);
+
+  useEscapeKey(
+    () => {
+      setMode("none");
+      setError(null);
+    },
+    mode === "create" && canCreate,
+  );
 
   async function refresh() {
     const res = await fetch("/api/subscription-plans", { cache: "no-store" });
@@ -91,6 +101,7 @@ export function SubscriptionPlanManager({
           {canCreate ? (
             <Button
               variant="primary"
+              className="h-10 px-4 text-xs sm:text-sm"
               onClick={() => {
                 setMode("create");
                 setSelectedId(null);
@@ -116,26 +127,65 @@ export function SubscriptionPlanManager({
         </div>
       </div>
 
-      {mode === "create" ? (
-        <SubscriptionPlanForm
-          title="Create subscription plan"
-          submitLabel="Create"
-          planTypes={planTypes}
-          onCancel={() => setMode("none")}
-          onSubmit={async (values) => {
-            const res = await fetch("/api/subscription-plans", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(values),
-            });
-            if (!res.ok) {
-              const msg = await res.text().catch(() => "");
-              throw new Error(msg || "Create failed");
-            }
-            await refresh();
-            setMode("none");
-          }}
-        />
+      {mode === "create" && canCreate ? (
+        <div
+          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-subscription-plan-title"
+        >
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto">
+            <Card>
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2
+                    id="create-subscription-plan-title"
+                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
+                  >
+                    Create subscription plan
+                  </h2>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Add a new plan with pricing, duration, and member limits.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+                  onClick={() => {
+                    setMode("none");
+                    setError(null);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              <SubscriptionPlanForm
+                layout="modal"
+                title="Create subscription plan"
+                submitLabel="Create"
+                planTypes={planTypes}
+                onCancel={() => {
+                  setMode("none");
+                  setError(null);
+                }}
+                onSubmit={async (values) => {
+                  const res = await fetch("/api/subscription-plans", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(values),
+                  });
+                  if (!res.ok) {
+                    const msg = await res.text().catch(() => "");
+                    throw new Error(msg || "Create failed");
+                  }
+                  await refresh();
+                  setMode("none");
+                }}
+              />
+            </Card>
+          </div>
+        </div>
       ) : null}
 
       {mode === "edit" && selected ? (
@@ -300,6 +350,7 @@ function SubscriptionPlanForm({
   onCancel,
   onSubmit,
   initial,
+  layout = "card",
 }: {
   title: string;
   submitLabel: string;
@@ -307,6 +358,7 @@ function SubscriptionPlanForm({
   onCancel: () => void;
   onSubmit: (values: SubscriptionPlanFormValues) => Promise<void>;
   initial?: Partial<SubscriptionPlanFormValues>;
+  layout?: "card" | "modal";
 }) {
   const [values, setValues] = useState<SubscriptionPlanFormValues>({
     planName: initial?.planName ?? "",
@@ -319,17 +371,19 @@ function SubscriptionPlanForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div className="text-lg font-semibold">{title}</div>
-        <Button variant="secondary" onClick={onCancel} disabled={isSubmitting}>
-          Cancel
-        </Button>
-      </div>
+  const formBody = (
+    <>
+      {layout === "card" ? (
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div className="text-lg font-semibold text-[var(--text-primary)]">{title}</div>
+          <Button variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+            Cancel
+          </Button>
+        </div>
+      ) : null}
 
       {error ? (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+        <div className="mb-4 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-4 py-3 text-sm text-[var(--danger)]">
           {error}
         </div>
       ) : null}
@@ -357,9 +411,9 @@ function SubscriptionPlanForm({
           required
         />
         <label className="flex flex-col gap-2 text-sm">
-          <span className="font-medium text-zinc-800 dark:text-zinc-200">Plan type</span>
+          <span className="font-medium text-[var(--text-primary)]">Plan type</span>
           <select
-            className="h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-300 focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-800"
+            className="h-11 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)]/25"
             value={values.planTypeId}
             onChange={(e) => setValues((v) => ({ ...v, planTypeId: e.target.value }))}
             required
@@ -413,6 +467,16 @@ function SubscriptionPlanForm({
           </Button>
         </div>
       </form>
+    </>
+  );
+
+  if (layout === "modal") {
+    return formBody;
+  }
+
+  return (
+    <div className="surface-card p-6">
+      {formBody}
     </div>
   );
 }
