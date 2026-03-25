@@ -1,0 +1,141 @@
+import prisma from "../prisma/client";
+
+export type SubscriptionAccountCreateInput = {
+  accountName?: string | null;
+  planId: string;
+  primaryContactId: string;
+  startDate?: string | Date | null;
+  endDate?: string | Date | null;
+  statusId?: string | null;
+};
+
+function toDateOrUndefined(value?: string | Date | null) {
+  if (value === undefined || value === null || value === "") return undefined;
+  return typeof value === "string" ? new Date(value) : value;
+}
+
+const includePayload = {
+  plan: {
+    select: {
+      id: true,
+      planName: true,
+      planTypeId: true,
+      durationDays: true,
+      maxMembers: true,
+      isActive: true,
+      planTypeLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
+    },
+  },
+  primaryContact: { select: { id: true, fullName: true, contactNo: true } },
+  statusLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
+  members: {
+    select: {
+      id: true,
+      patientId: true,
+      joinedAt: true,
+      patient: { select: { id: true, fullName: true } },
+    },
+    orderBy: { joinedAt: "asc" as const },
+  },
+} as const;
+
+export async function listSubscriptionAccounts() {
+  return prisma.subscriptionAccount.findMany({
+    orderBy: [{ startDate: "desc" }, { accountName: "asc" }],
+    include: includePayload,
+  });
+}
+
+export async function getSubscriptionAccountById(id: string) {
+  return prisma.subscriptionAccount.findUnique({
+    where: { id },
+    include: includePayload,
+  });
+}
+
+export async function createSubscriptionAccount(data: SubscriptionAccountCreateInput) {
+  const startDate = toDateOrUndefined(data.startDate);
+  const endDate = toDateOrUndefined(data.endDate);
+
+  return prisma.$transaction(async (tx) => {
+    const account = await tx.subscriptionAccount.create({
+      data: {
+        accountName: data.accountName ?? undefined,
+        planId: data.planId,
+        primaryContactId: data.primaryContactId,
+        startDate,
+        endDate,
+        statusId: data.statusId ?? undefined,
+      },
+    });
+
+    await tx.subscriptionMember.upsert({
+      where: {
+        subscriptionAccountId_patientId: {
+          subscriptionAccountId: account.id,
+          patientId: data.primaryContactId,
+        },
+      },
+      update: {},
+      create: {
+        subscriptionAccountId: account.id,
+        patientId: data.primaryContactId,
+      },
+    });
+
+    return tx.subscriptionAccount.findUniqueOrThrow({
+      where: { id: account.id },
+      include: includePayload,
+    });
+  });
+}
+
+export async function updateSubscriptionAccount(
+  id: string,
+  data: Partial<SubscriptionAccountCreateInput>,
+) {
+  const startDate = toDateOrUndefined(data.startDate);
+  const endDate = toDateOrUndefined(data.endDate);
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.subscriptionAccount.update({
+      where: { id },
+      data: {
+        accountName: data.accountName ?? undefined,
+        planId: data.planId,
+        primaryContactId: data.primaryContactId,
+        startDate,
+        endDate,
+        statusId: data.statusId ?? undefined,
+      },
+    });
+
+    if (data.primaryContactId) {
+      await tx.subscriptionMember.upsert({
+        where: {
+          subscriptionAccountId_patientId: {
+            subscriptionAccountId: updated.id,
+            patientId: data.primaryContactId,
+          },
+        },
+        update: {},
+        create: {
+          subscriptionAccountId: updated.id,
+          patientId: data.primaryContactId,
+        },
+      });
+    }
+
+    return tx.subscriptionAccount.findUniqueOrThrow({
+      where: { id: updated.id },
+      include: includePayload,
+    });
+  });
+}
+
+export async function deleteSubscriptionAccount(id: string) {
+  return prisma.subscriptionAccount.delete({
+    where: { id },
+  });
+}
+

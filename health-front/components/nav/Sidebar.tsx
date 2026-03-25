@@ -57,6 +57,12 @@ const navItems: NavItem[] = [
         icon: <Stethoscope className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["patients:list", "patients:read"],
       },
+      {
+        href: "/dashboard/clients/family-corporate",
+        label: "Family/Corporate",
+        icon: <Building2 className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["profiles:list", "profiles:read", "patients:read"],
+      },
     ],
   },
   {

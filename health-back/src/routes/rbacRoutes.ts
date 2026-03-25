@@ -62,6 +62,13 @@ import {
   listSubscriptionPlanTypesHandler,
   updateSubscriptionPlanHandler,
 } from "../controllers/subscriptionPlanController";
+import {
+  createSubscriptionAccountHandler,
+  deleteSubscriptionAccountHandler,
+  getSubscriptionAccountHandler,
+  listSubscriptionAccountsHandler,
+  updateSubscriptionAccountHandler,
+} from "../controllers/subscriptionAccountController";
 import { requireAnyPermission } from "../middleware/permissions";
 import prisma from "../prisma/client";
 
@@ -271,6 +278,33 @@ router.delete(
   "/subscription-plans/:id",
   requireAnyPermission(["profiles:delete"]),
   deleteSubscriptionPlanHandler,
+);
+
+// Subscription accounts
+router.get(
+  "/subscription-accounts",
+  requireAnyPermission(["profiles:list", "patients:read"]),
+  listSubscriptionAccountsHandler,
+);
+router.post(
+  "/subscription-accounts",
+  requireAnyPermission(["profiles:create", "patients:create"]),
+  createSubscriptionAccountHandler,
+);
+router.get(
+  "/subscription-accounts/:id",
+  requireAnyPermission(["profiles:read", "patients:read"]),
+  getSubscriptionAccountHandler,
+);
+router.put(
+  "/subscription-accounts/:id",
+  requireAnyPermission(["profiles:update", "patients:update"]),
+  updateSubscriptionAccountHandler,
+);
+router.delete(
+  "/subscription-accounts/:id",
+  requireAnyPermission(["profiles:delete", "patients:delete"]),
+  deleteSubscriptionAccountHandler,
 );
 
 export default router;
