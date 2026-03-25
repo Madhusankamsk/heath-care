@@ -209,7 +209,14 @@ export function Sidebar({
           variant === "mobile" ? "pb-4" : "",
         ].join(" ")}
       >
-        <div className="relative px-2 pt-2">
+        <div
+          className={[
+            "relative px-2 pt-2",
+            // When collapsed, the "Navigation" label is hidden but the toggle remains
+            // absolutely positioned — reserve vertical space so it doesn't overlap the first icon.
+            isCollapsed ? "min-h-11" : "",
+          ].join(" ")}
+        >
           {isCollapsed ? null : (
             <p className="pr-10 pt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
               Navigation
@@ -232,7 +239,12 @@ export function Sidebar({
           ) : null}
         </div>
 
-        <nav className="flex flex-col gap-1">
+        <nav
+          className={[
+            "flex flex-col gap-1",
+            isCollapsed ? "pt-2" : "",
+          ].join(" ")}
+        >
           {visibleItems.map((item) => {
             const hasChildren = Boolean(item.children?.length);
             const active = isActive(pathname, item.href);
