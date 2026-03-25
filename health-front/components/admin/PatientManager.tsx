@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -30,6 +30,9 @@ export type Patient = {
   billingRecipientId?: string | null;
   genderLookup?: { id: string; lookupValue: string } | null;
   billingRecipientLookup?: { id: string; lookupValue: string } | null;
+  isSubscribed?: boolean;
+  subscriptionPlanId?: string | null;
+  subscriptionPlanName?: string | null;
 };
 
 type PatientManagerProps = {
@@ -314,6 +317,7 @@ export function PatientManager({
                 genders={genders}
                 billingRecipients={billingRecipients}
                 subscriptionPlans={subscriptionPlans}
+                includeSubscriptionPlan
                 initial={{
                   nicOrPassport: selected.nicOrPassport ?? "",
                   fullName: selected.fullName,
@@ -331,6 +335,8 @@ export function PatientManager({
                   guardianContactNo: selected.guardianContactNo ?? "",
                   guardianRelationship: selected.guardianRelationship ?? "",
                   billingRecipientId: selected.billingRecipientId ?? "",
+                  isSubscribed: Boolean(selected.isSubscribed),
+                  subscriptionPlanId: selected.subscriptionPlanId ?? "",
                 }}
                 onCancel={() => setMode("none")}
                 onSubmit={async (values) => {
@@ -440,6 +446,16 @@ export function PatientManager({
                       <dt className="preview-label">Billing Recipient</dt>
                       <dd className="preview-value">{selected.billingRecipientLookup?.lookupValue ?? "—"}</dd>
                     </div>
+                    <div className="preview-row">
+                      <dt className="preview-label">Subscribed</dt>
+                      <dd className="preview-value">{selected.isSubscribed ? "Yes" : "No"}</dd>
+                    </div>
+                    {selected.isSubscribed ? (
+                      <div className="preview-row">
+                        <dt className="preview-label">Subscription Plan</dt>
+                        <dd className="preview-value">{selected.subscriptionPlanName ?? "—"}</dd>
+                      </div>
+                    ) : null}
                   </dl>
                 </section>
                 <section className="preview-section">
@@ -596,6 +612,14 @@ function PatientForm({
   initial?: Partial<PatientFormValues>;
   layout?: "card" | "modal";
 }) {
+  // Billing recipient is a lookup. If the patient has no guardian, we force billing recipient to "Patient".
+  const forcedPatientBillingRecipientId =
+    billingRecipients.find((br) => br.lookupKey === "PATIENT")?.id ??
+    billingRecipients[0]?.id ??
+    "";
+
+  const lastManualBillingRecipientIdRef = useRef<string>("");
+
   const [values, setValues] = useState<PatientFormValues>({
     nicOrPassport: initial?.nicOrPassport ?? "",
     fullName: initial?.fullName ?? "",
@@ -612,10 +636,23 @@ function PatientForm({
     guardianWhatsappNo: initial?.guardianWhatsappNo ?? "",
     guardianContactNo: initial?.guardianContactNo ?? "",
     guardianRelationship: initial?.guardianRelationship ?? "",
-    billingRecipientId: initial?.billingRecipientId ?? billingRecipients[0]?.id ?? "",
+    billingRecipientId: initial?.hasGuardian
+      ? initial?.billingRecipientId ?? billingRecipients[0]?.id ?? ""
+      : forcedPatientBillingRecipientId,
     subscriptionPlanId: initial?.subscriptionPlanId ?? "",
     isSubscribed: initial?.isSubscribed ?? false,
   });
+
+  // Store last manually editable billing recipient when the form initializes.
+  useEffect(() => {
+    if (values.hasGuardian) {
+      lastManualBillingRecipientIdRef.current = values.billingRecipientId ?? "";
+    } else {
+      lastManualBillingRecipientIdRef.current =
+        values.billingRecipientId ?? forcedPatientBillingRecipientId;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [isWhatsappSameAsContact, setIsWhatsappSameAsContact] = useState(
     () =>
       Boolean(initial?.contactNo) &&
@@ -829,7 +866,26 @@ function PatientForm({
           <input
             type="checkbox"
             checked={Boolean(values.hasGuardian)}
-            onChange={(e) => setValues((v) => ({ ...v, hasGuardian: e.target.checked }))}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setValues((v) => {
+                if (!checked) {
+                  // Patient has no guardian -> do not allow editing billing recipient.
+                  lastManualBillingRecipientIdRef.current = v.billingRecipientId ?? "";
+                  return { ...v, hasGuardian: checked, billingRecipientId: forcedPatientBillingRecipientId };
+                }
+                // Restoring manual value when guardian is enabled again.
+                return {
+                  ...v,
+                  hasGuardian: checked,
+                  billingRecipientId:
+                    lastManualBillingRecipientIdRef.current ||
+                    initial?.billingRecipientId ||
+                    billingRecipients[0]?.id ||
+                    forcedPatientBillingRecipientId,
+                };
+              });
+            }}
           />
           Has guardian
         </label>
@@ -899,21 +955,23 @@ function PatientForm({
             />
           </>
         ) : null}
-        <label className="flex flex-col gap-2 text-sm sm:col-span-2">
-          <span className="font-medium text-[var(--text-primary)]">Billing Recipient</span>
-          <select
-            className={selectClass}
-            value={values.billingRecipientId ?? ""}
-            onChange={(e) => setValues((v) => ({ ...v, billingRecipientId: e.target.value }))}
-          >
-            <option value="">Select</option>
-            {billingRecipients.map((br) => (
-              <option key={br.id} value={br.id}>
-                {br.lookupValue}
-              </option>
-            ))}
-          </select>
-        </label>
+        {values.hasGuardian ? (
+          <label className="flex flex-col gap-2 text-sm sm:col-span-2">
+            <span className="font-medium text-[var(--text-primary)]">Billing Recipient</span>
+            <select
+              className={selectClass}
+              value={values.billingRecipientId ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, billingRecipientId: e.target.value }))}
+            >
+              <option value="">Select</option>
+              {billingRecipients.map((br) => (
+                <option key={br.id} value={br.id}>
+                  {br.lookupValue}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <div className="flex items-center justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
             Cancel

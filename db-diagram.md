@@ -129,7 +129,6 @@ Table patients {
   whatsapp_no text
   gender text
   gender_id uuid [ref: > lookups.id]
-  patient_type_id uuid [ref: > lookups.id] // SUBSCRIPTION vs ONE_TIME
   address text
   has_insurance boolean [default: false]
   has_guardian boolean [default: false]
@@ -140,6 +139,9 @@ Table patients {
   guardian_relationship text
   billing_recipient_id uuid [ref: > lookups.id]
 }
+
+// Subscription state is derived from subscription_members/subscription_accounts
+// (not stored as a patient_type_id column on patients).
 
 // 8. OPD & QUEUE
 Table opd_queue {

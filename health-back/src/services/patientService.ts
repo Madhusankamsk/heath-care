@@ -22,23 +22,86 @@ export type PatientCreateInput = {
 };
 
 export async function listPatients() {
-  return prisma.patient.findMany({
+  const now = new Date();
+
+  const patients = await prisma.patient.findMany({
     orderBy: { fullName: "asc" },
     include: {
       genderLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
       billingRecipientLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
+      subscriptionMemberships: {
+        include: {
+          subscriptionAccount: {
+            include: {
+              plan: true,
+            },
+          },
+        },
+      },
     },
+  });
+
+  return patients.map((p) => {
+    const activeMembership = p.subscriptionMemberships.find((sm) => {
+      const acc = sm.subscriptionAccount;
+      if (!acc) return false;
+      const endOk = !acc.endDate || acc.endDate.getTime() >= now.getTime();
+      return endOk && Boolean(acc.plan?.isActive);
+    });
+
+    const subscriptionPlanId = activeMembership?.subscriptionAccount?.plan?.id ?? null;
+    const subscriptionPlanName =
+      activeMembership?.subscriptionAccount?.plan?.planName ?? null;
+
+    const { subscriptionMemberships: _ignored, ...rest } = p as any;
+    return {
+      ...rest,
+      isSubscribed: Boolean(subscriptionPlanId),
+      subscriptionPlanId,
+      subscriptionPlanName,
+    };
   });
 }
 
 export async function getPatientById(id: string) {
-  return prisma.patient.findUnique({
+  const now = new Date();
+
+  const patient = await prisma.patient.findUnique({
     where: { id },
     include: {
       genderLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
       billingRecipientLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
+      subscriptionMemberships: {
+        include: {
+          subscriptionAccount: {
+            include: {
+              plan: true,
+            },
+          },
+        },
+      },
     },
   });
+
+  if (!patient) return null;
+
+  const activeMembership = patient.subscriptionMemberships.find((sm) => {
+    const acc = sm.subscriptionAccount;
+    if (!acc) return false;
+    const endOk = !acc.endDate || acc.endDate.getTime() >= now.getTime();
+    return endOk && Boolean(acc.plan?.isActive);
+  });
+
+  const subscriptionPlanId = activeMembership?.subscriptionAccount?.plan?.id ?? null;
+  const subscriptionPlanName = activeMembership?.subscriptionAccount?.plan?.planName ?? null;
+
+  const { subscriptionMemberships: _ignored, ...rest } = patient as any;
+  return {
+    ...rest,
+    isSubscribed: Boolean(subscriptionPlanId),
+    subscriptionPlanId,
+    subscriptionPlanName,
+  };
 }
 
 export async function createPatient(data: PatientCreateInput) {
