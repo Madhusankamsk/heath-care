@@ -2,8 +2,12 @@ import prisma from "../prisma/client";
 
 export type SubscriptionAccountCreateInput = {
   accountName?: string | null;
+  registrationNo?: string | null;
+  billingAddress?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  whatsappNo?: string | null;
   planId: string;
-  primaryContactId: string;
   startDate?: string | Date | null;
   endDate?: string | Date | null;
   statusId?: string | null;
@@ -26,14 +30,10 @@ const includePayload = {
       planTypeLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
     },
   },
-  primaryContact: { select: { id: true, fullName: true, contactNo: true } },
   statusLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
   members: {
     select: {
       id: true,
-      patientId: true,
-      joinedAt: true,
-      patient: { select: { id: true, fullName: true } },
     },
     orderBy: { joinedAt: "asc" as const },
   },
@@ -61,25 +61,15 @@ export async function createSubscriptionAccount(data: SubscriptionAccountCreateI
     const account = await tx.subscriptionAccount.create({
       data: {
         accountName: data.accountName ?? undefined,
+        registrationNo: data.registrationNo ?? undefined,
+        billingAddress: data.billingAddress ?? undefined,
+        contactEmail: data.contactEmail ?? undefined,
+        contactPhone: data.contactPhone ?? undefined,
+        whatsappNo: data.whatsappNo ?? undefined,
         planId: data.planId,
-        primaryContactId: data.primaryContactId,
         startDate,
         endDate,
         statusId: data.statusId ?? undefined,
-      },
-    });
-
-    await tx.subscriptionMember.upsert({
-      where: {
-        subscriptionAccountId_patientId: {
-          subscriptionAccountId: account.id,
-          patientId: data.primaryContactId,
-        },
-      },
-      update: {},
-      create: {
-        subscriptionAccountId: account.id,
-        patientId: data.primaryContactId,
       },
     });
 
@@ -102,29 +92,17 @@ export async function updateSubscriptionAccount(
       where: { id },
       data: {
         accountName: data.accountName ?? undefined,
+        registrationNo: data.registrationNo ?? undefined,
+        billingAddress: data.billingAddress ?? undefined,
+        contactEmail: data.contactEmail ?? undefined,
+        contactPhone: data.contactPhone ?? undefined,
+        whatsappNo: data.whatsappNo ?? undefined,
         planId: data.planId,
-        primaryContactId: data.primaryContactId,
         startDate,
         endDate,
         statusId: data.statusId ?? undefined,
       },
     });
-
-    if (data.primaryContactId) {
-      await tx.subscriptionMember.upsert({
-        where: {
-          subscriptionAccountId_patientId: {
-            subscriptionAccountId: updated.id,
-            patientId: data.primaryContactId,
-          },
-        },
-        update: {},
-        create: {
-          subscriptionAccountId: updated.id,
-          patientId: data.primaryContactId,
-        },
-      });
-    }
 
     return tx.subscriptionAccount.findUniqueOrThrow({
       where: { id: updated.id },

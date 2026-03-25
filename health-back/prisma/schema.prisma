@@ -113,7 +113,6 @@ model Patient {
   opdQueue                       OpdQueue[]
   visitRecords                   VisitRecord[]
   invoices                       Invoice[]
-  primaryForSubscriptionAccounts SubscriptionAccount[] @relation("SubscriptionPrimaryContact")
   subscriptionMemberships        SubscriptionMember[]
   diagnosticReports              DiagnosticReport[]
   labSamples                     LabSample[]
@@ -165,14 +164,17 @@ model SubscriptionPlan {
 model SubscriptionAccount {
   id               String    @id @default(uuid())
   accountName      String?
+  registrationNo  String?
+  billingAddress  String?
+  contactEmail    String?
+  contactPhone    String?
+  whatsappNo      String?
   planId           String
-  primaryContactId String
   startDate        DateTime?
   endDate          DateTime?
   statusId         String?
 
   plan           SubscriptionPlan     @relation(fields: [planId], references: [id])
-  primaryContact Patient              @relation("SubscriptionPrimaryContact", fields: [primaryContactId], references: [id])
   statusLookup   Lookup?              @relation("SubscriptionAccountStatus", fields: [statusId], references: [id])
   members        SubscriptionMember[]
 }

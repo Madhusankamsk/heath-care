@@ -1,6 +1,6 @@
 // =========================================================
-// MOBILE HEALTHCARE - ENTERPRISE MASTER SCHEMA (Prisma-aligned)
-// FEATURES: GROUP SUBS (FAMILY/CORP), DIAGNOSTICS, INVENTORY
+// MOBILE HEALTHCARE - ENTERPRISE MASTER SCHEMA (v3.8)
+// FEATURES: GROUP ENTITY DETAILS (FAMILY/CORP), DIAGNOSTICS, INVENTORY
 // =========================================================
 
 // 1. SYSTEM & COMPANY CONFIGURATION
@@ -10,7 +10,7 @@ Table company_settings {
   company_email text
   company_phone text
   company_address text
-  logo_url text               // Cloudflare R2 Link
+  logo_url text               
   primary_color varchar       
   secondary_color varchar     
   currency_code varchar       [default: "LKR"]
@@ -24,7 +24,7 @@ Table company_settings {
 // 2. DYNAMIC LOOKUP SYSTEM
 Table lookup_categories {
   id uuid [pk]
-  category_name varchar [unique, note: "SUB_TYPE: INDIVIDUAL, FAMILY, CORPORATE"]
+  category_name varchar [unique]
 }
 
 Table lookups {
@@ -66,26 +66,35 @@ Table users {
   created_at timestamptz [default: `now()`]
 }
 
-// 5. SUBSCRIPTION MODULE (v3.7 Updated for Groups)
+// 5. SUBSCRIPTION MODULE (v3.8 Updated with Group Entity Details)
 Table subscription_plans {
   id uuid [pk]
   plan_name varchar [not null]
-  plan_type_id uuid [ref: > lookups.id] // INDIVIDUAL, FAMILY, CORPORATE
+  plan_type_id uuid [ref: > lookups.id] 
   price decimal [not null]
-  max_members int [default: 1, note: "Max patients allowed in this plan"]
+  max_members int [default: 1]
   duration_days int [not null]
   is_active boolean [default: true]
 }
 
-// Instance of a subscription (e.g., "The Perera Family" or "ABC Corp")
+// Representing the Group Entity (Family Unit or Company)
 Table subscription_accounts {
   id uuid [pk]
-  account_name text [note: "Family Name or Company Name"]
+  account_name text [not null, note: "Family Name or Company Name"]
+  registration_no text [note: "Business Reg No or Family File ID"]
   plan_id uuid [ref: > subscription_plans.id]
-  primary_contact_id uuid [ref: > patients.id] // The person responsible for the account
+
+  // Group Specific Details
+  billing_address text
+  contact_email text
+  contact_phone text
+  whatsapp_no text
   start_date date
   end_date date
-  status_id uuid [ref: > lookups.id] // ACTIVE, EXPIRED
+  status_id uuid [ref: > lookups.id]
+
+  // Note: Patients/members are added via a separate membership flow.
+  // Subscription account CRUD does NOT assign member patients.
 }
 
 Table subscription_members {
@@ -93,6 +102,9 @@ Table subscription_members {
   subscription_account_id uuid [ref: > subscription_accounts.id]
   patient_id uuid [ref: > patients.id]
   joined_at timestamptz [default: `now()`]
+
+  // Note: member patients are added via a separate membership flow,
+  // not from the subscription account (Family/Corporate) CRUD screen.
 }
 
 // 6. FLEET & TEAMS
@@ -139,9 +151,6 @@ Table patients {
   guardian_relationship text
   billing_recipient_id uuid [ref: > lookups.id]
 }
-
-// Subscription state is derived from subscription_members/subscription_accounts
-// (not stored as a patient_type_id column on patients).
 
 // 8. OPD & QUEUE
 Table opd_queue {

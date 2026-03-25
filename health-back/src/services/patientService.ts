@@ -148,7 +148,6 @@ export async function createPatient(data: PatientCreateInput) {
           data: {
             accountName: `${data.fullName} Subscription`,
             planId: plan.id,
-            primaryContactId: patient.id,
             startDate,
             endDate,
             statusId: null,

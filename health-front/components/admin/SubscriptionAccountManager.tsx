@@ -16,19 +16,20 @@ type PatientOption = { id: string; fullName: string; contactNo?: string | null }
 export type SubscriptionAccount = {
   id: string;
   accountName?: string | null;
+  registrationNo?: string | null;
+  billingAddress?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  whatsappNo?: string | null;
   planId: string;
-  primaryContactId: string;
   startDate?: string | Date | null;
   endDate?: string | Date | null;
   statusId?: string | null;
   plan?: { id: string; planName: string } | null;
-  primaryContact?: { id: string; fullName: string; contactNo?: string | null } | null;
   statusLookup?: { id: string; lookupValue: string } | null;
   members?: Array<{
     id: string;
-    patientId: string;
-    joinedAt: string | Date;
-    patient?: { id: string; fullName: string } | null;
+    joinedAt?: string | Date;
   }>;
 };
 
@@ -237,8 +238,12 @@ export function SubscriptionAccountManager({
             statuses={statuses}
             initial={{
               accountName: selected.accountName ?? "",
+              registrationNo: selected.registrationNo ?? "",
+              billingAddress: selected.billingAddress ?? "",
+              contactEmail: selected.contactEmail ?? "",
+              contactPhone: selected.contactPhone ?? "",
+              whatsappNo: selected.whatsappNo ?? "",
               planId: selected.planId,
-              primaryContactId: selected.primaryContactId,
               startDate: toDateInputValue(selected.startDate),
               endDate: toDateInputValue(selected.endDate),
               statusId: selected.statusId ?? "",
@@ -281,6 +286,14 @@ export function SubscriptionAccountManager({
                   <dd className="preview-value">{selected.accountName ?? "—"}</dd>
                 </div>
                 <div className="preview-row">
+                  <dt className="preview-label">Registration No</dt>
+                  <dd className="preview-value">{selected.registrationNo ?? "—"}</dd>
+                </div>
+                <div className="preview-row">
+                  <dt className="preview-label">Billing Address</dt>
+                  <dd className="preview-value">{selected.billingAddress ?? "—"}</dd>
+                </div>
+                <div className="preview-row">
                   <dt className="preview-label">Plan</dt>
                   <dd className="preview-value">{selected.plan?.planName ?? "—"}</dd>
                 </div>
@@ -294,8 +307,20 @@ export function SubscriptionAccountManager({
               <h3 className="preview-section-title">Contact & Dates</h3>
               <dl className="preview-list">
                 <div className="preview-row">
-                  <dt className="preview-label">Primary Contact</dt>
-                  <dd className="preview-value">{selected.primaryContact?.fullName ?? "—"}</dd>
+                  <dt className="preview-label">Members</dt>
+                  <dd className="preview-value">{selected.members?.length ?? 0}</dd>
+                </div>
+                <div className="preview-row">
+                  <dt className="preview-label">Contact Email</dt>
+                  <dd className="preview-value">{selected.contactEmail ?? "—"}</dd>
+                </div>
+                <div className="preview-row">
+                  <dt className="preview-label">Contact Phone</dt>
+                  <dd className="preview-value">{selected.contactPhone ?? "—"}</dd>
+                </div>
+                <div className="preview-row">
+                  <dt className="preview-label">WhatsApp No</dt>
+                  <dd className="preview-value">{selected.whatsappNo ?? "—"}</dd>
                 </div>
                 <div className="preview-row">
                   <dt className="preview-label">Start Date</dt>
@@ -317,7 +342,7 @@ export function SubscriptionAccountManager({
             <tr>
               <th className="px-4 py-3">Account</th>
               <th className="px-4 py-3">Plan</th>
-              <th className="px-4 py-3">Primary Contact</th>
+              <th className="px-4 py-3">Members</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -332,7 +357,7 @@ export function SubscriptionAccountManager({
                     {row.plan?.planName ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {row.primaryContact?.fullName ?? "—"}
+                    {row.members?.length ?? 0}
                   </td>
                   <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                     {row.statusLookup?.lookupValue ?? "—"}
@@ -433,8 +458,12 @@ function ModalShell({
 
 type FormValues = {
   accountName?: string;
+  registrationNo?: string;
+  billingAddress?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  whatsappNo?: string;
   planId: string;
-  primaryContactId: string;
   startDate?: string;
   endDate?: string;
   statusId?: string;
@@ -463,8 +492,12 @@ function SubscriptionAccountForm({
 }) {
   const [values, setValues] = useState<FormValues>({
     accountName: initial?.accountName ?? "",
+    registrationNo: initial?.registrationNo ?? "",
+    billingAddress: initial?.billingAddress ?? "",
+    contactEmail: initial?.contactEmail ?? "",
+    contactPhone: initial?.contactPhone ?? "",
+    whatsappNo: initial?.whatsappNo ?? "",
     planId: initial?.planId ?? plans[0]?.id ?? "",
-    primaryContactId: initial?.primaryContactId ?? patients[0]?.id ?? "",
     startDate: initial?.startDate ?? "",
     endDate: initial?.endDate ?? "",
     statusId: initial?.statusId ?? "",
@@ -490,13 +523,17 @@ function SubscriptionAccountForm({
           setError(null);
           setIsSubmitting(true);
           try {
-            if (!values.planId.trim() || !values.primaryContactId.trim()) {
-              throw new Error("Plan and Primary Contact are required");
+            if (!values.planId.trim()) {
+              throw new Error("Plan is required");
             }
             await onSubmit({
               accountName: values.accountName?.trim() || undefined,
+              registrationNo: values.registrationNo?.trim() || undefined,
+              billingAddress: values.billingAddress?.trim() || undefined,
+              contactEmail: values.contactEmail?.trim() || undefined,
+              contactPhone: values.contactPhone?.trim() || undefined,
+              whatsappNo: values.whatsappNo?.trim() || undefined,
               planId: values.planId.trim(),
-              primaryContactId: values.primaryContactId.trim(),
               startDate: values.startDate?.trim() || undefined,
               endDate: values.endDate?.trim() || undefined,
               statusId: values.statusId?.trim() || undefined,
@@ -516,6 +553,12 @@ function SubscriptionAccountForm({
           value={values.accountName ?? ""}
           onChange={(e) => setValues((v) => ({ ...v, accountName: e.target.value }))}
         />
+        <Input
+          label="Registration No"
+          name="registrationNo"
+          value={values.registrationNo ?? ""}
+          onChange={(e) => setValues((v) => ({ ...v, registrationNo: e.target.value }))}
+        />
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-[var(--text-primary)]">Plan</span>
           <select
@@ -532,22 +575,12 @@ function SubscriptionAccountForm({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-2 text-sm">
-          <span className="font-medium text-[var(--text-primary)]">Primary Contact</span>
-          <select
-            className={selectClass}
-            value={values.primaryContactId}
-            onChange={(e) => setValues((v) => ({ ...v, primaryContactId: e.target.value }))}
-            required
-          >
-            <option value="">Select</option>
-            {patients.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.fullName}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Input
+          label="Contact Email"
+          name="contactEmail"
+          value={values.contactEmail ?? ""}
+          onChange={(e) => setValues((v) => ({ ...v, contactEmail: e.target.value }))}
+        />
         <Input
           label="Start Date"
           name="startDate"
@@ -556,12 +589,32 @@ function SubscriptionAccountForm({
           onChange={(e) => setValues((v) => ({ ...v, startDate: e.target.value }))}
         />
         <Input
+          label="Contact Phone"
+          name="contactPhone"
+          value={values.contactPhone ?? ""}
+          onChange={(e) => setValues((v) => ({ ...v, contactPhone: e.target.value }))}
+        />
+        <Input
           label="End Date"
           name="endDate"
           type="date"
           value={values.endDate ?? ""}
           onChange={(e) => setValues((v) => ({ ...v, endDate: e.target.value }))}
         />
+        <Input
+          label="WhatsApp No"
+          name="whatsappNo"
+          value={values.whatsappNo ?? ""}
+          onChange={(e) => setValues((v) => ({ ...v, whatsappNo: e.target.value }))}
+        />
+        <div className="sm:col-span-2">
+          <Input
+            label="Billing Address"
+            name="billingAddress"
+            value={values.billingAddress ?? ""}
+            onChange={(e) => setValues((v) => ({ ...v, billingAddress: e.target.value }))}
+          />
+        </div>
         <label className="flex flex-col gap-2 text-sm sm:col-span-2">
           <span className="font-medium text-[var(--text-primary)]">Status</span>
           <select

@@ -21,31 +21,49 @@ export async function getSubscriptionAccountHandler(req: Request, res: Response)
 }
 
 export async function createSubscriptionAccountHandler(req: Request, res: Response) {
-  const { accountName, planId, primaryContactId, startDate, endDate, statusId } = req.body as Partial<{
+  const {
+    accountName,
+    planId,
+    startDate,
+    endDate,
+    statusId,
+    registrationNo,
+    billingAddress,
+    contactEmail,
+    contactPhone,
+    whatsappNo,
+  } = req.body as Partial<{
     accountName: string | null;
     planId: string;
-    primaryContactId: string;
     startDate: string | null;
     endDate: string | null;
     statusId: string | null;
+    registrationNo: string | null;
+    billingAddress: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    whatsappNo: string | null;
   }>;
 
   const cleanedPlanId = planId?.trim() ?? "";
-  const cleanedPrimaryContactId = primaryContactId?.trim() ?? "";
 
-  if (!cleanedPlanId || !cleanedPrimaryContactId) {
+  if (!cleanedPlanId) {
     return res.status(400).json({
-      message: "planId and primaryContactId are required",
+      message: "planId is required",
     });
   }
 
   const created = await createSubscriptionAccount({
     accountName: accountName?.trim() || undefined,
     planId: cleanedPlanId,
-    primaryContactId: cleanedPrimaryContactId,
     startDate: startDate ?? undefined,
     endDate: endDate ?? undefined,
     statusId: statusId?.trim() || undefined,
+    registrationNo: registrationNo?.trim() || undefined,
+    billingAddress: billingAddress?.trim() || undefined,
+    contactEmail: contactEmail?.trim() || undefined,
+    contactPhone: contactPhone?.trim() || undefined,
+    whatsappNo: whatsappNo?.trim() || undefined,
   });
 
   return res.status(201).json(created);
@@ -53,23 +71,41 @@ export async function createSubscriptionAccountHandler(req: Request, res: Respon
 
 export async function updateSubscriptionAccountHandler(req: Request, res: Response) {
   const { id } = req.params;
-  const { accountName, planId, primaryContactId, startDate, endDate, statusId } = req.body as Partial<{
+  const {
+    accountName,
+    planId,
+    startDate,
+    endDate,
+    statusId,
+    registrationNo,
+    billingAddress,
+    contactEmail,
+    contactPhone,
+    whatsappNo,
+  } = req.body as Partial<{
     accountName: string | null;
     planId: string;
-    primaryContactId: string;
     startDate: string | null;
     endDate: string | null;
     statusId: string | null;
+    registrationNo: string | null;
+    billingAddress: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    whatsappNo: string | null;
   }>;
 
   const updated = await updateSubscriptionAccount(id, {
     accountName: typeof accountName === "string" ? accountName.trim() : undefined,
     planId: typeof planId === "string" ? planId.trim() : undefined,
-    primaryContactId:
-      typeof primaryContactId === "string" ? primaryContactId.trim() : undefined,
     startDate: startDate ?? undefined,
     endDate: endDate ?? undefined,
     statusId: typeof statusId === "string" ? statusId.trim() : undefined,
+    registrationNo: typeof registrationNo === "string" ? registrationNo.trim() : undefined,
+    billingAddress: typeof billingAddress === "string" ? billingAddress.trim() : undefined,
+    contactEmail: typeof contactEmail === "string" ? contactEmail.trim() : undefined,
+    contactPhone: typeof contactPhone === "string" ? contactPhone.trim() : undefined,
+    whatsappNo: typeof whatsappNo === "string" ? whatsappNo.trim() : undefined,
   });
 
   return res.json(updated);
