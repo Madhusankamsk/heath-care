@@ -65,6 +65,15 @@ const includePayload = {
   members: {
     select: {
       id: true,
+      joinedAt: true,
+      patient: {
+        select: {
+          id: true,
+          fullName: true,
+          nicOrPassport: true,
+          contactNo: true,
+        },
+      },
     },
     orderBy: { joinedAt: "asc" as const },
   },

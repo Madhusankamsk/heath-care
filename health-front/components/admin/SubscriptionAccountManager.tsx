@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -31,6 +32,12 @@ export type SubscriptionAccount = {
   members?: Array<{
     id: string;
     joinedAt?: string | Date;
+    patient?: {
+      id: string;
+      fullName: string;
+      nicOrPassport?: string | null;
+      contactNo?: string | null;
+    } | null;
   }>;
 };
 
@@ -91,6 +98,7 @@ export function SubscriptionAccountManager({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionConfirm, setActionConfirm] = useState<ActionConfirm>(null);
+  const router = useRouter();
   const [memberNicOrPassport, setMemberNicOrPassport] = useState("");
   const [matchedPatient, setMatchedPatient] = useState<Patient | null>(null);
   const [memberPatientValues, setMemberPatientValues] = useState<AddMemberPatientPayload>({
@@ -368,6 +376,18 @@ export function SubscriptionAccountManager({
             setError(null);
           }}
         >
+          <div className="mb-4 flex justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-9 px-3"
+              onClick={() => {
+                router.push(`/dashboard/clients/family-corporate/${selected.id}`);
+              }}
+            >
+              Full Preview
+            </Button>
+          </div>
           <div className="preview-shell sm:grid-cols-2">
             <section className="preview-section">
               <h3 className="preview-section-title">Account</h3>

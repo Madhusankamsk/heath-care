@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -70,6 +71,7 @@ export function PatientManager({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionConfirm, setActionConfirm] = useState<ActionConfirm>(null);
+  const router = useRouter();
 
   const selected = useMemo(() => {
     if (!selectedId) return null;
@@ -386,17 +388,29 @@ export function PatientManager({
                   </h2>
                   <p className="text-sm text-[var(--text-secondary)]">Read-only details.</p>
                 </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-                  onClick={() => {
-                    setMode("none");
-                    setError(null);
-                  }}
-                >
-                  ×
-                </button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-9 px-3"
+                    onClick={() => {
+                      router.push(`/dashboard/clients/patient/${selected.id}`);
+                    }}
+                  >
+                    Full Preview
+                  </Button>
+                  <button
+                    type="button"
+                    aria-label="Close"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+                    onClick={() => {
+                      setMode("none");
+                      setError(null);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
               <div className="preview-shell sm:grid-cols-2">
                 <section className="preview-section">
