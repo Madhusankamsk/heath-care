@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { StaffSectionTabs } from "@/components/admin/StaffSectionTabs";
 import { type StaffProfile } from "@/components/admin/StaffManager";
-import { type SubscriptionPlan } from "@/components/admin/SubscriptionPlanManager";
 import { Card } from "@/components/ui/Card";
 import { getIsAuthenticated } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/adminAccess";
@@ -32,14 +31,6 @@ async function getRoles() {
   return backendJson<Role[]>("/api/roles");
 }
 
-type PlanTypeOption = { id: string; lookupKey: string; lookupValue: string };
-async function getSubscriptionPlans() {
-  return backendJson<SubscriptionPlan[]>("/api/subscription-plans");
-}
-async function getSubscriptionPlanTypes() {
-  return backendJson<PlanTypeOption[]>("/api/subscription-plan-types");
-}
-
 async function AdminStaffPageServer() {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -57,12 +48,7 @@ async function AdminStaffPageServer() {
   const canDeactivate = hasAnyPermission(me.permissions, [...PERMS.deactivate]);
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
 
-  const [profiles, roles, plans, planTypes] = await Promise.all([
-    getProfiles(),
-    getRoles(),
-    getSubscriptionPlans(),
-    getSubscriptionPlanTypes(),
-  ]);
+  const [profiles, roles] = await Promise.all([getProfiles(), getRoles()]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -75,20 +61,10 @@ async function AdminStaffPageServer() {
           <div className="text-sm text-red-700 dark:text-red-300">
             Failed to load roles.
           </div>
-        ) : !plans ? (
-          <div className="text-sm text-red-700 dark:text-red-300">
-            Failed to load subscription plans.
-          </div>
-        ) : !planTypes ? (
-          <div className="text-sm text-red-700 dark:text-red-300">
-            Failed to load subscription plan types.
-          </div>
         ) : (
           <StaffSectionTabs
             profiles={profiles}
             roles={roles}
-            plans={plans}
-            planTypes={planTypes}
             canPreview={canPreview}
             canCreate={canCreate}
             canEdit={canEdit}
