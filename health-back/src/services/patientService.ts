@@ -1,6 +1,11 @@
 import prisma from "../prisma/client";
 import type { Prisma } from "@prisma/client";
 
+import {
+  createSubscriptionInvoiceWithLedger,
+  type SubscriptionPaymentInput,
+} from "./subscriptionBillingService";
+
 export type PatientCreateInput = {
   nicOrPassport?: string | null;
   fullName: string;
@@ -21,6 +26,9 @@ export type PatientCreateInput = {
   billingRecipientId?: string | null;
   subscriptionPlanId?: string | null;
   subscriptionStatusId?: string | null;
+  /** Payments recorded when creating an individual subscription (same transaction as patient + account). */
+  subscriptionPayments?: SubscriptionPaymentInput[];
+  collectedByUserId?: string | null;
 };
 
 async function resolveSubscriptionStatusId(
@@ -156,6 +164,7 @@ export async function createPatient(data: PatientCreateInput) {
         : data.dob;
 
   return prisma.$transaction(async (tx) => {
+    let invoiceId: string | null = null;
     const patient = await tx.patient.create({
       data: {
         fullName: data.fullName,
@@ -204,6 +213,7 @@ export async function createPatient(data: PatientCreateInput) {
         const account = await tx.subscriptionAccount.create({
           data: {
             accountName: `${data.fullName} Subscription`,
+            primaryContactId: patient.id,
             planId: plan.id,
             startDate,
             endDate,
@@ -217,16 +227,68 @@ export async function createPatient(data: PatientCreateInput) {
             patientId: patient.id,
           },
         });
+
+        const billing = await createSubscriptionInvoiceWithLedger(tx, {
+          subscriptionAccountId: account.id,
+          patientId: patient.id,
+          planId: plan.id,
+          payments: data.subscriptionPayments ?? [],
+          collectedByUserId: data.collectedByUserId?.trim() ?? "",
+        });
+        invoiceId = billing.invoiceId;
       }
     }
 
-    return tx.patient.findUniqueOrThrow({
+    const row = await tx.patient.findUniqueOrThrow({
       where: { id: patient.id },
       include: {
         genderLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
         billingRecipientLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
       },
     });
+
+    const subscriptionMemberships = await tx.subscriptionMember.findMany({
+      where: { patientId: patient.id },
+      include: {
+        subscriptionAccount: {
+          include: {
+            plan: true,
+            statusLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
+            members: { select: { id: true } },
+          },
+        },
+      },
+    });
+
+    const now = new Date();
+    const activeMembership = subscriptionMemberships.find((sm) => {
+      const acc = sm.subscriptionAccount;
+      if (!acc) return false;
+      const endOk = !acc.endDate || acc.endDate.getTime() >= now.getTime();
+      return endOk && Boolean(acc.plan?.isActive);
+    });
+
+    const subscriptionPlanId = activeMembership?.subscriptionAccount?.plan?.id ?? null;
+    const subscriptionPlanName =
+      activeMembership?.subscriptionAccount?.plan?.planName ?? null;
+    const subscriptionStatusId =
+      activeMembership?.subscriptionAccount?.statusLookup?.id ?? null;
+    const subscriptionStatusName =
+      activeMembership?.subscriptionAccount?.statusLookup?.lookupValue ?? null;
+    const subscriptionAccountMembersCount =
+      activeMembership?.subscriptionAccount?.members?.length ?? 0;
+
+    const shaped = {
+      ...row,
+      isSubscribed: Boolean(subscriptionPlanId),
+      subscriptionPlanId,
+      subscriptionPlanName,
+      subscriptionStatusId,
+      subscriptionStatusName,
+      isSubscriptionAccountShared: subscriptionAccountMembersCount > 1,
+    };
+
+    return { patient: shaped, invoiceId };
   });
 }
 

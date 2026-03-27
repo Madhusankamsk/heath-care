@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Input } from "@/components/ui/Input";
+import { openInvoicePdf } from "@/lib/openInvoicePdf";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 
@@ -45,6 +46,7 @@ type PatientManagerProps = {
   billingRecipients: LookupOption[];
   subscriptionPlans: SubscriptionPlanOption[];
   subscriptionStatuses: LookupOption[];
+  paymentMethods: LookupOption[];
   canPreview: boolean;
   canCreate: boolean;
   canEdit: boolean;
@@ -64,6 +66,7 @@ export function PatientManager({
   billingRecipients,
   subscriptionPlans,
   subscriptionStatuses,
+  paymentMethods,
   canPreview,
   canCreate,
   canEdit,
@@ -251,6 +254,7 @@ export function PatientManager({
                 billingRecipients={billingRecipients}
                 subscriptionPlans={subscriptionPlans}
                 subscriptionStatuses={subscriptionStatuses}
+                paymentMethods={paymentMethods}
                 includeSubscriptionPlan
                 subscriptionStatusDisabled={false}
                 onCancel={() => {
@@ -264,13 +268,21 @@ export function PatientManager({
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(values),
                   });
+                  const raw = await res.text().catch(() => "");
                   if (!res.ok) {
-                    const msg = await res.text().catch(() => "");
-                    throw new Error(msg || "Create failed");
+                    throw new Error(raw || "Create failed");
+                  }
+                  let invoiceId: string | undefined;
+                  try {
+                    const data = JSON.parse(raw) as { invoiceId?: string | null };
+                    if (data.invoiceId) invoiceId = data.invoiceId;
+                  } catch {
+                    /* not JSON */
                   }
                   await refresh();
                   setMode("none");
                   toast.success("Patient created");
+                  if (invoiceId) openInvoicePdf(invoiceId);
                 }}
               />
             </Card>
@@ -327,6 +339,7 @@ export function PatientManager({
                 billingRecipients={billingRecipients}
                 subscriptionPlans={subscriptionPlans}
                 subscriptionStatuses={subscriptionStatuses}
+                paymentMethods={paymentMethods}
                 includeSubscriptionPlan
                 subscriptionStatusDisabled={Boolean(selected.isSubscriptionAccountShared)}
                 initial={{
@@ -620,7 +633,14 @@ type PatientFormValues = {
   billingRecipientId?: string;
   subscriptionPlanId?: string;
   subscriptionStatusId?: string;
+  payments?: Array<{
+    amountPaid: number;
+    paymentMethodId: string;
+    transactionRef?: string;
+  }>;
 };
+
+type PatientPaymentRow = { amount: string; paymentMethodId: string; transactionRef: string };
 
 function PatientForm({
   title,
@@ -630,6 +650,7 @@ function PatientForm({
   billingRecipients,
   subscriptionPlans,
   subscriptionStatuses,
+  paymentMethods,
   includeSubscriptionPlan,
   subscriptionStatusDisabled = false,
   onCancel,
@@ -644,6 +665,7 @@ function PatientForm({
   billingRecipients: LookupOption[];
   subscriptionPlans: SubscriptionPlanOption[];
   subscriptionStatuses: LookupOption[];
+  paymentMethods?: LookupOption[];
   includeSubscriptionPlan?: boolean;
   subscriptionStatusDisabled?: boolean;
   onCancel: () => void;
@@ -713,6 +735,7 @@ function PatientForm({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentRows, setPaymentRows] = useState<PatientPaymentRow[]>([]);
   const hasPatientContactNo = Boolean(values.contactNo?.trim());
   const hasGuardianContactNo = Boolean(values.guardianContactNo?.trim());
 
@@ -746,6 +769,31 @@ function PatientForm({
             if (values.isSubscribed && !values.subscriptionPlanId?.trim()) {
               throw new Error("Assign subscription plan is required for subscribed customers");
             }
+            const builtPayments: PatientFormValues["payments"] = [];
+            if (
+              intent === "create" &&
+              values.isSubscribed &&
+              paymentMethods &&
+              paymentMethods.length > 0
+            ) {
+              for (const row of paymentRows) {
+                const amtStr = row.amount.trim();
+                const mid = row.paymentMethodId.trim();
+                if (!amtStr && !mid && !row.transactionRef.trim()) continue;
+                if (!amtStr || !mid) {
+                  throw new Error("Each payment line needs an amount and a payment method.");
+                }
+                const n = Number(amtStr);
+                if (!Number.isFinite(n) || n <= 0) {
+                  throw new Error("Payment amounts must be positive numbers.");
+                }
+                builtPayments.push({
+                  amountPaid: n,
+                  paymentMethodId: mid,
+                  transactionRef: row.transactionRef.trim() || undefined,
+                });
+              }
+            }
             await onSubmit({
               nicOrPassport: values.nicOrPassport?.trim() || undefined,
               fullName: values.fullName.trim(),
@@ -770,6 +818,7 @@ function PatientForm({
                 values.isSubscribed && !subscriptionStatusDisabled
                   ? values.subscriptionStatusId?.trim() || undefined
                   : undefined,
+              payments: builtPayments.length > 0 ? builtPayments : undefined,
             });
           } catch (e) {
             const msg = e instanceof Error ? e.message : "Something went wrong";
@@ -788,6 +837,7 @@ function PatientForm({
                 checked={Boolean(values.isSubscribed)}
                 onChange={(e) => {
                   const checked = e.target.checked;
+                  if (!checked) setPaymentRows([]);
                   setValues((v) => ({
                     ...v,
                     isSubscribed: checked,
@@ -848,6 +898,83 @@ function PatientForm({
                   </div>
                 ) : null}
               </label>
+            ) : null}
+            {intent === "create" &&
+            includeSubscriptionPlan &&
+            paymentMethods &&
+            paymentMethods.length > 0 &&
+            values.isSubscribed ? (
+              <div className="flex flex-col gap-3 sm:col-span-2">
+                <div className="text-sm font-medium text-[var(--text-primary)]">
+                  Subscription payments at registration (optional)
+                </div>
+                {paymentRows.map((row, idx) => (
+                  <div
+                    key={idx}
+                    className="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:grid-cols-3"
+                  >
+                    <Input
+                      label="Amount"
+                      name={`sub-pay-amt-${idx}`}
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={row.amount}
+                      onChange={(e) =>
+                        setPaymentRows((rows) =>
+                          rows.map((r, i) => (i === idx ? { ...r, amount: e.target.value } : r)),
+                        )
+                      }
+                    />
+                    <label className="flex flex-col gap-2 text-sm">
+                      <span className="font-medium text-[var(--text-primary)]">Method</span>
+                      <select
+                        className={selectClass}
+                        value={row.paymentMethodId}
+                        onChange={(e) =>
+                          setPaymentRows((rows) =>
+                            rows.map((r, i) =>
+                              i === idx ? { ...r, paymentMethodId: e.target.value } : r,
+                            ),
+                          )
+                        }
+                      >
+                        <option value="">Select</option>
+                        {paymentMethods.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.lookupValue}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <Input
+                      label="Reference (optional)"
+                      name={`sub-pay-ref-${idx}`}
+                      value={row.transactionRef}
+                      onChange={(e) =>
+                        setPaymentRows((rows) =>
+                          rows.map((r, i) =>
+                            i === idx ? { ...r, transactionRef: e.target.value } : r,
+                          ),
+                        )
+                      }
+                    />
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="self-start"
+                  onClick={() =>
+                    setPaymentRows((rows) => [
+                      ...rows,
+                      { amount: "", paymentMethodId: "", transactionRef: "" },
+                    ])
+                  }
+                >
+                  Add payment line
+                </Button>
+              </div>
             ) : null}
           </>
         ) : null}

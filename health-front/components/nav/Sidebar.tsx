@@ -16,6 +16,7 @@ import {
   Stethoscope,
   Truck,
   Users,
+  Wallet,
 } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -62,6 +63,12 @@ const navItems: NavItem[] = [
         label: "Family/Corporate",
         icon: <Building2 className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["profiles:list", "profiles:read", "patients:read"],
+      },
+      {
+        href: "/dashboard/clients/accounts",
+        label: "Accounts",
+        icon: <Wallet className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
       },
     ],
   },

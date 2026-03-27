@@ -1,6 +1,6 @@
 // =========================================================
-// MOBILE HEALTHCARE - ENTERPRISE MASTER SCHEMA (v3.9)
-// FEATURES: DYNAMIC DISPATCH, DOCTOR ACCEPTANCE, GROUP SUBS, R2
+// MOBILE HEALTHCARE - ENTERPRISE MASTER SCHEMA (v4.0)
+// FEATURES: FINANCIALS, OUTSTANDING BALANCES, DYNAMIC DISPATCH, R2
 // =========================================================
 
 // 1. SYSTEM & COMPANY CONFIGURATION
@@ -10,7 +10,7 @@ Table company_settings {
   company_email text
   company_phone text
   company_address text
-  logo_url text               // Cloudflare R2 Link
+  logo_url text               
   primary_color varchar       
   secondary_color varchar     
   currency_code varchar       [default: "LKR"]
@@ -66,7 +66,7 @@ Table users {
   created_at timestamptz [default: `now()`]
 }
 
-// 5. SUBSCRIPTION MODULE (Group Entity Details)
+// 5. SUBSCRIPTION MODULE (v4.0 Updated for Financials)
 Table subscription_plans {
   id uuid [pk]
   plan_name varchar [not null]
@@ -86,6 +86,11 @@ Table subscription_accounts {
   contact_email text
   contact_phone text
   whatsapp_no text
+  
+  // FINANCIALS
+  outstanding_balance decimal [default: 0] // Total unpaid amount for the group
+  credit_limit decimal [default: 0]
+  
   start_date date
   end_date date
   status_id uuid [ref: > lookups.id]
@@ -132,6 +137,10 @@ Table patients {
   whatsapp_no text
   gender_id uuid [ref: > lookups.id]
   address text
+  
+  // FINANCIALS
+  outstanding_balance decimal [default: 0] // For individual walk-in patients
+  
   has_insurance boolean [default: false]
   has_guardian boolean [default: false]
   guardian_name text
@@ -147,7 +156,7 @@ Table bookings {
   id uuid [pk]
   patient_id uuid [ref: > patients.id]
   requested_doctor_id uuid [ref: > users.id, null]
-  doctor_status_id uuid [ref: > lookups.id] // Pending, Accepted, Rejected
+  doctor_status_id uuid [ref: > lookups.id] 
   scheduled_date timestamptz
   status_id uuid [ref: > lookups.id]
   booking_remark text 
@@ -159,13 +168,13 @@ Table dispatch_records {
   booking_id uuid [ref: > bookings.id]
   vehicle_id uuid [ref: > vehicles.id]
   dispatched_at timestamptz [default: `now()`]
-  status_id uuid [ref: > lookups.id] // In-Transit, Arrived, etc.
+  status_id uuid [ref: > lookups.id] 
 }
 
 Table dispatch_assignments {
   id uuid [pk]
   dispatch_id uuid [ref: > dispatch_records.id]
-  user_id uuid [ref: > users.id] // Select specific staff for this dispatch
+  user_id uuid [ref: > users.id] 
   is_team_leader boolean [default: false]
   assigned_at timestamptz [default: `now()`]
 }
@@ -231,16 +240,39 @@ Table inventory_batches {
   location_id uuid 
 }
 
-// 13. BILLING & DISPENSING
+// 13. FINANCIAL MODULE (New v4.0 Logic)
 Table invoices {
   id uuid [pk]
   booking_id uuid [ref: > bookings.id, null]
   patient_id uuid [ref: > patients.id]
-  total_amount decimal
-  consultation_total decimal
-  medicine_total decimal
-  travel_cost decimal
-  payment_status_id uuid [ref: > lookups.id]
+  subscription_account_id uuid [ref: > subscription_accounts.id, null] // Linked for group billing
+  
+  total_amount decimal [not null]
+  paid_amount decimal [default: 0]
+  balance_due decimal [note: "Remaining amount for this invoice"]
+  
+  payment_status_id uuid [ref: > lookups.id] // UNPAID, PARTIAL, PAID
+  created_at timestamptz [default: `now()`]
+}
+
+Table payments {
+  id uuid [pk]
+  invoice_id uuid [ref: > invoices.id]
+  amount_paid decimal [not null]
+  payment_method_id uuid [ref: > lookups.id] // CASH, CARD, ONLINE, CREDIT
+  transaction_ref text // Bank ref or receipt number
+  paid_at timestamptz [default: `now()`]
+  collected_by uuid [ref: > users.id]
+}
+
+Table account_transactions {
+  id uuid [pk]
+  patient_id uuid [ref: > patients.id, null]
+  subscription_account_id uuid [ref: > subscription_accounts.id, null]
+  
+  transaction_type_id uuid [ref: > lookups.id] // DEBIT (Charge), CREDIT (Payment)
+  amount decimal [not null]
+  description text
   created_at timestamptz [default: `now()`]
 }
 

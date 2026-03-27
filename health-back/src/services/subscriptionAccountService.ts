@@ -1,6 +1,11 @@
 import prisma from "../prisma/client";
 import type { Prisma } from "@prisma/client";
 
+import {
+  createSubscriptionInvoiceWithLedger,
+  type SubscriptionPaymentInput,
+} from "./subscriptionBillingService";
+
 export type SubscriptionAccountCreateInput = {
   accountName?: string | null;
   registrationNo?: string | null;
@@ -12,6 +17,10 @@ export type SubscriptionAccountCreateInput = {
   startDate?: string | Date | null;
   endDate?: string | Date | null;
   statusId?: string | null;
+  /** When set, patient is added as a member and subscription billing (invoice + ledger) is created. */
+  primaryPatientId?: string | null;
+  payments?: SubscriptionPaymentInput[];
+  collectedByUserId?: string | null;
 };
 
 export type AddSubscriptionMemberInput = {
@@ -133,6 +142,17 @@ export async function createSubscriptionAccount(data: SubscriptionAccountCreateI
 
   return prisma.$transaction(async (tx) => {
     const resolvedStatusId = await resolveSubscriptionAccountStatusId(tx, data.statusId);
+    const primaryPid = data.primaryPatientId?.trim();
+    if (primaryPid) {
+      const patient = await tx.patient.findUnique({
+        where: { id: primaryPid },
+        select: { id: true },
+      });
+      if (!patient) {
+        throw new Error("Primary patient not found");
+      }
+    }
+
     const account = await tx.subscriptionAccount.create({
       data: {
         accountName: data.accountName ?? undefined,
@@ -141,6 +161,7 @@ export async function createSubscriptionAccount(data: SubscriptionAccountCreateI
         contactEmail: data.contactEmail ?? undefined,
         contactPhone: data.contactPhone ?? undefined,
         whatsappNo: data.whatsappNo ?? undefined,
+        primaryContactId: primaryPid || undefined,
         planId: data.planId,
         startDate,
         endDate,
@@ -148,10 +169,31 @@ export async function createSubscriptionAccount(data: SubscriptionAccountCreateI
       },
     });
 
-    return tx.subscriptionAccount.findUniqueOrThrow({
+    let invoiceId: string | null = null;
+    if (primaryPid) {
+      const existingMember = await tx.subscriptionMember.findFirst({
+        where: { subscriptionAccountId: account.id, patientId: primaryPid },
+      });
+      if (!existingMember) {
+        await tx.subscriptionMember.create({
+          data: { subscriptionAccountId: account.id, patientId: primaryPid },
+        });
+      }
+      const billing = await createSubscriptionInvoiceWithLedger(tx, {
+        subscriptionAccountId: account.id,
+        patientId: primaryPid,
+        planId: data.planId,
+        payments: data.payments ?? [],
+        collectedByUserId: data.collectedByUserId?.trim() ?? "",
+      });
+      invoiceId = billing.invoiceId;
+    }
+
+    const row = await tx.subscriptionAccount.findUniqueOrThrow({
       where: { id: account.id },
       include: includePayload,
     });
+    return { ...row, invoiceId };
   });
 }
 

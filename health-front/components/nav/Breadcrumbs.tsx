@@ -7,6 +7,7 @@ const labelMap: Record<string, string> = {
   dashboard: "Dashboard",
   clients: "Clients",
   patient: "Patient",
+  accounts: "Accounts",
   bookings: "Bookings",
   "manage-bookings": "Manage Bookings",
   admin: "Admin",

@@ -36,6 +36,8 @@ export async function createSubscriptionAccountHandler(req: Request, res: Respon
     contactEmail,
     contactPhone,
     whatsappNo,
+    primaryPatientId,
+    payments,
   } = req.body as Partial<{
     accountName: string | null;
     planId: string;
@@ -47,6 +49,12 @@ export async function createSubscriptionAccountHandler(req: Request, res: Respon
     contactEmail: string | null;
     contactPhone: string | null;
     whatsappNo: string | null;
+    primaryPatientId: string | null;
+    payments: Array<{
+      amountPaid: number | string;
+      paymentMethodId: string;
+      transactionRef?: string | null;
+    }>;
   }>;
 
   const cleanedPlanId = planId?.trim() ?? "";
@@ -69,12 +77,27 @@ export async function createSubscriptionAccountHandler(req: Request, res: Respon
       contactEmail: contactEmail?.trim() || undefined,
       contactPhone: contactPhone?.trim() || undefined,
       whatsappNo: whatsappNo?.trim() || undefined,
+      primaryPatientId: primaryPatientId?.trim() || undefined,
+      payments: Array.isArray(payments) ? payments : undefined,
+      collectedByUserId: req.authUser?.sub,
     });
 
     return res.status(201).json(created);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to create subscription account";
     if (message === "Invalid subscription account status") {
+      return res.status(400).json({ message });
+    }
+    if (message === "Primary patient not found") {
+      return res.status(400).json({ message });
+    }
+    if (
+      message.startsWith("Missing lookup") ||
+      message.includes("paymentMethodId") ||
+      message.includes("payments exceed") ||
+      message.includes("Each payment") ||
+      message.includes("collectedByUserId")
+    ) {
       return res.status(400).json({ message });
     }
     return res.status(500).json({ message: "Unable to create subscription account" });

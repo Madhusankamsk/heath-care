@@ -77,6 +77,8 @@ async function main() {
 
     "files:upload",
     "files:delete",
+
+    "invoices:read",
   ] as const;
 
   for (const permissionKey of permissionKeys) {
@@ -207,6 +209,84 @@ async function main() {
     });
   }
 
+  const invoicePaymentStatusCategory = await prisma.lookupCategory.upsert({
+    where: { categoryName: "INVOICE_PAYMENT_STATUS" },
+    update: {},
+    create: { categoryName: "INVOICE_PAYMENT_STATUS" },
+  });
+  for (const item of [
+    { lookupKey: "UNPAID", lookupValue: "Unpaid" },
+    { lookupKey: "PARTIAL", lookupValue: "Partial" },
+    { lookupKey: "PAID", lookupValue: "Paid" },
+  ] as const) {
+    await prisma.lookup.upsert({
+      where: {
+        categoryId_lookupKey: {
+          categoryId: invoicePaymentStatusCategory.id,
+          lookupKey: item.lookupKey,
+        },
+      },
+      update: { lookupValue: item.lookupValue, isActive: true },
+      create: {
+        categoryId: invoicePaymentStatusCategory.id,
+        lookupKey: item.lookupKey,
+        lookupValue: item.lookupValue,
+        isActive: true,
+      },
+    });
+  }
+
+  const paymentMethodCategory = await prisma.lookupCategory.upsert({
+    where: { categoryName: "PAYMENT_METHOD" },
+    update: {},
+    create: { categoryName: "PAYMENT_METHOD" },
+  });
+  for (const item of [
+    { lookupKey: "CASH", lookupValue: "Cash" },
+    { lookupKey: "CARD", lookupValue: "Card" },
+    { lookupKey: "ONLINE", lookupValue: "Online" },
+    { lookupKey: "BANK_TRANSFER", lookupValue: "Bank transfer" },
+  ] as const) {
+    await prisma.lookup.upsert({
+      where: {
+        categoryId_lookupKey: { categoryId: paymentMethodCategory.id, lookupKey: item.lookupKey },
+      },
+      update: { lookupValue: item.lookupValue, isActive: true },
+      create: {
+        categoryId: paymentMethodCategory.id,
+        lookupKey: item.lookupKey,
+        lookupValue: item.lookupValue,
+        isActive: true,
+      },
+    });
+  }
+
+  const accountTransactionTypeCategory = await prisma.lookupCategory.upsert({
+    where: { categoryName: "ACCOUNT_TRANSACTION_TYPE" },
+    update: {},
+    create: { categoryName: "ACCOUNT_TRANSACTION_TYPE" },
+  });
+  for (const item of [
+    { lookupKey: "DEBIT", lookupValue: "Debit" },
+    { lookupKey: "CREDIT", lookupValue: "Credit" },
+  ] as const) {
+    await prisma.lookup.upsert({
+      where: {
+        categoryId_lookupKey: {
+          categoryId: accountTransactionTypeCategory.id,
+          lookupKey: item.lookupKey,
+        },
+      },
+      update: { lookupValue: item.lookupValue, isActive: true },
+      create: {
+        categoryId: accountTransactionTypeCategory.id,
+        lookupKey: item.lookupKey,
+        lookupValue: item.lookupValue,
+        isActive: true,
+      },
+    });
+  }
+
   // Attach ALL permissions to SuperAdmin role (idempotent)
   const allPermissions = await prisma.permission.findMany({
     select: { id: true },
@@ -276,6 +356,7 @@ async function main() {
             "bookings:delete",
             "bookings:scope_own",
             "bookings:scope_all",
+            "invoices:read",
           ],
         },
       },

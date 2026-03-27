@@ -20,3 +20,11 @@ alwaysApply: true
   - UI should hide/disable admin/super-admin entry points if user lacks access
   - server layouts/pages must still enforce access (redirect/403) even if UI hides links
 
+## Existing developments
+
+- Treat the repo as **production-shaped**: extend what exists; don’t replace working flows or “clean up” unrelated code unless the user asks.
+- **Match existing patterns** in the nearest sibling files (naming, error handling, Prisma `include`/`select`, Express handlers, Next.js `app/` routes).
+- **Database / Prisma**: schema is in `health-back/prisma/schema.prisma`; ship changes via **migrations** (not ad-hoc SQL in app code). Respect FK chains (e.g. deletes may require related rows removed first or explicit cascade logic). If `db-diagram.md` conflicts with Prisma, **Prisma + migrations win**—update the doc when the domain changes.
+- **API surface**: backend routes live under `health-back/src/routes` + controllers/services. If the frontend uses `health-front/app/api/**` as a proxy, keep behavior aligned (status codes, empty `204` bodies, JSON errors).
+- **Permissions**: capability keys live in seed/RBAC; don’t hardcode “doctor vs admin” in code—use permission keys and scopes the app already uses (`bookings:scope_own` / `bookings:scope_all`, etc.).
+

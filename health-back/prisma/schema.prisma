@@ -54,6 +54,7 @@ model User {
   collectedLabSamples       LabSample[]         @relation("LabCollectedBy")
   requestedBookings         Booking[]           @relation("BookingRequestedDoctor")
   dispatchAssignments       DispatchAssignment[]
+  paymentsCollected         Payment[]             @relation("PaymentCollectedBy")
 }
 
 // 3. DYNAMIC TEAM & FLEET
@@ -111,11 +112,14 @@ model Patient {
   guardianRelationship           String?
   billingRecipientId             String?
   billingRecipientLookup         Lookup?               @relation("PatientBillingRecipient", fields: [billingRecipientId], references: [id])
+  outstandingBalance             Decimal               @default(0)
   bookings                       Booking[]
   opdQueue                       OpdQueue[]
   visitRecords                   VisitRecord[]
   invoices                       Invoice[]
   subscriptionMemberships        SubscriptionMember[]
+  primaryContactForSubscriptionAccounts SubscriptionAccount[] @relation("SubscriptionAccountPrimaryContact")
+  accountTransactions            AccountTransaction[]
   diagnosticReports              DiagnosticReport[]
   labSamples                     LabSample[]
 }
@@ -195,21 +199,30 @@ model SubscriptionPlan {
 }
 
 model SubscriptionAccount {
-  id               String    @id @default(uuid())
-  accountName      String?
-  registrationNo  String?
-  billingAddress  String?
-  contactEmail    String?
-  contactPhone    String?
-  whatsappNo      String?
-  planId           String
-  startDate        DateTime?
-  endDate          DateTime?
-  statusId         String?
+  id                   String    @id @default(uuid())
+  accountName          String?
+  registrationNo       String?
+  billingAddress       String?
+  contactEmail         String?
+  contactPhone         String?
+  whatsappNo           String?
+  /** Main billing / contact patient for this account (required when the DB enforces it). */
+  primaryContactId     String?
+  planId               String
+  startDate            DateTime?
+  endDate              DateTime?
+  statusId             String?
+  outstandingBalance   Decimal   @default(0)
+  creditLimit          Decimal   @default(0)
 
-  plan           SubscriptionPlan     @relation(fields: [planId], references: [id])
-  statusLookup   Lookup?              @relation("SubscriptionAccountStatus", fields: [statusId], references: [id])
-  members        SubscriptionMember[]
+  plan                 SubscriptionPlan     @relation(fields: [planId], references: [id])
+  primaryContact       Patient?             @relation("SubscriptionAccountPrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  statusLookup         Lookup?              @relation("SubscriptionAccountStatus", fields: [statusId], references: [id])
+  members              SubscriptionMember[]
+  invoices             Invoice[]
+  accountTransactions  AccountTransaction[]
+
+  @@index([primaryContactId])
 }
 
 model SubscriptionMember {
@@ -322,19 +335,57 @@ model DispensedMedicine {
 
 // 6. BILLING
 model Invoice {
-  id                  String   @id @default(uuid())
-  bookingId           String?
-  patientId           String
-  totalAmount         Decimal
-  consultationTotal   Decimal
-  medicineTotal       Decimal
-  travelCost          Decimal
-  paymentStatus       String   @default("Unpaid")
-  paymentStatusId     String?
-  paymentStatusLookup Lookup?  @relation("InvoicePaymentStatus", fields: [paymentStatusId], references: [id])
-  booking             Booking? @relation(fields: [bookingId], references: [id])
-  patient             Patient  @relation(fields: [patientId], references: [id])
-  createdAt           DateTime @default(now())
+  id                    String   @id @default(uuid())
+  bookingId             String?
+  patientId             String
+  subscriptionAccountId String?
+  totalAmount           Decimal
+  consultationTotal     Decimal
+  medicineTotal         Decimal
+  travelCost            Decimal
+  paidAmount            Decimal  @default(0)
+  balanceDue            Decimal
+  paymentStatus         String   @default("Unpaid")
+  paymentStatusId       String?
+  paymentStatusLookup   Lookup?  @relation("InvoicePaymentStatus", fields: [paymentStatusId], references: [id])
+  booking               Booking? @relation(fields: [bookingId], references: [id])
+  patient               Patient  @relation(fields: [patientId], references: [id])
+  subscriptionAccount   SubscriptionAccount? @relation(fields: [subscriptionAccountId], references: [id], onDelete: Cascade)
+  payments              Payment[]
+  createdAt             DateTime @default(now())
+
+  @@index([subscriptionAccountId])
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  invoiceId         String
+  amountPaid        Decimal
+  paymentMethodId   String
+  transactionRef    String?
+  paidAt            DateTime @default(now())
+  collectedById     String
+  invoice           Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  paymentMethodLookup Lookup @relation("PaymentMethod", fields: [paymentMethodId], references: [id])
+  collectedBy       User     @relation("PaymentCollectedBy", fields: [collectedById], references: [id])
+
+  @@index([invoiceId])
+}
+
+model AccountTransaction {
+  id                    String   @id @default(uuid())
+  patientId             String?
+  subscriptionAccountId String?
+  transactionTypeId     String
+  amount                Decimal
+  description           String?
+  createdAt             DateTime @default(now())
+  patient               Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  subscriptionAccount   SubscriptionAccount? @relation(fields: [subscriptionAccountId], references: [id], onDelete: Cascade)
+  transactionTypeLookup Lookup   @relation("AccountTransactionType", fields: [transactionTypeId], references: [id])
+
+  @@index([subscriptionAccountId])
+  @@index([patientId])
 }
 
 model OpdQueue {
@@ -396,6 +447,8 @@ model Lookup {
   labSampleStatuses           LabSample[]           @relation("LabSampleStatus")
   bookingDoctorStatuses       Booking[]             @relation("BookingDoctorStatus")
   dispatchStatuses            DispatchRecord[]      @relation("DispatchStatus")
+  paymentMethods              Payment[]             @relation("PaymentMethod")
+  accountTransactionTypes     AccountTransaction[]  @relation("AccountTransactionType")
 
   @@unique([categoryId, lookupKey])
   @@index([categoryId])

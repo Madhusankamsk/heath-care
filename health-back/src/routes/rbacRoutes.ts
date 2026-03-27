@@ -71,6 +71,8 @@ import {
   listSubscriptionAccountsHandler,
   updateSubscriptionAccountHandler,
 } from "../controllers/subscriptionAccountController";
+import { getInvoicePdfHandler } from "../controllers/invoiceController";
+import { listPaymentsHandler } from "../controllers/paymentController";
 import { requireAnyPermission } from "../middleware/permissions";
 import prisma from "../prisma/client";
 
@@ -249,6 +251,20 @@ router.post("/bookings", requireAnyPermission(["bookings:create"]), createBookin
 router.get("/bookings/:id", requireAnyPermission(["bookings:read"]), getBookingHandler);
 router.put("/bookings/:id", requireAnyPermission(["bookings:update"]), updateBookingHandler);
 router.delete("/bookings/:id", requireAnyPermission(["bookings:delete"]), deleteBookingHandler);
+
+// Invoices (subscription bill PDF)
+router.get(
+  "/invoices/:id/pdf",
+  requireAnyPermission(["invoices:read", "patients:read", "profiles:read"]),
+  getInvoicePdfHandler,
+);
+
+// Payments (subscription and other invoice payments)
+router.get(
+  "/payments",
+  requireAnyPermission(["invoices:read", "patients:read", "profiles:read"]),
+  listPaymentsHandler,
+);
 
 // Subscription plans
 router.get(
