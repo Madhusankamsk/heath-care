@@ -77,9 +77,7 @@ export async function createBooking(data: BookingPayload) {
   const requestedDoctorId =
     data.requestedDoctorId?.trim() ? data.requestedDoctorId.trim() : null;
 
-  const doctorStatusId = requestedDoctorId
-    ? await getDoctorStatusLookupId("PENDING")
-    : null;
+  const doctorStatusId = await getDoctorStatusLookupId("PENDING");
 
   return prisma.booking.create({
     data: {
@@ -105,6 +103,25 @@ export async function updateBooking(
     doctorStatusId?: string | null;
   },
 ) {
+  const clearingDoctor =
+    data.requestedDoctorId !== undefined &&
+    (data.requestedDoctorId === null ||
+      (typeof data.requestedDoctorId === "string" && !data.requestedDoctorId.trim()));
+
+  let doctorStatusId:
+    | string
+    | null
+    | undefined;
+
+  if (clearingDoctor) {
+    doctorStatusId = await getDoctorStatusLookupId("PENDING");
+  } else if (data.doctorStatusId !== undefined) {
+    doctorStatusId =
+      data.doctorStatusId === null ? null : data.doctorStatusId.trim();
+  } else {
+    doctorStatusId = undefined;
+  }
+
   return prisma.booking.update({
     where: { id },
     data: {
@@ -125,13 +142,8 @@ export async function updateBooking(
         ? undefined
         : data.requestedDoctorId === null
           ? null
-          : data.requestedDoctorId,
-      doctorStatusId:
-        data.doctorStatusId === undefined
-          ? undefined
-          : data.doctorStatusId === null
-            ? null
-            : data.doctorStatusId,
+          : data.requestedDoctorId.trim(),
+      doctorStatusId,
     },
     include: bookingInclude,
   });

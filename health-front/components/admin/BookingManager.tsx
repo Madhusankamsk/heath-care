@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -21,7 +21,14 @@ export type Booking = {
   doctorStatusLookup?: { id: string; lookupKey: string; lookupValue: string } | null;
 };
 
-type PatientOption = { id: string; fullName: string };
+type PatientOption = {
+  id: string;
+  fullName: string;
+  shortName?: string | null;
+  nicOrPassport?: string | null;
+  contactNo?: string | null;
+  whatsappNo?: string | null;
+};
 export type DoctorProfileOption = { id: string; fullName: string; email: string };
 export type DoctorStatusOption = { id: string; lookupKey: string; lookupValue: string };
 
@@ -234,7 +241,8 @@ export function BookingManager({
                     Create booking
                   </h2>
                   <p className="text-sm text-[var(--text-secondary)]">
-                    Patient is required. Requested doctor is optional; if selected it starts as Pending.
+                    Use the patient and doctor fields to search inside each dropdown, then add schedule
+                    and remark as needed.
                   </p>
                 </div>
                 <button
@@ -573,6 +581,238 @@ export function BookingManager({
   );
 }
 
+function patientMatchesQuery(p: PatientOption, q: string) {
+  const s = q.trim().toLowerCase();
+  if (!s) return true;
+  const parts = [
+    p.fullName,
+    p.shortName,
+    p.nicOrPassport,
+    p.contactNo,
+    p.whatsappNo,
+  ]
+    .filter(Boolean)
+    .map((x) => String(x).toLowerCase());
+  return parts.some((part) => part.includes(s));
+}
+
+function doctorMatchesQuery(d: DoctorProfileOption, q: string) {
+  const s = q.trim().toLowerCase();
+  if (!s) return true;
+  return `${d.fullName} ${d.email}`.toLowerCase().includes(s);
+}
+
+const searchDropdownTriggerClass =
+  "flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-left text-sm text-[var(--text-primary)] outline-none transition hover:border-[var(--brand-primary)]/40 focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)]/25";
+
+const searchDropdownPanelClass =
+  "absolute left-0 right-0 z-[80] mt-1 max-h-64 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg";
+
+function SearchablePatientSelect({
+  label,
+  patients,
+  value,
+  onChange,
+  required,
+  disabled,
+}: {
+  label: string;
+  patients: PatientOption[];
+  value: string;
+  onChange: (id: string) => void;
+  required?: boolean;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => patients.filter((p) => patientMatchesQuery(p, q)), [patients, q]);
+  const selected = patients.find((p) => p.id === value);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleDoc(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleDoc);
+    return () => document.removeEventListener("mousedown", handleDoc);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) setQ("");
+  }, [open]);
+
+  return (
+    <div className="relative flex flex-col gap-2 text-sm" ref={rootRef}>
+      <span className="font-medium text-[var(--text-primary)]">
+        {label}
+        {required ? <span className="text-[var(--danger)]"> *</span> : null}
+      </span>
+      <button
+        type="button"
+        disabled={disabled}
+        className={searchDropdownTriggerClass + (disabled ? " cursor-not-allowed opacity-60" : "")}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => !disabled && setOpen((o) => !o)}
+      >
+        <span className="min-w-0 truncate">{selected ? selected.fullName : "Select patient…"}</span>
+        <span className="text-[var(--text-muted)]" aria-hidden>
+          ▾
+        </span>
+      </button>
+      {open ? (
+        <div className={searchDropdownPanelClass}>
+          <input
+            type="search"
+            autoComplete="off"
+            placeholder="Search…"
+            className="w-full border-b border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            autoFocus
+          />
+          <ul className="max-h-52 overflow-y-auto py-1" role="listbox">
+            {filtered.length === 0 ? (
+              <li className="px-3 py-4 text-center text-xs text-[var(--text-secondary)]">
+                No matches
+              </li>
+            ) : (
+              filtered.map((p) => (
+                <li key={p.id} role="none">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={value === p.id}
+                    className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
+                    onClick={() => {
+                      onChange(p.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="font-medium text-[var(--text-primary)]">{p.fullName}</span>
+                    <span className="text-xs text-[var(--text-muted)]">
+                      {[p.nicOrPassport, p.contactNo].filter(Boolean).join(" · ") || "—"}
+                    </span>
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SearchableDoctorSelect({
+  label,
+  doctors,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  doctors: DoctorProfileOption[];
+  value: string;
+  onChange: (id: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => doctors.filter((d) => doctorMatchesQuery(d, q)), [doctors, q]);
+  const selected = value ? doctors.find((d) => d.id === value) : null;
+
+  useEffect(() => {
+    if (!open) return;
+    function handleDoc(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleDoc);
+    return () => document.removeEventListener("mousedown", handleDoc);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) setQ("");
+  }, [open]);
+
+  return (
+    <div className="relative flex flex-col gap-2 text-sm" ref={rootRef}>
+      <span className="font-medium text-[var(--text-primary)]">{label}</span>
+      <button
+        type="button"
+        disabled={disabled}
+        className={searchDropdownTriggerClass + (disabled ? " cursor-not-allowed opacity-60" : "")}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => !disabled && setOpen((o) => !o)}
+      >
+        <span className="min-w-0 truncate">
+          {selected ? `${selected.fullName} (${selected.email})` : "None (optional)"}
+        </span>
+        <span className="text-[var(--text-muted)]" aria-hidden>
+          ▾
+        </span>
+      </button>
+      {open ? (
+        <div className={searchDropdownPanelClass}>
+          <input
+            type="search"
+            autoComplete="off"
+            placeholder="Search…"
+            className="w-full border-b border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            autoFocus
+          />
+          <ul className="max-h-52 overflow-y-auto py-1" role="listbox">
+            <li role="none">
+              <button
+                type="button"
+                role="option"
+                aria-selected={value === ""}
+                className="w-full px-3 py-2 text-left text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-2)]"
+                onClick={() => {
+                  onChange("");
+                  setOpen(false);
+                }}
+              >
+                None
+              </button>
+            </li>
+            {filtered.length === 0 ? (
+              <li className="px-3 py-4 text-center text-xs text-[var(--text-secondary)]">
+                No matches
+              </li>
+            ) : (
+              filtered.map((d) => (
+                <li key={d.id} role="none">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={value === d.id}
+                    className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
+                    onClick={() => {
+                      onChange(d.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="font-medium text-[var(--text-primary)]">{d.fullName}</span>
+                    <span className="text-xs text-[var(--text-muted)]">{d.email}</span>
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 type BookingFormValues = {
   patientId: string;
   scheduledDate: string;
@@ -670,37 +910,26 @@ function BookingForm({
           }
         }}
       >
-        <label className="flex flex-col gap-2 text-sm">
-          <span className="font-medium text-[var(--text-primary)]">Patient</span>
-          <select
-            className={selectClass}
+        <div className="sm:col-span-1">
+          <SearchablePatientSelect
+            label="Patient"
+            patients={patients}
             value={values.patientId}
-            onChange={(e) => setValues((v) => ({ ...v, patientId: e.target.value }))}
+            onChange={(patientId) => setValues((v) => ({ ...v, patientId }))}
             required
-          >
-            {patients.map((patient) => (
-              <option key={patient.id} value={patient.id}>
-                {patient.fullName}
-              </option>
-            ))}
-          </select>
-        </label>
+            disabled={isSubmitting}
+          />
+        </div>
 
-        <label className="flex flex-col gap-2 text-sm">
-          <span className="font-medium text-[var(--text-primary)]">Requested doctor (optional)</span>
-          <select
-            className={selectClass}
-            value={values.requestedDoctorId}
-            onChange={(e) => setValues((v) => ({ ...v, requestedDoctorId: e.target.value }))}
-          >
-            <option value="">None</option>
-            {doctors.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.fullName} ({d.email})
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="sm:col-span-1">
+          <SearchableDoctorSelect
+            label="Requested doctor (optional)"
+            doctors={doctors}
+            value={values.requestedDoctorId ?? ""}
+            onChange={(requestedDoctorId) => setValues((v) => ({ ...v, requestedDoctorId }))}
+            disabled={isSubmitting}
+          />
+        </div>
 
         <Input
           label="Scheduled date & time (optional)"

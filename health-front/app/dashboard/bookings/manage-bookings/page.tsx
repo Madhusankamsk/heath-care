@@ -19,7 +19,14 @@ const PERMS = {
   delete: ["bookings:delete"],
 } as const;
 
-type Patient = { id: string; fullName: string };
+type Patient = {
+  id: string;
+  fullName: string;
+  shortName?: string | null;
+  nicOrPassport?: string | null;
+  contactNo?: string | null;
+  whatsappNo?: string | null;
+};
 
 async function getBookings() {
   return backendJson<Booking[]>("/api/bookings");
