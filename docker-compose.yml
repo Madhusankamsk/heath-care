@@ -25,7 +25,9 @@ services:
       DATABASE_URL: postgresql://health:health@db:5432/health
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-dev-change-me-use-long-random-string}
       PORT: "4000"
-      NODE_ENV: production
+      # Local/dev stack: use development so auth cookies are not Secure-only (works on http://).
+      # For a real production deploy, set NODE_ENV=production and serve over HTTPS.
+      NODE_ENV: development
     depends_on:
       db:
         condition: service_healthy
@@ -38,7 +40,7 @@ services:
       - "3001:3000"
     environment:
       HEALTH_BACKEND_URL: http://health-back:4000
-      NODE_ENV: production
+      NODE_ENV: development
     depends_on:
       - health-back
 
