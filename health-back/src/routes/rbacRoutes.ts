@@ -55,6 +55,12 @@ import {
   updateBookingHandler,
 } from "../controllers/bookingController";
 import {
+  createDispatchHandler,
+  listDispatchMemberCandidatesHandler,
+  listUpcomingDispatchHandler,
+  patchDispatchStatusHandler,
+} from "../controllers/dispatchController";
+import {
   createSubscriptionPlanHandler,
   deleteSubscriptionPlanHandler,
   getSubscriptionPlanHandler,
@@ -255,6 +261,24 @@ router.post("/bookings", requireAnyPermission(["bookings:create"]), createBookin
 router.get("/bookings/:id", requireAnyPermission(["bookings:read"]), getBookingHandler);
 router.put("/bookings/:id", requireAnyPermission(["bookings:update"]), updateBookingHandler);
 router.delete("/bookings/:id", requireAnyPermission(["bookings:delete"]), deleteBookingHandler);
+
+// Dispatch (vehicle + crew assignments for accepted bookings)
+router.get(
+  "/dispatch/upcoming",
+  requireAnyPermission(["bookings:list", "bookings:read"]),
+  listUpcomingDispatchHandler,
+);
+router.get(
+  "/dispatch/member-candidates",
+  requireAnyPermission(["bookings:update"]),
+  listDispatchMemberCandidatesHandler,
+);
+router.post("/dispatch", requireAnyPermission(["bookings:update"]), createDispatchHandler);
+router.patch(
+  "/dispatch/:id/status",
+  requireAnyPermission(["bookings:update"]),
+  patchDispatchStatusHandler,
+);
 
 // Invoices (subscription bill PDF)
 router.get(

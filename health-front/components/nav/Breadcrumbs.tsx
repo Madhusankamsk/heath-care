@@ -13,6 +13,8 @@ const labelMap: Record<string, string> = {
   "record-subscription-payment": "Record payment",
   bookings: "Bookings",
   "manage-bookings": "Manage Bookings",
+  dispatching: "Dispatching",
+  "upcoming-jobs": "Upcoming jobs",
   admin: "Admin",
   staff: "Staff",
   "plan-setup": "Plan Setup",

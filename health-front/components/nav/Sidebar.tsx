@@ -11,6 +11,7 @@ import {
   Crown,
   KeyRound,
   LayoutDashboard,
+  Navigation,
   PanelLeftClose,
   PanelLeftOpen,
   Receipt,
@@ -80,6 +81,20 @@ const navItems: NavItem[] = [
         href: "/dashboard/bookings/manage-bookings",
         label: "Manage Bookings",
         icon: <CalendarCheck2 className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["bookings:list", "bookings:read"],
+      },
+    ],
+  },
+  {
+    href: "/dashboard/dispatching",
+    label: "Dispatching",
+    icon: <Navigation className="h-4 w-4" aria-hidden />,
+    requiresAnyPermissions: ["bookings:list", "bookings:read"],
+    children: [
+      {
+        href: "/dashboard/dispatching/upcoming-jobs",
+        label: "Upcoming jobs",
+        icon: <Navigation className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["bookings:list", "bookings:read"],
       },
     ],
