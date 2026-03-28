@@ -35,7 +35,7 @@ services:
       context: ./health-front
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       HEALTH_BACKEND_URL: http://health-back:4000
       NODE_ENV: production
