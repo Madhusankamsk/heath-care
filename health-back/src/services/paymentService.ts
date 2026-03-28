@@ -7,7 +7,7 @@ export type PaymentListRow = {
   transactionRef: string | null;
   paymentMethod: string;
   invoiceId: string;
-  patientId: string;
+  patientId: string | null;
   patientName: string;
   subscriptionAccountId: string | null;
   subscriptionAccountName: string | null;
@@ -41,19 +41,23 @@ export async function listPayments(): Promise<PaymentListRow[]> {
     },
   });
 
-  return rows.map((p) => ({
-    id: p.id,
-    paidAt: p.paidAt.toISOString(),
-    amountPaid: p.amountPaid.toString(),
-    transactionRef: p.transactionRef,
-    paymentMethod: p.paymentMethodLookup.lookupValue,
-    invoiceId: p.invoice.id,
-    patientId: p.invoice.patient.id,
-    patientName: p.invoice.patient.fullName,
-    subscriptionAccountId: p.invoice.subscriptionAccount?.id ?? null,
-    subscriptionAccountName: p.invoice.subscriptionAccount?.accountName ?? null,
-    planName: p.invoice.subscriptionAccount?.plan?.planName ?? null,
-    collectedById: p.collectedBy.id,
-    collectedByName: p.collectedBy.fullName || p.collectedBy.email,
-  }));
+  return rows.map((p) => {
+    const patient = p.invoice.patient;
+    const accName = p.invoice.subscriptionAccount?.accountName ?? null;
+    return {
+      id: p.id,
+      paidAt: p.paidAt.toISOString(),
+      amountPaid: p.amountPaid.toString(),
+      transactionRef: p.transactionRef,
+      paymentMethod: p.paymentMethodLookup.lookupValue,
+      invoiceId: p.invoice.id,
+      patientId: patient?.id ?? null,
+      patientName: patient?.fullName ?? accName ?? "—",
+      subscriptionAccountId: p.invoice.subscriptionAccount?.id ?? null,
+      subscriptionAccountName: accName,
+      planName: p.invoice.subscriptionAccount?.plan?.planName ?? null,
+      collectedById: p.collectedBy.id,
+      collectedByName: p.collectedBy.fullName || p.collectedBy.email,
+    };
+  });
 }

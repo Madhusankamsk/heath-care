@@ -1,10 +1,7 @@
 import prisma from "../prisma/client";
 import type { Prisma } from "@prisma/client";
 
-import {
-  createSubscriptionInvoiceWithLedger,
-  type SubscriptionPaymentInput,
-} from "./subscriptionBillingService";
+import { createSubscriptionInvoiceWithLedger } from "./subscriptionBillingService";
 
 export type PatientCreateInput = {
   nicOrPassport?: string | null;
@@ -26,9 +23,6 @@ export type PatientCreateInput = {
   billingRecipientId?: string | null;
   subscriptionPlanId?: string | null;
   subscriptionStatusId?: string | null;
-  /** Payments recorded when creating an individual subscription (same transaction as patient + account). */
-  subscriptionPayments?: SubscriptionPaymentInput[];
-  collectedByUserId?: string | null;
 };
 
 async function resolveSubscriptionStatusId(
@@ -232,8 +226,8 @@ export async function createPatient(data: PatientCreateInput) {
           subscriptionAccountId: account.id,
           patientId: patient.id,
           planId: plan.id,
-          payments: data.subscriptionPayments ?? [],
-          collectedByUserId: data.collectedByUserId?.trim() ?? "",
+          payments: [],
+          collectedByUserId: "",
         });
         invoiceId = billing.invoiceId;
       }

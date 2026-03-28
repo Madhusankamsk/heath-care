@@ -1,10 +1,7 @@
 import prisma from "../prisma/client";
 import type { Prisma } from "@prisma/client";
 
-import {
-  createSubscriptionInvoiceWithLedger,
-  type SubscriptionPaymentInput,
-} from "./subscriptionBillingService";
+import { createSubscriptionInvoiceWithLedger } from "./subscriptionBillingService";
 
 export type SubscriptionAccountCreateInput = {
   accountName?: string | null;
@@ -17,10 +14,8 @@ export type SubscriptionAccountCreateInput = {
   startDate?: string | Date | null;
   endDate?: string | Date | null;
   statusId?: string | null;
-  /** When set, patient is added as a member and subscription billing (invoice + ledger) is created. */
+  /** When set, patient is added as a member (billing is always created; invoice has no patient for corporate). */
   primaryPatientId?: string | null;
-  payments?: SubscriptionPaymentInput[];
-  collectedByUserId?: string | null;
 };
 
 export type AddSubscriptionMemberInput = {
@@ -169,7 +164,6 @@ export async function createSubscriptionAccount(data: SubscriptionAccountCreateI
       },
     });
 
-    let invoiceId: string | null = null;
     if (primaryPid) {
       const existingMember = await tx.subscriptionMember.findFirst({
         where: { subscriptionAccountId: account.id, patientId: primaryPid },
@@ -179,15 +173,16 @@ export async function createSubscriptionAccount(data: SubscriptionAccountCreateI
           data: { subscriptionAccountId: account.id, patientId: primaryPid },
         });
       }
-      const billing = await createSubscriptionInvoiceWithLedger(tx, {
-        subscriptionAccountId: account.id,
-        patientId: primaryPid,
-        planId: data.planId,
-        payments: data.payments ?? [],
-        collectedByUserId: data.collectedByUserId?.trim() ?? "",
-      });
-      invoiceId = billing.invoiceId;
     }
+
+    const billing = await createSubscriptionInvoiceWithLedger(tx, {
+      subscriptionAccountId: account.id,
+      patientId: null,
+      planId: data.planId,
+      payments: [],
+      collectedByUserId: "",
+    });
+    const invoiceId = billing.invoiceId;
 
     const row = await tx.subscriptionAccount.findUniqueOrThrow({
       where: { id: account.id },

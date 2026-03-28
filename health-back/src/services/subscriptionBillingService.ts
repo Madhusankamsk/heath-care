@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
 
+import prisma from "../prisma/client";
+
 export type SubscriptionPaymentInput = {
   amountPaid: string | number;
   paymentMethodId: string;
@@ -50,7 +52,8 @@ export async function createSubscriptionInvoiceWithLedger(
   tx: Prisma.TransactionClient,
   params: {
     subscriptionAccountId: string;
-    patientId: string;
+    /** Omit or null for corporate bills (invoice billed to subscription account only). */
+    patientId?: string | null;
     planId: string;
     payments: SubscriptionPaymentInput[];
     collectedByUserId: string;
@@ -112,9 +115,11 @@ export async function createSubscriptionInvoiceWithLedger(
   const debitTypeId = await requireLookupId(tx, "ACCOUNT_TRANSACTION_TYPE", "DEBIT");
   const creditTypeId = await requireLookupId(tx, "ACCOUNT_TRANSACTION_TYPE", "CREDIT");
 
+  const resolvedPatientId = params.patientId?.trim() || null;
+
   const invoice = await tx.invoice.create({
     data: {
-      patientId: params.patientId,
+      patientId: resolvedPatientId,
       subscriptionAccountId: params.subscriptionAccountId,
       bookingId: null,
       totalAmount: total,
@@ -166,4 +171,154 @@ export async function createSubscriptionInvoiceWithLedger(
   });
 
   return { invoiceId: invoice.id };
+}
+
+export type OutstandingSubscriptionInvoiceRow = {
+  id: string;
+  createdAt: string;
+  balanceDue: string;
+  totalAmount: string;
+  paidAmount: string;
+  subscriptionAccountId: string;
+  accountName: string | null;
+  planName: string;
+  patientName: string | null;
+};
+
+export async function listOutstandingSubscriptionInvoices(): Promise<
+  OutstandingSubscriptionInvoiceRow[]
+> {
+  const rows = await prisma.invoice.findMany({
+    where: {
+      subscriptionAccountId: { not: null },
+      balanceDue: { gt: 0 },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      createdAt: true,
+      balanceDue: true,
+      totalAmount: true,
+      paidAmount: true,
+      subscriptionAccountId: true,
+      subscriptionAccount: {
+        select: {
+          accountName: true,
+          plan: { select: { planName: true } },
+        },
+      },
+      patient: { select: { fullName: true } },
+    },
+  });
+
+  return rows.map((r) => ({
+    id: r.id,
+    createdAt: r.createdAt.toISOString(),
+    balanceDue: r.balanceDue.toString(),
+    totalAmount: r.totalAmount.toString(),
+    paidAmount: r.paidAmount.toString(),
+    subscriptionAccountId: r.subscriptionAccountId!,
+    accountName: r.subscriptionAccount?.accountName ?? null,
+    planName: r.subscriptionAccount?.plan?.planName ?? "—",
+    patientName: r.patient?.fullName ?? null,
+  }));
+}
+
+export async function recordSubscriptionInvoicePayment(params: {
+  invoiceId: string;
+  amountPaid: string | number;
+  paymentMethodId: string;
+  transactionRef?: string | null;
+  collectedByUserId: string;
+}): Promise<{ invoiceId: string; balanceDue: string }> {
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findUnique({
+      where: { id: params.invoiceId },
+      select: {
+        id: true,
+        subscriptionAccountId: true,
+        paidAmount: true,
+        balanceDue: true,
+      },
+    });
+
+    if (!invoice?.subscriptionAccountId) {
+      throw new Error("Invoice is not a subscription invoice");
+    }
+
+    const balanceDue = new Prisma.Decimal(invoice.balanceDue);
+    if (balanceDue.lte(0)) {
+      throw new Error("Invoice has no balance due");
+    }
+
+    const amt = new Prisma.Decimal(params.amountPaid);
+    if (amt.lte(0)) {
+      throw new Error("Amount must be positive");
+    }
+    if (amt.gt(balanceDue)) {
+      throw new Error("Amount exceeds balance due");
+    }
+
+    await validatePaymentMethod(tx, params.paymentMethodId.trim());
+    const collector = params.collectedByUserId?.trim();
+    if (!collector) {
+      throw new Error("collectedByUserId is required when recording payments");
+    }
+
+    const creditTypeId = await requireLookupId(tx, "ACCOUNT_TRANSACTION_TYPE", "CREDIT");
+
+    await tx.payment.create({
+      data: {
+        invoiceId: invoice.id,
+        amountPaid: amt,
+        paymentMethodId: params.paymentMethodId.trim(),
+        transactionRef: params.transactionRef?.trim() ? params.transactionRef.trim() : null,
+        collectedById: collector,
+      },
+    });
+
+    await tx.accountTransaction.create({
+      data: {
+        subscriptionAccountId: invoice.subscriptionAccountId,
+        transactionTypeId: creditTypeId,
+        amount: amt,
+        description: "Subscription payment",
+      },
+    });
+
+    const newPaid = new Prisma.Decimal(invoice.paidAmount).add(amt);
+    const newBalance = balanceDue.sub(amt);
+
+    let paymentStatusKey: "PARTIAL" | "PAID";
+    let paymentStatusLabel: string;
+    if (newBalance.eq(0)) {
+      paymentStatusKey = "PAID";
+      paymentStatusLabel = "Paid";
+    } else {
+      paymentStatusKey = "PARTIAL";
+      paymentStatusLabel = "Partial";
+    }
+
+    const paymentStatusId = await requireLookupId(tx, "INVOICE_PAYMENT_STATUS", paymentStatusKey);
+
+    await tx.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        paidAmount: newPaid,
+        balanceDue: newBalance,
+        paymentStatus: paymentStatusLabel,
+        paymentStatusId,
+      },
+    });
+
+    await tx.subscriptionAccount.update({
+      where: { id: invoice.subscriptionAccountId },
+      data: {
+        outstandingBalance: { decrement: amt },
+      },
+    });
+
+    return { invoiceId: invoice.id, balanceDue: newBalance.toString() };
+  });
 }

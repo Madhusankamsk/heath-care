@@ -25,6 +25,7 @@ export async function getSubscriptionAccountHandler(req: Request, res: Response)
 }
 
 export async function createSubscriptionAccountHandler(req: Request, res: Response) {
+  // primaryPatientId: optional; if set, that patient is added as a member only (invoice is corporate, no patient on invoice).
   const {
     accountName,
     planId,
@@ -37,7 +38,6 @@ export async function createSubscriptionAccountHandler(req: Request, res: Respon
     contactPhone,
     whatsappNo,
     primaryPatientId,
-    payments,
   } = req.body as Partial<{
     accountName: string | null;
     planId: string;
@@ -50,11 +50,6 @@ export async function createSubscriptionAccountHandler(req: Request, res: Respon
     contactPhone: string | null;
     whatsappNo: string | null;
     primaryPatientId: string | null;
-    payments: Array<{
-      amountPaid: number | string;
-      paymentMethodId: string;
-      transactionRef?: string | null;
-    }>;
   }>;
 
   const cleanedPlanId = planId?.trim() ?? "";
@@ -78,8 +73,6 @@ export async function createSubscriptionAccountHandler(req: Request, res: Respon
       contactPhone: contactPhone?.trim() || undefined,
       whatsappNo: whatsappNo?.trim() || undefined,
       primaryPatientId: primaryPatientId?.trim() || undefined,
-      payments: Array.isArray(payments) ? payments : undefined,
-      collectedByUserId: req.authUser?.sub,
     });
 
     return res.status(201).json(created);
@@ -91,13 +84,7 @@ export async function createSubscriptionAccountHandler(req: Request, res: Respon
     if (message === "Primary patient not found") {
       return res.status(400).json({ message });
     }
-    if (
-      message.startsWith("Missing lookup") ||
-      message.includes("paymentMethodId") ||
-      message.includes("payments exceed") ||
-      message.includes("Each payment") ||
-      message.includes("collectedByUserId")
-    ) {
+    if (message.startsWith("Missing lookup")) {
       return res.status(400).json({ message });
     }
     return res.status(500).json({ message: "Unable to create subscription account" });

@@ -73,6 +73,10 @@ import {
 } from "../controllers/subscriptionAccountController";
 import { getInvoicePdfHandler } from "../controllers/invoiceController";
 import { listPaymentsHandler } from "../controllers/paymentController";
+import {
+  listOutstandingSubscriptionInvoicesHandler,
+  recordSubscriptionInvoicePaymentHandler,
+} from "../controllers/subscriptionInvoicePaymentController";
 import { requireAnyPermission } from "../middleware/permissions";
 import prisma from "../prisma/client";
 
@@ -264,6 +268,17 @@ router.get(
   "/payments",
   requireAnyPermission(["invoices:read", "patients:read", "profiles:read"]),
   listPaymentsHandler,
+);
+
+router.get(
+  "/subscription-invoices/outstanding",
+  requireAnyPermission(["invoices:read", "patients:read", "profiles:read"]),
+  listOutstandingSubscriptionInvoicesHandler,
+);
+router.post(
+  "/subscription-invoices/:id/payments",
+  requireAnyPermission(["invoices:read", "patients:read", "profiles:read"]),
+  recordSubscriptionInvoicePaymentHandler,
 );
 
 // Subscription plans

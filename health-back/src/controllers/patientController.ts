@@ -41,7 +41,6 @@ export async function createPatientHandler(req: Request, res: Response) {
     billingRecipientId,
     subscriptionPlanId,
     subscriptionStatusId,
-    payments,
   } = req.body as Partial<{
     nicOrPassport: string | null;
     fullName: string;
@@ -62,18 +61,11 @@ export async function createPatientHandler(req: Request, res: Response) {
     billingRecipientId: string | null;
     subscriptionPlanId: string | null;
     subscriptionStatusId: string | null;
-    payments: Array<{
-      amountPaid: number | string;
-      paymentMethodId: string;
-      transactionRef?: string | null;
-    }>;
   }>;
 
   if (!fullName) {
     return res.status(400).json({ message: "fullName is required" });
   }
-
-  const collectedByUserId = req.authUser?.sub;
 
   try {
     const created = await createPatient({
@@ -96,20 +88,12 @@ export async function createPatientHandler(req: Request, res: Response) {
       billingRecipientId: billingRecipientId ?? undefined,
       subscriptionPlanId: subscriptionPlanId ?? undefined,
       subscriptionStatusId: subscriptionStatusId ?? undefined,
-      subscriptionPayments: Array.isArray(payments) ? payments : undefined,
-      collectedByUserId: collectedByUserId ?? undefined,
     });
 
     return res.status(201).json({ ...created.patient, invoiceId: created.invoiceId });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to create patient";
-    if (
-      message.startsWith("Missing lookup") ||
-      message.includes("paymentMethodId") ||
-      message.includes("payments exceed") ||
-      message.includes("Each payment") ||
-      message.includes("collectedByUserId")
-    ) {
+    if (message.startsWith("Missing lookup")) {
       return res.status(400).json({ message });
     }
     throw error;

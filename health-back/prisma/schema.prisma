@@ -337,7 +337,8 @@ model DispensedMedicine {
 model Invoice {
   id                    String   @id @default(uuid())
   bookingId             String?
-  patientId             String
+  /** Null for corporate subscription bills billed to the account only. */
+  patientId             String?
   subscriptionAccountId String?
   totalAmount           Decimal
   consultationTotal     Decimal
@@ -349,7 +350,7 @@ model Invoice {
   paymentStatusId       String?
   paymentStatusLookup   Lookup?  @relation("InvoicePaymentStatus", fields: [paymentStatusId], references: [id])
   booking               Booking? @relation(fields: [bookingId], references: [id])
-  patient               Patient  @relation(fields: [patientId], references: [id])
+  patient               Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   subscriptionAccount   SubscriptionAccount? @relation(fields: [subscriptionAccountId], references: [id], onDelete: Cascade)
   payments              Payment[]
   createdAt             DateTime @default(now())

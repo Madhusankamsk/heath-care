@@ -1,0 +1,49 @@
+import type { Request, Response } from "express";
+
+import {
+  listOutstandingSubscriptionInvoices,
+  recordSubscriptionInvoicePayment,
+} from "../services/subscriptionBillingService";
+
+export async function listOutstandingSubscriptionInvoicesHandler(_req: Request, res: Response) {
+  const rows = await listOutstandingSubscriptionInvoices();
+  return res.json(rows);
+}
+
+export async function recordSubscriptionInvoicePaymentHandler(req: Request, res: Response) {
+  const { id: invoiceId } = req.params;
+  const { amountPaid, paymentMethodId, transactionRef } = req.body as Partial<{
+    amountPaid: number | string;
+    paymentMethodId: string;
+    transactionRef: string | null;
+  }>;
+
+  const collectedByUserId = req.authUser?.sub;
+
+  try {
+    const result = await recordSubscriptionInvoicePayment({
+      invoiceId,
+      amountPaid: amountPaid ?? "",
+      paymentMethodId: paymentMethodId?.trim() ?? "",
+      transactionRef: transactionRef ?? undefined,
+      collectedByUserId: collectedByUserId ?? "",
+    });
+    return res.status(201).json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to record payment";
+    if (
+      message === "Invoice is not a subscription invoice" ||
+      message === "Invoice has no balance due" ||
+      message === "Amount must be positive" ||
+      message === "Amount exceeds balance due" ||
+      message === "Invalid paymentMethodId" ||
+      message.includes("collectedByUserId")
+    ) {
+      return res.status(400).json({ message });
+    }
+    if (message.startsWith("Missing lookup")) {
+      return res.status(400).json({ message });
+    }
+    return res.status(500).json({ message: "Unable to record payment" });
+  }
+}

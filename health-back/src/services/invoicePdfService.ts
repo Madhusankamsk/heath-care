@@ -8,9 +8,18 @@ type InvoicePdfRow = {
   balanceDue: { toString(): string };
   consultationTotal: { toString(): string };
   paymentStatus: string;
-  patient: { fullName: string; nicOrPassport: string | null; contactNo: string | null };
+  patient: {
+    fullName: string;
+    nicOrPassport: string | null;
+    contactNo: string | null;
+  } | null;
   subscriptionAccount: {
     accountName: string | null;
+    registrationNo: string | null;
+    billingAddress: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    whatsappNo: string | null;
     plan: { planName: string };
   } | null;
   paymentStatusLookup: { lookupValue: string } | null;
@@ -23,6 +32,11 @@ type CompanyRow = {
   companyAddress: string | null;
   currencyCode: string | null;
 };
+
+function dash(s: string | null | undefined) {
+  const t = s?.trim();
+  return t && t.length > 0 ? t : "—";
+}
 
 export function buildSubscriptionInvoicePdfBuffer(
   company: CompanyRow | null,
@@ -59,13 +73,34 @@ export function buildSubscriptionInvoicePdfBuffer(
     doc.text(`Status: ${invoice.paymentStatusLookup?.lookupValue ?? invoice.paymentStatus}`);
     doc.moveDown();
 
-    doc.text(`Bill to: ${invoice.patient.fullName}`);
-    if (invoice.patient.nicOrPassport) doc.text(`NIC / Passport: ${invoice.patient.nicOrPassport}`);
-    if (invoice.patient.contactNo) doc.text(`Contact: ${invoice.patient.contactNo}`);
-    if (invoice.subscriptionAccount) {
-      doc.text(`Account: ${invoice.subscriptionAccount.accountName ?? "—"}`);
+    doc.text("Bill to:");
+    if (invoice.patient) {
+      doc.text(`  ${invoice.patient.fullName}`);
+      if (invoice.patient.nicOrPassport) doc.text(`  NIC / Passport: ${invoice.patient.nicOrPassport}`);
+      if (invoice.patient.contactNo) doc.text(`  Contact: ${invoice.patient.contactNo}`);
+    } else if (invoice.subscriptionAccount) {
+      const acc = invoice.subscriptionAccount;
+      doc.text(`  ${dash(acc.accountName)}`);
+      if (acc.registrationNo?.trim()) doc.text(`  Registration: ${acc.registrationNo}`);
+      if (acc.billingAddress?.trim()) {
+        doc.text(`  Address: ${acc.billingAddress}`);
+      }
+      const contactLine = [acc.contactPhone, acc.contactEmail, acc.whatsappNo]
+        .map((x) => x?.trim())
+        .filter(Boolean)
+        .join(" · ");
+      if (contactLine) doc.text(`  Contact: ${contactLine}`);
+      doc.text(`  Plan: ${acc.plan.planName}`);
+    } else {
+      doc.text("  —");
+    }
+
+    if (invoice.patient && invoice.subscriptionAccount) {
+      doc.moveDown(0.3);
+      doc.text(`Account: ${dash(invoice.subscriptionAccount.accountName)}`);
       doc.text(`Plan: ${invoice.subscriptionAccount.plan.planName}`);
     }
+
     doc.moveDown();
 
     const line = (label: string, value: string) => {

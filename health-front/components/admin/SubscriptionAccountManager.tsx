@@ -46,7 +46,6 @@ type SubscriptionAccountManagerProps = {
   initialAccounts: SubscriptionAccount[];
   plans: PlanOption[];
   patients: Patient[];
-  paymentMethods: LookupOption[];
   genders: LookupOption[];
   billingRecipients: LookupOption[];
   statuses: LookupOption[];
@@ -87,7 +86,6 @@ export function SubscriptionAccountManager({
   initialAccounts,
   plans,
   patients,
-  paymentMethods,
   genders,
   billingRecipients,
   statuses,
@@ -301,8 +299,6 @@ export function SubscriptionAccountManager({
             submitLabel="Create"
             plans={plans}
             statuses={statuses}
-            patients={patients}
-            paymentMethods={paymentMethods}
             onCancel={() => setMode("none")}
             onSubmit={async (values) => {
               const res = await fetch("/api/subscription-accounts", {
@@ -1041,16 +1037,7 @@ type FormValues = {
   startDate?: string;
   endDate?: string;
   statusId?: string;
-  /** When set with a primary member, creates invoice + ledger (optional payments). */
-  primaryPatientId?: string;
-  payments?: Array<{
-    amountPaid: number;
-    paymentMethodId: string;
-    transactionRef?: string;
-  }>;
 };
-
-type PaymentRow = { amount: string; paymentMethodId: string; transactionRef: string };
 
 function SubscriptionAccountForm({
   intent,
@@ -1058,8 +1045,6 @@ function SubscriptionAccountForm({
   submitLabel,
   plans,
   statuses,
-  patients,
-  paymentMethods,
   initial,
   onCancel,
   onSubmit,
@@ -1069,8 +1054,6 @@ function SubscriptionAccountForm({
   submitLabel: string;
   plans: PlanOption[];
   statuses: LookupOption[];
-  patients?: Patient[];
-  paymentMethods?: LookupOption[];
   initial?: Partial<FormValues>;
   onCancel: () => void;
   onSubmit: (values: FormValues) => Promise<void>;
@@ -1086,9 +1069,7 @@ function SubscriptionAccountForm({
     startDate: initial?.startDate ?? "",
     endDate: initial?.endDate ?? "",
     statusId: initial?.statusId ?? "",
-    primaryPatientId: initial?.primaryPatientId ?? "",
   });
-  const [paymentRows, setPaymentRows] = useState<PaymentRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -1113,25 +1094,6 @@ function SubscriptionAccountForm({
             if (!values.planId.trim()) {
               throw new Error("Plan is required");
             }
-            const primaryTrim = values.primaryPatientId?.trim();
-            const builtPayments: FormValues["payments"] = [];
-            for (const row of paymentRows) {
-              const amtStr = row.amount.trim();
-              const mid = row.paymentMethodId.trim();
-              if (!amtStr && !mid && !row.transactionRef.trim()) continue;
-              if (!amtStr || !mid) {
-                throw new Error("Each payment line needs an amount and a payment method.");
-              }
-              const n = Number(amtStr);
-              if (!Number.isFinite(n) || n <= 0) {
-                throw new Error("Payment amounts must be positive numbers.");
-              }
-              builtPayments.push({
-                amountPaid: n,
-                paymentMethodId: mid,
-                transactionRef: row.transactionRef.trim() || undefined,
-              });
-            }
 
             await onSubmit({
               accountName: values.accountName?.trim() || undefined,
@@ -1144,8 +1106,6 @@ function SubscriptionAccountForm({
               startDate: values.startDate?.trim() || undefined,
               endDate: values.endDate?.trim() || undefined,
               statusId: values.statusId?.trim() || undefined,
-              primaryPatientId: primaryTrim || undefined,
-              payments: builtPayments.length > 0 ? builtPayments : undefined,
             });
           } catch (e) {
             const msg = e instanceof Error ? e.message : "Something went wrong";
@@ -1239,101 +1199,6 @@ function SubscriptionAccountForm({
             ))}
           </select>
         </label>
-        {intent === "create" && patients && patients.length > 0 ? (
-          <label className="flex flex-col gap-2 text-sm sm:col-span-2">
-            <span className="font-medium text-[var(--text-primary)]">
-              Primary member (required for invoice and bill PDF)
-            </span>
-            <select
-              className={selectClass}
-              value={values.primaryPatientId ?? ""}
-              onChange={(e) => setValues((v) => ({ ...v, primaryPatientId: e.target.value }))}
-            >
-              <option value="">— None — no invoice yet</option>
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.fullName}
-                  {p.nicOrPassport ? ` (${p.nicOrPassport})` : ""}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs text-[var(--text-secondary)]">
-              Select an existing patient to generate the subscription invoice and open the PDF after
-              create.
-            </span>
-          </label>
-        ) : null}
-        {intent === "create" && paymentMethods && paymentMethods.length > 0 && values.primaryPatientId ? (
-          <div className="flex flex-col gap-3 sm:col-span-2">
-            <div className="text-sm font-medium text-[var(--text-primary)]">
-              Payments at creation (optional)
-            </div>
-            {paymentRows.map((row, idx) => (
-              <div
-                key={idx}
-                className="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:grid-cols-3"
-              >
-                <Input
-                  label="Amount"
-                  name={`pay-amt-${idx}`}
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={row.amount}
-                  onChange={(e) =>
-                    setPaymentRows((rows) =>
-                      rows.map((r, i) => (i === idx ? { ...r, amount: e.target.value } : r)),
-                    )
-                  }
-                />
-                <label className="flex flex-col gap-2 text-sm">
-                  <span className="font-medium text-[var(--text-primary)]">Method</span>
-                  <select
-                    className={selectClass}
-                    value={row.paymentMethodId}
-                    onChange={(e) =>
-                      setPaymentRows((rows) =>
-                        rows.map((r, i) =>
-                          i === idx ? { ...r, paymentMethodId: e.target.value } : r,
-                        ),
-                      )
-                    }
-                  >
-                    <option value="">Select</option>
-                    {paymentMethods.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.lookupValue}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <Input
-                  label="Reference (optional)"
-                  name={`pay-ref-${idx}`}
-                  value={row.transactionRef}
-                  onChange={(e) =>
-                    setPaymentRows((rows) =>
-                      rows.map((r, i) => (i === idx ? { ...r, transactionRef: e.target.value } : r)),
-                    )
-                  }
-                />
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="secondary"
-              className="self-start"
-              onClick={() =>
-                setPaymentRows((rows) => [
-                  ...rows,
-                  { amount: "", paymentMethodId: "", transactionRef: "" },
-                ])
-              }
-            >
-              Add payment line
-            </Button>
-          </div>
-        ) : null}
         <div className="flex items-center justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
             Cancel

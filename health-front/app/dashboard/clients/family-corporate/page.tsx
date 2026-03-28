@@ -51,12 +51,11 @@ export default async function FamilyCorporatePage() {
   const canEdit = hasAnyPermission(me.permissions, [...PERMS.edit]);
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
 
-  const [accounts, plans, patients, statuses, paymentMethods] = await Promise.all([
+  const [accounts, plans, patients, statuses] = await Promise.all([
     getSubscriptionAccounts(),
     getSubscriptionPlans(),
     getPatients(),
     getLookups("SUBSCRIPTION_ACCOUNT_STATUS"),
-    getLookups("PAYMENT_METHOD"),
   ]);
 
   const [genders, billingRecipients] = await Promise.all([
@@ -76,7 +75,6 @@ export default async function FamilyCorporatePage() {
             initialAccounts={accounts}
             plans={(plans ?? []).filter((p) => p.isActive)}
             patients={patients ?? []}
-            paymentMethods={paymentMethods ?? []}
             genders={genders ?? []}
             billingRecipients={billingRecipients ?? []}
             statuses={statuses ?? []}

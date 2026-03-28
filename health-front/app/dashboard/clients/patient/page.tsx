@@ -48,14 +48,12 @@ export default async function PatientPage({
   const params = (await searchParams) ?? {};
   const openCreateOnMount = params.open === "create";
 
-  const [patients, genders, billingRecipients, subscriptionPlans, paymentMethods] =
-    await Promise.all([
-      getPatients(),
-      getLookups("GENDER"),
-      getLookups("BILLING_RECIPIENT"),
-      getSubscriptionPlans(),
-      getLookups("PAYMENT_METHOD"),
-    ]);
+  const [patients, genders, billingRecipients, subscriptionPlans] = await Promise.all([
+    getPatients(),
+    getLookups("GENDER"),
+    getLookups("BILLING_RECIPIENT"),
+    getSubscriptionPlans(),
+  ]);
   const subscriptionStatuses = await getLookups("SUBSCRIPTION_ACCOUNT_STATUS");
 
   return (
@@ -72,7 +70,6 @@ export default async function PatientPage({
             billingRecipients={billingRecipients ?? []}
             subscriptionPlans={(subscriptionPlans ?? []).filter((p) => p.isActive)}
             subscriptionStatuses={subscriptionStatuses ?? []}
-            paymentMethods={paymentMethods ?? []}
             canPreview={canPreview}
             canCreate={canCreate}
             canEdit={canEdit}

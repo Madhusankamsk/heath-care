@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
+  Banknote,
   CalendarCheck2,
   Building2,
   ChevronRight,
@@ -12,6 +13,7 @@ import {
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
+  Receipt,
   ShieldCheck,
   Stethoscope,
   Truck,
@@ -25,6 +27,13 @@ import { canAccessAdmin, canAccessSuperAdmin } from "@/lib/adminAccess";
 import { hasAnyPermission } from "@/lib/rbac";
 import { useMe } from "@/lib/useMe";
 
+type NavLeaf = {
+  href: string;
+  label: string;
+  icon?: React.ReactNode;
+  requiresAnyPermissions?: string[];
+};
+
 type NavItem = {
   href: string;
   label: string;
@@ -32,12 +41,7 @@ type NavItem = {
   requiresAdmin?: boolean;
   requiresSuperAdmin?: boolean;
   requiresAnyPermissions?: string[];
-  children?: {
-    href: string;
-    label: string;
-    icon?: React.ReactNode;
-    requiresAnyPermissions?: string[];
-  }[];
+  children?: NavLeaf[];
 };
 
 const navItems: NavItem[] = [
@@ -64,12 +68,6 @@ const navItems: NavItem[] = [
         icon: <Building2 className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["profiles:list", "profiles:read", "patients:read"],
       },
-      {
-        href: "/dashboard/clients/accounts",
-        label: "Accounts",
-        icon: <Wallet className="h-4 w-4" aria-hidden />,
-        requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
-      },
     ],
   },
   {
@@ -83,6 +81,26 @@ const navItems: NavItem[] = [
         label: "Manage Bookings",
         icon: <CalendarCheck2 className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["bookings:list", "bookings:read"],
+      },
+    ],
+  },
+  {
+    href: "/dashboard/payments",
+    label: "Payments",
+    icon: <Wallet className="h-4 w-4" aria-hidden />,
+    requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
+    children: [
+      {
+        href: "/dashboard/payments/record",
+        label: "Record payment",
+        icon: <Banknote className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
+      },
+      {
+        href: "/dashboard/payments/accounts",
+        label: "Accounts",
+        icon: <Receipt className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
       },
     ],
   },
@@ -336,9 +354,7 @@ export function Sidebar({
                           onClick={() => onNavigate?.()}
                         >
                           {child.icon ? (
-                            <span className="text-[var(--text-muted)]">
-                              {child.icon}
-                            </span>
+                            <span className="text-[var(--text-muted)]">{child.icon}</span>
                           ) : null}
                           {child.label}
                         </Link>

@@ -13,7 +13,13 @@ export async function getInvoicePdfHandler(req: Request, res: Response) {
         select: { fullName: true, nicOrPassport: true, contactNo: true },
       },
       subscriptionAccount: {
-        include: {
+        select: {
+          accountName: true,
+          registrationNo: true,
+          billingAddress: true,
+          contactEmail: true,
+          contactPhone: true,
+          whatsappNo: true,
           plan: { select: { planName: true } },
         },
       },
