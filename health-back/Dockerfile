@@ -20,8 +20,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
-RUN npm ci --omit=dev && npm install prisma@6 --no-save
+RUN npm ci --omit=dev && npm install prisma@6 tsx --no-save
 RUN npx prisma generate
 COPY --from=build /app/dist ./dist
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node dist/server.js"]
