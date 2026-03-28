@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { toast } from "@/lib/toast";
 
-export function CreatePermissionForm() {
+type CreatePermissionFormProps = {
+  onSuccess?: () => void;
+};
+
+export function CreatePermissionForm({ onSuccess }: CreatePermissionFormProps = {}) {
   const router = useRouter();
   const [permissionKey, setPermissionKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,6 +49,7 @@ export function CreatePermissionForm() {
       setPermissionKey("");
       toast.success("Permission created");
       router.refresh();
+      onSuccess?.();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong.";
       setError(msg);

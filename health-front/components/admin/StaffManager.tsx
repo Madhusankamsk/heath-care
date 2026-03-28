@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { ModalShell } from "@/components/ui/ModalShell";
 import { Input } from "@/components/ui/Input";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
@@ -184,46 +184,18 @@ export function StaffManager({
       </div>
 
       {mode === "create" && canCreate ? (
-        <div
-          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="create-staff-title"
-          onClick={() => {
+        <ModalShell
+          open
+          titleId="create-staff-title"
+          title="Create staff"
+          subtitle="Add a team member with email, role, and a temporary password."
+          maxWidthClass="max-w-3xl"
+          onClose={() => {
             setMode("none");
             setError(null);
           }}
         >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Card>
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2
-                    id="create-staff-title"
-                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-                  >
-                    Create staff
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Add a team member with email, role, and a temporary password.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-                  onClick={() => {
-                    setMode("none");
-                    setError(null);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <StaffForm
+          <StaffForm
                 layout="modal"
                 intent="create"
                 title="Create staff"
@@ -250,52 +222,22 @@ export function StaffManager({
                 }}
                 includePassword
               />
-            </Card>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
 
       {mode === "edit" && selected ? (
-        <div
-          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="edit-staff-title"
-          onClick={() => {
+        <ModalShell
+          open
+          titleId="edit-staff-title"
+          title="Edit staff"
+          subtitle="Update staff account details and role assignment."
+          maxWidthClass="max-w-3xl"
+          onClose={() => {
             setMode("none");
             setError(null);
           }}
         >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Card>
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2
-                    id="edit-staff-title"
-                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-                  >
-                    Edit staff
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Update staff account details and role assignment.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-                  onClick={() => {
-                    setMode("none");
-                    setError(null);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <StaffForm
+          <StaffForm
                 layout="modal"
                 intent="edit"
                 title="Edit staff"
@@ -329,50 +271,22 @@ export function StaffManager({
                   setMode("none");
                 }}
               />
-            </Card>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
 
       {mode === "preview" && selected ? (
-        <div
-          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="preview-staff-title"
-          onClick={() => {
+        <ModalShell
+          open
+          titleId="preview-staff-title"
+          title="Preview staff"
+          subtitle="Read-only details."
+          maxWidthClass="max-w-3xl"
+          onClose={() => {
             setMode("none");
             setError(null);
           }}
         >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Card>
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2
-                    id="preview-staff-title"
-                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-                  >
-                    Preview staff
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)]">Read-only details.</p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-                  onClick={() => {
-                    setMode("none");
-                    setError(null);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <div className="preview-shell sm:grid-cols-2">
+          <div className="preview-shell sm:grid-cols-2">
                 <section className="preview-section">
                   <h3 className="preview-section-title">Profile</h3>
                   <dl className="preview-list">
@@ -413,9 +327,7 @@ export function StaffManager({
                   </dl>
                 </section>
               </div>
-            </Card>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">

@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { ModalShell } from "@/components/ui/ModalShell";
 import { Input } from "@/components/ui/Input";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
@@ -167,46 +167,18 @@ export function VehicleManager({
       </div>
 
       {mode === "create" && canCreate ? (
-        <div
-          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="create-vehicle-title"
-          onClick={() => {
+        <ModalShell
+          open
+          titleId="create-vehicle-title"
+          title="Create vehicle"
+          subtitle="Register a vehicle number, optional model, status, and assigned driver."
+          maxWidthClass="max-w-3xl"
+          onClose={() => {
             setMode("none");
             setError(null);
           }}
         >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Card>
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2
-                    id="create-vehicle-title"
-                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-                  >
-                    Create vehicle
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Register a vehicle number, optional model, status, and assigned driver.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-                  onClick={() => {
-                    setMode("none");
-                    setError(null);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <VehicleForm
+          <VehicleForm
                 layout="modal"
                 intent="create"
                 title="Create vehicle"
@@ -231,52 +203,22 @@ export function VehicleManager({
                   setMode("none");
                 }}
               />
-            </Card>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
 
       {mode === "edit" && selected ? (
-        <div
-          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="edit-vehicle-title"
-          onClick={() => {
+        <ModalShell
+          open
+          titleId="edit-vehicle-title"
+          title="Edit vehicle"
+          subtitle="Update vehicle details and assigned driver."
+          maxWidthClass="max-w-3xl"
+          onClose={() => {
             setMode("none");
             setError(null);
           }}
         >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Card>
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2
-                    id="edit-vehicle-title"
-                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-                  >
-                    Edit vehicle
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Update vehicle details and assigned driver.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-                  onClick={() => {
-                    setMode("none");
-                    setError(null);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <VehicleForm
+          <VehicleForm
                 layout="modal"
                 intent="edit"
                 title="Edit vehicle"
@@ -305,50 +247,22 @@ export function VehicleManager({
                   toast.success("Vehicle updated");
                 }}
               />
-            </Card>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
 
       {mode === "preview" && selected ? (
-        <div
-          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="preview-vehicle-title"
-          onClick={() => {
+        <ModalShell
+          open
+          titleId="preview-vehicle-title"
+          title="Preview vehicle"
+          subtitle="Read-only details."
+          maxWidthClass="max-w-3xl"
+          onClose={() => {
             setMode("none");
             setError(null);
           }}
         >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Card>
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2
-                    id="preview-vehicle-title"
-                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-                  >
-                    Preview vehicle
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)]">Read-only details.</p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-                  onClick={() => {
-                    setMode("none");
-                    setError(null);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <div className="preview-shell sm:grid-cols-2">
+          <div className="preview-shell sm:grid-cols-2">
                 <section className="preview-section">
                   <h3 className="preview-section-title">Vehicle</h3>
                   <dl className="preview-list">
@@ -376,9 +290,7 @@ export function VehicleManager({
                   </dl>
                 </section>
               </div>
-            </Card>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">

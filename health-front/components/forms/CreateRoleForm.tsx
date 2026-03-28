@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { toast } from "@/lib/toast";
 
-export function CreateRoleForm() {
+type CreateRoleFormProps = {
+  onSuccess?: () => void;
+};
+
+export function CreateRoleForm({ onSuccess }: CreateRoleFormProps = {}) {
   const router = useRouter();
   const [roleName, setRoleName] = useState("");
   const [description, setDescription] = useState("");
@@ -48,6 +52,7 @@ export function CreateRoleForm() {
       setDescription("");
       toast.success("Role created");
       router.refresh();
+      onSuccess?.();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong.";
       setError(msg);

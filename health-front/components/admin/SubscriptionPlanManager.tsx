@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { ModalShell } from "@/components/ui/ModalShell";
 import { Input } from "@/components/ui/Input";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
@@ -166,46 +166,18 @@ export function SubscriptionPlanManager({
       </div>
 
       {mode === "create" && canCreate ? (
-        <div
-          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="create-subscription-plan-title"
-          onClick={() => {
+        <ModalShell
+          open
+          titleId="create-subscription-plan-title"
+          title="Create subscription plan"
+          subtitle="Add a new plan with pricing, duration, and member limits."
+          maxWidthClass="max-w-3xl"
+          onClose={() => {
             setMode("none");
             setError(null);
           }}
         >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Card>
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2
-                    id="create-subscription-plan-title"
-                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-                  >
-                    Create subscription plan
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Add a new plan with pricing, duration, and member limits.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-                  onClick={() => {
-                    setMode("none");
-                    setError(null);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <SubscriptionPlanForm
+          <SubscriptionPlanForm
                 layout="modal"
                 intent="create"
                 title="Create subscription plan"
@@ -230,52 +202,22 @@ export function SubscriptionPlanManager({
                   toast.success("Subscription plan created");
                 }}
               />
-            </Card>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
 
       {mode === "edit" && selected ? (
-        <div
-          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="edit-subscription-plan-title"
-          onClick={() => {
+        <ModalShell
+          open
+          titleId="edit-subscription-plan-title"
+          title="Edit subscription plan"
+          subtitle="Update plan details, pricing, and status."
+          maxWidthClass="max-w-3xl"
+          onClose={() => {
             setMode("none");
             setError(null);
           }}
         >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Card>
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2
-                    id="edit-subscription-plan-title"
-                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-                  >
-                    Edit subscription plan
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Update plan details, pricing, and status.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-                  onClick={() => {
-                    setMode("none");
-                    setError(null);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <SubscriptionPlanForm
+          <SubscriptionPlanForm
                 layout="modal"
                 intent="edit"
                 title="Edit subscription plan"
@@ -305,50 +247,22 @@ export function SubscriptionPlanManager({
                   toast.success("Subscription plan updated");
                 }}
               />
-            </Card>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
 
       {mode === "preview" && selected ? (
-        <div
-          className="fixed inset-0 z-70 flex items-center justify-center bg-black/40 px-4 py-8"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="preview-subscription-plan-title"
-          onClick={() => {
+        <ModalShell
+          open
+          titleId="preview-subscription-plan-title"
+          title="Preview subscription plan"
+          subtitle="Read-only details."
+          maxWidthClass="max-w-3xl"
+          onClose={() => {
             setMode("none");
             setError(null);
           }}
         >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Card>
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2
-                    id="preview-subscription-plan-title"
-                    className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-                  >
-                    Preview subscription plan
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)]">Read-only details.</p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
-                  onClick={() => {
-                    setMode("none");
-                    setError(null);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <div className="preview-shell sm:grid-cols-2">
+          <div className="preview-shell sm:grid-cols-2">
                 <section className="preview-section">
                   <h3 className="preview-section-title">Plan</h3>
                   <dl className="preview-list">
@@ -384,9 +298,7 @@ export function SubscriptionPlanManager({
                   </dl>
                 </section>
               </div>
-            </Card>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">
