@@ -12,6 +12,10 @@ import {
   resolveBookingListScope,
   updateBooking,
 } from "../services/bookingService";
+import {
+  createDiagnosticReportForBooking,
+  createLabSampleForBooking,
+} from "../services/visitClinicalService";
 import { saveVisitDraft } from "../services/visitService";
 
 async function getScope(req: Request) {
@@ -217,6 +221,83 @@ export async function patchVisitDraftHandler(req: Request, res: Response) {
       return res.status(404).json({ message: "Booking not found" });
     }
     return res.status(500).json({ message: err.message ?? "Unable to save visit draft" });
+  }
+}
+
+export async function postDiagnosticReportHandler(req: Request, res: Response) {
+  const { id: bookingId } = req.params;
+  const userId = req.authUser?.sub;
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (!bookingId?.trim()) {
+    return res.status(400).json({ message: "Invalid booking id" });
+  }
+
+  const body = req.body as Partial<{ reportName: string; fileUrl: string }>;
+  const reportName = typeof body.reportName === "string" ? body.reportName : "";
+  const fileUrl = typeof body.fileUrl === "string" ? body.fileUrl : "";
+
+  try {
+    const scope = await getScope(req);
+    const report = await createDiagnosticReportForBooking(
+      bookingId.trim(),
+      { reportName, fileUrl },
+      userId,
+      { userId, scope },
+    );
+    return res.status(201).json(report);
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === "BOOKING_NOT_FOUND") {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    if (err.code === "INVALID_INPUT") {
+      return res.status(400).json({ message: "reportName and fileUrl are required" });
+    }
+    return res.status(500).json({ message: err.message ?? "Unable to create report" });
+  }
+}
+
+export async function postLabSampleHandler(req: Request, res: Response) {
+  const { id: bookingId } = req.params;
+  const userId = req.authUser?.sub;
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (!bookingId?.trim()) {
+    return res.status(400).json({ message: "Invalid booking id" });
+  }
+
+  const body = req.body as Partial<{ sampleType: string; labName: string | null }>;
+  const sampleType = typeof body.sampleType === "string" ? body.sampleType : "";
+  const labName =
+    body.labName === undefined
+      ? undefined
+      : body.labName === null
+        ? null
+        : typeof body.labName === "string"
+          ? body.labName
+          : undefined;
+
+  try {
+    const scope = await getScope(req);
+    const sample = await createLabSampleForBooking(
+      bookingId.trim(),
+      { sampleType, labName },
+      userId,
+      { userId, scope },
+    );
+    return res.status(201).json(sample);
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === "BOOKING_NOT_FOUND") {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    if (err.code === "INVALID_INPUT") {
+      return res.status(400).json({ message: "sampleType is required" });
+    }
+    return res.status(500).json({ message: err.message ?? "Unable to record sample" });
   }
 }
 

@@ -17,7 +17,7 @@ type PatientBookingsHistoryProps = {
   bookings: UpcomingBookingRow[];
   /** `dispatch:update` — Mark arrived, Start diagnostic, Complete dispatch */
   canUpdateDispatch?: boolean;
-  /** `bookings:update` — Save visit draft / remark */
+  /** `bookings:update` — Save draft (diagnosis remark); booking remark is read-only here */
   canSaveVisitDraft?: boolean;
 };
 
@@ -37,6 +37,21 @@ const DIAGNOSTIC_TABS: { id: DiagnosticTabId; label: string }[] = [
   { id: "samples", label: "Samples" },
   { id: "medicines", label: "Medicines" },
 ];
+
+function safeFileKeySegment(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
+}
+
+/** Combined clinical notes + diagnosis as one "diagnosis remark" (legacy rows may have both). */
+function diagnosisRemarkFromVisit(b: UpcomingBookingRow): string {
+  const c = b.visitRecord?.clinicalNotes?.trim() ?? "";
+  const d = b.visitRecord?.diagnosis?.trim() ?? "";
+  if (!c && !d) return "";
+  if (!c) return d;
+  if (!d) return c;
+  if (c === d) return d;
+  return `${c}\n\n${d}`;
+}
 
 function dispatchLead(dr: DispatchRecordRow) {
   return dr.assignments.find((a) => a.isTeamLeader);
@@ -87,12 +102,6 @@ function BookingDetailContent({
             <div className="preview-row">
               <dt className="preview-label">Requested doctor</dt>
               <dd className="preview-value">{b.requestedDoctor?.fullName ?? "—"}</dd>
-            </div>
-            <div className="preview-row">
-              <dt className="preview-label">Remark</dt>
-              <dd className="preview-value">
-                {b.bookingRemark?.trim() ? b.bookingRemark : "—"}
-              </dd>
             </div>
           </dl>
         </section>
@@ -191,16 +200,20 @@ export function PatientBookingsHistory({
   const router = useRouter();
   const [busyDispatchId, setBusyDispatchId] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
-  const [savingDraftBookingId, setSavingDraftBookingId] = useState<string | null>(null);
   const [detailBookingId, setDetailBookingId] = useState<string | null>(null);
   /** Active sliding tab per booking (defaults to remark). */
   const [diagnosticTabByBookingId, setDiagnosticTabByBookingId] = useState<
     Record<string, DiagnosticTabId>
   >({});
-  /** Local visit draft fields while editing on the card (keyed by booking id). */
-  const [visitDraftByBookingId, setVisitDraftByBookingId] = useState<
-    Record<string, { clinicalNotes: string; diagnosis: string }>
+  const [diagnosisRemarkDraftByBookingId, setDiagnosisRemarkDraftByBookingId] = useState<
+    Record<string, string>
   >({});
+  const [sampleFormByBookingId, setSampleFormByBookingId] = useState<
+    Record<string, { sampleType: string; labName: string }>
+  >({});
+  const [savingBookingId, setSavingBookingId] = useState<string | null>(null);
+  const [uploadingReportBookingId, setUploadingReportBookingId] = useState<string | null>(null);
+  const [addingSampleBookingId, setAddingSampleBookingId] = useState<string | null>(null);
 
   async function patchDispatchStatus(
     dispatchId: string,
@@ -233,51 +246,33 @@ export function PatientBookingsHistory({
     }
   }
 
-  function visitDraftForBooking(
-    b: UpcomingBookingRow,
-  ): { clinicalNotes: string; diagnosis: string } {
-    const local = visitDraftByBookingId[b.id];
-    if (local) return local;
-    return {
-      clinicalNotes: b.visitRecord?.clinicalNotes ?? "",
-      diagnosis: b.visitRecord?.diagnosis ?? "",
-    };
+  function diagnosisRemarkDraftForBooking(b: UpcomingBookingRow): string {
+    if (diagnosisRemarkDraftByBookingId[b.id] !== undefined) {
+      return diagnosisRemarkDraftByBookingId[b.id] ?? "";
+    }
+    return diagnosisRemarkFromVisit(b);
   }
 
-  function setVisitDraftField(
-    bookingId: string,
-    field: "clinicalNotes" | "diagnosis",
-    value: string,
-    baseline: UpcomingBookingRow,
-  ) {
-    setVisitDraftByBookingId((prev) => {
-      const base = prev[bookingId] ?? {
-        clinicalNotes: baseline.visitRecord?.clinicalNotes ?? "",
-        diagnosis: baseline.visitRecord?.diagnosis ?? "",
-      };
-      return {
-        ...prev,
-        [bookingId]: { ...base, [field]: value },
-      };
-    });
+  function setDiagnosisRemarkDraft(bookingId: string, value: string) {
+    setDiagnosisRemarkDraftByBookingId((prev) => ({ ...prev, [bookingId]: value }));
   }
 
   async function saveVisitDraftForBooking(b: UpcomingBookingRow) {
-    const draft = visitDraftForBooking(b);
-    setSavingDraftBookingId(b.id);
+    const text = diagnosisRemarkDraftForBooking(b).trim();
+    setSavingBookingId(b.id);
     try {
       const res = await fetch(`/api/bookings/${b.id}/visit-draft`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clinicalNotes: draft.clinicalNotes.trim() ? draft.clinicalNotes : null,
-          diagnosis: draft.diagnosis.trim() ? draft.diagnosis : null,
+          clinicalNotes: null,
+          diagnosis: text ? text : null,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { message?: string };
-      if (!res.ok) throw new Error(data.message || "Save failed");
-      toast.success("Saved.");
-      setVisitDraftByBookingId((prev) => {
+      if (!res.ok) throw new Error(data.message || "Failed to save draft");
+      toast.success("Draft saved.");
+      setDiagnosisRemarkDraftByBookingId((prev) => {
         const next = { ...prev };
         delete next[b.id];
         return next;
@@ -286,7 +281,82 @@ export function PatientBookingsHistory({
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
-      setSavingDraftBookingId(null);
+      setSavingBookingId(null);
+    }
+  }
+
+  async function uploadReportsForBooking(b: UpcomingBookingRow, files: FileList | null) {
+    if (!files?.length) return;
+    setUploadingReportBookingId(b.id);
+    try {
+      for (const file of Array.from(files)) {
+        const key = `diagnostic-reports/${b.id}/${crypto.randomUUID()}-${safeFileKeySegment(file.name)}`;
+        const up = await fetch("/api/files/upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+            "x-file-key": key,
+          },
+          body: file,
+        });
+        const upData = (await up.json().catch(() => ({}))) as { url?: string; message?: string };
+        if (!up.ok) throw new Error(upData.message || "Upload failed");
+        const url = upData.url;
+        if (!url) throw new Error("No file URL returned");
+
+        const create = await fetch(`/api/bookings/${b.id}/diagnostic-reports`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reportName: file.name,
+            fileUrl: url,
+          }),
+        });
+        const cData = (await create.json().catch(() => ({}))) as { message?: string };
+        if (!create.ok) throw new Error(cData.message || "Could not save report");
+      }
+      toast.success(files.length > 1 ? "Reports uploaded." : "Report uploaded.");
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploadingReportBookingId(null);
+    }
+  }
+
+  function sampleFormForBooking(b: UpcomingBookingRow): { sampleType: string; labName: string } {
+    return sampleFormByBookingId[b.id] ?? { sampleType: "", labName: "" };
+  }
+
+  async function submitLabSample(b: UpcomingBookingRow) {
+    const form = sampleFormForBooking(b);
+    const sampleType = form.sampleType.trim();
+    if (!sampleType) {
+      toast.error("Enter a sample type.");
+      return;
+    }
+    setAddingSampleBookingId(b.id);
+    try {
+      const res = await fetch(`/api/bookings/${b.id}/lab-samples`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sampleType,
+          labName: form.labName.trim() ? form.labName.trim() : null,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      if (!res.ok) throw new Error(data.message || "Could not add sample");
+      toast.success("Sample recorded.");
+      setSampleFormByBookingId((prev) => ({
+        ...prev,
+        [b.id]: { sampleType: "", labName: "" },
+      }));
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setAddingSampleBookingId(null);
     }
   }
 
@@ -325,9 +395,6 @@ export function PatientBookingsHistory({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-[var(--text-primary)]">
                   {formatScheduled(b.scheduledDate)}
-                </p>
-                <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                  {b.bookingRemark?.trim() ? b.bookingRemark : "—"}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1 sm:gap-2">
@@ -415,107 +482,275 @@ export function PatientBookingsHistory({
                     })}
                   </div>
 
-                  <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)]">
                     <div
-                      className="flex w-[400%] transition-transform duration-300 ease-out"
-                      style={{ transform: `translateX(-${diagnosticTabIndex * 25}%)` }}
+                      role="tabpanel"
+                      id={`patient-booking-${b.id}-panel-remark`}
+                      hidden={activeDiagnosticTab !== "remark"}
+                      className="px-3 py-3"
                     >
-                      <div
-                        className="w-1/4 shrink-0 px-3 py-3"
-                        role="tabpanel"
-                        aria-hidden={activeDiagnosticTab !== "remark"}
-                        id={`patient-booking-${b.id}-panel-remark`}
-                      >
-                        {canSaveVisitDraft ? (
-                          <div className="flex flex-col gap-3">
-                            <label className="flex flex-col gap-1 text-sm">
-                              <span className="font-medium text-[var(--text-secondary)]">
-                                Clinical notes
-                              </span>
+                        <div className="flex flex-col gap-3">
+                          <label className="flex flex-col gap-1.5">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                              Diagnosis remark
+                            </span>
+                            {canSaveVisitDraft ? (
                               <textarea
-                                className="min-h-[100px] rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--text-primary)]"
-                                value={visitDraftForBooking(b).clinicalNotes}
-                                onChange={(e) =>
-                                  setVisitDraftField(b.id, "clinicalNotes", e.target.value, b)
-                                }
+                                rows={5}
+                                value={diagnosisRemarkDraftForBooking(b)}
+                                onChange={(e) => setDiagnosisRemarkDraft(b.id, e.target.value)}
+                                placeholder="Diagnosis remark"
+                                className="min-h-[120px] resize-y rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)]"
                               />
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm">
-                              <span className="font-medium text-[var(--text-secondary)]">
-                                Diagnosis
-                              </span>
-                              <textarea
-                                className="min-h-[72px] rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--text-primary)]"
-                                value={visitDraftForBooking(b).diagnosis}
-                                onChange={(e) =>
-                                  setVisitDraftField(b.id, "diagnosis", e.target.value, b)
-                                }
-                              />
-                            </label>
-                          </div>
-                        ) : (
-                          <div className="space-y-2 text-sm text-[var(--text-secondary)]">
-                            <p>
-                              <span className="font-medium text-[var(--text-primary)]">
-                                Booking remark:{" "}
-                              </span>
-                              {b.bookingRemark?.trim() ? b.bookingRemark : "—"}
-                            </p>
-                            {b.visitRecord ? (
-                              <>
-                                <p>
-                                  <span className="font-medium text-[var(--text-primary)]">
-                                    Clinical notes:{" "}
-                                  </span>
-                                  {b.visitRecord.clinicalNotes?.trim()
-                                    ? b.visitRecord.clinicalNotes
-                                    : "—"}
-                                </p>
-                                <p>
-                                  <span className="font-medium text-[var(--text-primary)]">
-                                    Diagnosis:{" "}
-                                  </span>
-                                  {b.visitRecord.diagnosis?.trim()
-                                    ? b.visitRecord.diagnosis
-                                    : "—"}
-                                </p>
-                              </>
                             ) : (
-                              <p>No visit record yet.</p>
+                              <p className="whitespace-pre-wrap text-sm text-[var(--text-secondary)]">
+                                {(() => {
+                                  const merged = diagnosisRemarkFromVisit(b);
+                                  return merged.trim() ? merged : "—";
+                                })()}
+                              </p>
                             )}
+                          </label>
+                        </div>
+                    </div>
+                    <div
+                      role="tabpanel"
+                      id={`patient-booking-${b.id}-panel-reports`}
+                      hidden={activeDiagnosticTab !== "reports"}
+                      className="px-3 py-3"
+                    >
+                        {(() => {
+                          const reports = b.visitRecord?.diagnosticReports ?? [];
+                          const reportBusy = uploadingReportBookingId === b.id;
+                          return (
+                            <div className="flex flex-col gap-3">
+                              <input
+                                type="file"
+                                id={`patient-booking-${b.id}-report-file`}
+                                className="sr-only"
+                                multiple
+                                disabled={!canSaveVisitDraft || reportBusy}
+                                onChange={(e) => {
+                                  void uploadReportsForBooking(b, e.target.files);
+                                  e.target.value = "";
+                                }}
+                              />
+                              <div
+                                role={canSaveVisitDraft && !reportBusy ? "button" : undefined}
+                                tabIndex={canSaveVisitDraft && !reportBusy ? 0 : undefined}
+                                onClick={() => {
+                                  if (canSaveVisitDraft && !reportBusy) {
+                                    document
+                                      .getElementById(`patient-booking-${b.id}-report-file`)
+                                      ?.click();
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (
+                                    (e.key === "Enter" || e.key === " ") &&
+                                    canSaveVisitDraft &&
+                                    !reportBusy
+                                  ) {
+                                    e.preventDefault();
+                                    document
+                                      .getElementById(`patient-booking-${b.id}-report-file`)
+                                      ?.click();
+                                  }
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (canSaveVisitDraft && !reportBusy) {
+                                    void uploadReportsForBooking(b, e.dataTransfer.files);
+                                  }
+                                }}
+                                className={`flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--surface)] px-4 text-center text-sm ${
+                                  canSaveVisitDraft && !reportBusy
+                                    ? "cursor-pointer hover:bg-[var(--surface-2)]"
+                                    : "cursor-default opacity-90"
+                                }`}
+                              >
+                                <span className="text-2xl leading-none opacity-60" aria-hidden>
+                                  ↑
+                                </span>
+                                <span className="font-medium text-[var(--text-secondary)]">
+                                  {reportBusy ? "Uploading…" : "Upload reports"}
+                                </span>
+                                <span className="text-xs text-[var(--text-muted)]">
+                                  {canSaveVisitDraft
+                                    ? "Drag and drop or tap to browse"
+                                    : "Upload requires bookings:update"}
+                                </span>
+                              </div>
+                              {reports.length === 0 ? (
+                                <p className="text-center text-xs text-[var(--text-muted)]">
+                                  No reports uploaded yet.
+                                </p>
+                              ) : (
+                                <ul className="max-h-48 space-y-2 overflow-y-auto">
+                                  {reports.map((r) => (
+                                    <li
+                                      key={r.id}
+                                      className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                                    >
+                                      <span className="min-w-0 truncate text-[var(--text-primary)]">
+                                        {r.reportName}
+                                      </span>
+                                      <a
+                                        href={r.fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="shrink-0 text-xs font-medium text-[var(--brand-primary)] hover:underline"
+                                      >
+                                        Open
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          );
+                        })()}
+                    </div>
+                    <div
+                      role="tabpanel"
+                      id={`patient-booking-${b.id}-panel-samples`}
+                      hidden={activeDiagnosticTab !== "samples"}
+                      className="px-3 py-3"
+                    >
+                        {(() => {
+                          const samples = b.visitRecord?.labSamples ?? [];
+                          return (
+                            <div className="flex flex-col gap-3">
+                              {canSaveVisitDraft ? (
+                                <>
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    <label className="flex flex-col gap-1 text-xs">
+                                      <span className="font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                                        Sample type *
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={sampleFormForBooking(b).sampleType}
+                                        onChange={(e) =>
+                                          setSampleFormByBookingId((prev) => ({
+                                            ...prev,
+                                            [b.id]: {
+                                              sampleType: e.target.value,
+                                              labName: prev[b.id]?.labName ?? "",
+                                            },
+                                          }))
+                                        }
+                                        className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                                        placeholder="e.g. Blood, Urine"
+                                      />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-xs">
+                                      <span className="font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                                        Lab (optional)
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={sampleFormForBooking(b).labName}
+                                        onChange={(e) =>
+                                          setSampleFormByBookingId((prev) => ({
+                                            ...prev,
+                                            [b.id]: {
+                                              sampleType: prev[b.id]?.sampleType ?? "",
+                                              labName: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                        className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                                        placeholder="Lab name"
+                                      />
+                                    </label>
+                                  </div>
+                                  <div className="flex justify-end">
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      className="h-8 px-3 text-xs"
+                                      disabled={
+                                        addingSampleBookingId === b.id || busyDispatchId !== null
+                                      }
+                                      onClick={() => void submitLabSample(b)}
+                                    >
+                                      {addingSampleBookingId === b.id ? "…" : "Record sample"}
+                                    </Button>
+                                  </div>
+                                </>
+                              ) : null}
+                              <div className="overflow-hidden rounded-lg border border-[var(--border)]">
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-1 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)] sm:grid-cols-4">
+                                  <span className="sm:col-span-1">Type</span>
+                                  <span className="hidden sm:block">Lab</span>
+                                  <span>Collected</span>
+                                  <span className="text-right">Status</span>
+                                </div>
+                                {samples.length === 0 ? (
+                                  <div className="px-3 py-6 text-center text-sm text-[var(--text-muted)]">
+                                    No samples recorded yet.
+                                  </div>
+                                ) : (
+                                  <ul className="divide-y divide-[var(--border)]">
+                                    {samples.map((s) => (
+                                      <li
+                                        key={s.id}
+                                        className="grid grid-cols-2 gap-x-2 gap-y-0.5 px-3 py-2 text-sm sm:grid-cols-4 sm:items-center"
+                                      >
+                                        <span className="font-medium text-[var(--text-primary)]">
+                                          {s.sampleType}
+                                        </span>
+                                        <span className="hidden text-[var(--text-secondary)] sm:block">
+                                          {s.labName?.trim() ? s.labName : "—"}
+                                        </span>
+                                        <span className="text-xs text-[var(--text-secondary)]">
+                                          {formatScheduled(s.collectedAt)}
+                                        </span>
+                                        <span className="text-right text-xs text-[var(--text-secondary)]">
+                                          {s.statusLookup?.lookupValue ??
+                                            s.statusLookup?.lookupKey ??
+                                            "—"}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                    </div>
+                    <div
+                      role="tabpanel"
+                      id={`patient-booking-${b.id}-panel-medicines`}
+                      hidden={activeDiagnosticTab !== "medicines"}
+                      className="px-3 py-3"
+                    >
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                              Prescribed / dispensed
+                            </span>
+                            <button
+                              type="button"
+                              disabled
+                              className="cursor-not-allowed rounded-md border border-dashed border-[var(--border)] px-2 py-1 text-xs text-[var(--text-muted)]"
+                            >
+                              + Add
+                            </button>
                           </div>
-                        )}
-                      </div>
-                      <div
-                        className="w-1/4 shrink-0 px-3 py-3"
-                        role="tabpanel"
-                        aria-hidden={activeDiagnosticTab !== "reports"}
-                        id={`patient-booking-${b.id}-panel-reports`}
-                      >
-                        <p className="text-sm text-[var(--text-secondary)]">
-                          Report upload will connect to your file storage (coming soon).
-                        </p>
-                      </div>
-                      <div
-                        className="w-1/4 shrink-0 px-3 py-3"
-                        role="tabpanel"
-                        aria-hidden={activeDiagnosticTab !== "samples"}
-                        id={`patient-booking-${b.id}-panel-samples`}
-                      >
-                        <p className="text-sm text-[var(--text-secondary)]">
-                          Lab sample collection can be linked here (coming soon).
-                        </p>
-                      </div>
-                      <div
-                        className="w-1/4 shrink-0 px-3 py-3"
-                        role="tabpanel"
-                        aria-hidden={activeDiagnosticTab !== "medicines"}
-                        id={`patient-booking-${b.id}-panel-medicines`}
-                      >
-                        <p className="text-sm text-[var(--text-secondary)]">
-                          Medicines for this visit can be linked here (coming soon).
-                        </p>
-                      </div>
+                          <ul className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                            <li className="text-center text-sm text-[var(--text-muted)]">
+                              No medicines — UI preview
+                            </li>
+                          </ul>
+                        </div>
                     </div>
                   </div>
                 </div>
@@ -526,10 +761,15 @@ export function PatientBookingsHistory({
                       type="button"
                       variant="secondary"
                       className="h-9 px-4 text-xs font-medium"
-                      disabled={busyDispatchId !== null || savingDraftBookingId !== null}
+                      disabled={
+                        busyDispatchId !== null ||
+                        savingBookingId !== null ||
+                        uploadingReportBookingId !== null ||
+                        addingSampleBookingId !== null
+                      }
                       onClick={() => void saveVisitDraftForBooking(b)}
                     >
-                      {savingDraftBookingId === b.id ? "Saving…" : "Save draft"}
+                      {savingBookingId === b.id ? "Saving…" : "Save draft"}
                     </Button>
                   ) : null}
                   {canUpdateDispatch ? (

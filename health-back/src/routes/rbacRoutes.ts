@@ -54,6 +54,8 @@ import {
   listBookingsForPatientHandler,
   listBookingsHandler,
   patchVisitDraftHandler,
+  postDiagnosticReportHandler,
+  postLabSampleHandler,
   updateBookingHandler,
 } from "../controllers/bookingController";
 import {
@@ -266,6 +268,16 @@ router.patch(
   "/bookings/:id/visit-draft",
   requireAnyPermission(["bookings:update"]),
   patchVisitDraftHandler,
+);
+router.post(
+  "/bookings/:id/diagnostic-reports",
+  requireAnyPermission(["bookings:update"]),
+  postDiagnosticReportHandler,
+);
+router.post(
+  "/bookings/:id/lab-samples",
+  requireAnyPermission(["bookings:update"]),
+  postLabSampleHandler,
 );
 router.get("/bookings/:id", requireAnyPermission(["bookings:read"]), getBookingHandler);
 router.put("/bookings/:id", requireAnyPermission(["bookings:update"]), updateBookingHandler);

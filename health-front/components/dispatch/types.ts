@@ -24,6 +24,21 @@ export type UpcomingBookingRow = {
     completedAt: string | null;
     clinicalNotes?: string | null;
     diagnosis?: string | null;
+    diagnosticReports?: Array<{
+      id: string;
+      reportName: string;
+      fileUrl: string;
+      uploadedAt: string;
+      uploadedBy: { id: string; fullName: string };
+    }>;
+    labSamples?: Array<{
+      id: string;
+      sampleType: string;
+      collectedAt: string;
+      labName: string | null;
+      resultReportUrl: string | null;
+      statusLookup: { id: string; lookupKey: string; lookupValue: string } | null;
+    }>;
   } | null;
   dispatchRecords: Array<{
     id: string;

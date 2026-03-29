@@ -62,7 +62,33 @@ const bookingWithDispatchInclude = {
     select: { id: true, lookupKey: true, lookupValue: true },
   },
   visitRecord: {
-    select: { id: true, completedAt: true, clinicalNotes: true, diagnosis: true },
+    select: {
+      id: true,
+      completedAt: true,
+      clinicalNotes: true,
+      diagnosis: true,
+      diagnosticReports: {
+        orderBy: { uploadedAt: "desc" as const },
+        select: {
+          id: true,
+          reportName: true,
+          fileUrl: true,
+          uploadedAt: true,
+          uploadedBy: { select: { id: true, fullName: true } },
+        },
+      },
+      labSamples: {
+        orderBy: { collectedAt: "desc" as const },
+        select: {
+          id: true,
+          sampleType: true,
+          collectedAt: true,
+          labName: true,
+          resultReportUrl: true,
+          statusLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
+        },
+      },
+    },
   },
   dispatchRecords: {
     orderBy: { dispatchedAt: "desc" as const },
