@@ -51,12 +51,14 @@ import {
   createBookingHandler,
   deleteBookingHandler,
   getBookingHandler,
+  listBookingsForPatientHandler,
   listBookingsHandler,
   updateBookingHandler,
 } from "../controllers/bookingController";
 import {
   createDispatchHandler,
   listDispatchMemberCandidatesHandler,
+  listOngoingDispatchHandler,
   listUpcomingDispatchHandler,
   patchDispatchStatusHandler,
 } from "../controllers/dispatchController";
@@ -246,6 +248,7 @@ router.delete(
 // Patients
 router.get("/patients", requireAnyPermission(["patients:list"]), listPatientsHandler);
 router.post("/patients", requireAnyPermission(["patients:create"]), createPatientHandler);
+router.get("/patients/:id/bookings", requireAnyPermission(["patients:read"]), listBookingsForPatientHandler);
 router.get("/patients/:id", requireAnyPermission(["patients:read"]), getPatientHandler);
 router.put("/patients/:id", requireAnyPermission(["patients:update"]), updatePatientHandler);
 router.delete(
@@ -267,6 +270,11 @@ router.get(
   "/dispatch/upcoming",
   requireAnyPermission(["dispatch:list", "dispatch:read", "dispatch:update"]),
   listUpcomingDispatchHandler,
+);
+router.get(
+  "/dispatch/ongoing",
+  requireAnyPermission(["dispatch:list", "dispatch:read", "dispatch:update"]),
+  listOngoingDispatchHandler,
 );
 router.get(
   "/dispatch/member-candidates",

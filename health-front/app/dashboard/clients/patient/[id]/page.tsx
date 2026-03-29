@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import type { Patient } from "@/components/admin/PatientManager";
+import { PatientBookingsHistory } from "@/components/clients/PatientBookingsHistory";
+import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import { Card } from "@/components/ui/Card";
 import { backendJson, type BackendMeResponse } from "@/lib/backend";
 import { getIsAuthenticated } from "@/lib/auth";
@@ -10,6 +12,7 @@ import { hasAnyPermission } from "@/lib/rbac";
 const PERMS = {
   view: ["patients:list", "patients:read"],
   fullPreview: ["patients:read"],
+  bookingsHistory: ["bookings:list", "bookings:read"],
 } as const;
 
 export default async function PatientFullPreviewPage({
@@ -32,6 +35,12 @@ export default async function PatientFullPreviewPage({
   const { id } = await params;
   const patient = await backendJson<Patient>(`/api/patients/${id}`);
   if (!patient) redirect("/dashboard/clients/patient");
+
+  const canSeeBookings = hasAnyPermission(me.permissions, [...PERMS.bookingsHistory]);
+  const canMarkArrivedOnPatientBookings = hasAnyPermission(me.permissions, ["dispatch:update"]);
+  const patientBookings = canSeeBookings
+    ? await backendJson<UpcomingBookingRow[]>(`/api/patients/${id}/bookings`)
+    : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -162,6 +171,31 @@ export default async function PatientFullPreviewPage({
             </dl>
           </section>
         </div>
+      </Card>
+
+      <Card
+        title="Bookings and dispatch"
+        description="Each visit request, dispatch run, and crew assignment for this patient."
+      >
+        {canSeeBookings ? (
+          patientBookings === null ? (
+            <p className="text-sm text-[var(--text-secondary)]">
+              Could not load booking history. Try again or check your network connection.
+            </p>
+          ) : (
+            <PatientBookingsHistory
+              bookings={patientBookings}
+              canMarkArrived={canMarkArrivedOnPatientBookings}
+            />
+          )
+        ) : (
+          <p className="text-sm text-[var(--text-secondary)]">
+            Booking and dispatch history requires{" "}
+            <span className="font-medium text-[var(--text-primary)]">bookings:list</span> or{" "}
+            <span className="font-medium text-[var(--text-primary)]">bookings:read</span>{" "}
+            permission.
+          </p>
+        )}
       </Card>
     </div>
   );

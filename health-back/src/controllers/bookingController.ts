@@ -1,12 +1,14 @@
 import type { Request, Response } from "express";
 
 import { loadPermissionKeys } from "../middleware/permissions";
+import { getPatientById } from "../services/patientService";
 import {
   createBooking,
   deleteBooking,
   deleteBookingCascade,
   getBookingById,
   listBookings,
+  listBookingsForPatient,
   resolveBookingListScope,
   updateBooking,
 } from "../services/bookingService";
@@ -20,6 +22,33 @@ export async function listBookingsHandler(req: Request, res: Response) {
   const scope = await getScope(req);
   const userId = req.authUser?.sub;
   const bookings = await listBookings({ userId, scope });
+  return res.json(bookings);
+}
+
+/** Bookings + dispatch history for a patient (requires patients:read and bookings list/read). */
+export async function listBookingsForPatientHandler(req: Request, res: Response) {
+  const { id: patientId } = req.params;
+  const cleaned = patientId?.trim() ?? "";
+  if (!cleaned) {
+    return res.status(400).json({ message: "Patient id is required" });
+  }
+
+  const keys = await loadPermissionKeys(req);
+  if (!keys.includes("patients:read")) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  if (!keys.includes("bookings:list") && !keys.includes("bookings:read")) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  const patient = await getPatientById(cleaned);
+  if (!patient) {
+    return res.status(404).json({ message: "Patient not found" });
+  }
+
+  const scope = await getScope(req);
+  const userId = req.authUser?.sub;
+  const bookings = await listBookingsForPatient(cleaned, { userId, scope });
   return res.json(bookings);
 }
 

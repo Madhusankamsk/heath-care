@@ -5,8 +5,8 @@ import {
   UpcomingJobsTable,
   type DispatchMemberCandidate,
   type DispatchVehicleOption,
-  type UpcomingBookingRow,
 } from "@/components/dispatch/UpcomingJobsTable";
+import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import { Card } from "@/components/ui/Card";
 import { getIsAuthenticated } from "@/lib/auth";
 import { backendJson, type BackendMeResponse } from "@/lib/backend";
@@ -45,6 +45,7 @@ export default async function UpcomingJobsPage() {
   const canListTeams = hasAnyPermission(me.permissions, ["medical_teams:list"]);
   const canAssignTeam = canEditDispatch && canListTeams;
   const canListVehicles = hasAnyPermission(me.permissions, ["vehicles:list", "vehicles:read"]);
+  const canFullViewBooking = hasAnyPermission(me.permissions, ["patients:read"]);
 
   const [rows, teams, crewCandidates, vehicles] = await Promise.all([
     getUpcoming(),
@@ -57,7 +58,7 @@ export default async function UpcomingJobsPage() {
     <div className="flex flex-col gap-6">
       <Card
         title="Upcoming jobs"
-        description="Access is controlled by dispatch permissions: list/read to view jobs, read to preview details, update to assign crews and mark arrived. Pick team defaults, then vehicle and on-site leader for this dispatch only (master team and fleet records stay unchanged)."
+        description="Accepted bookings not yet dispatched. After you dispatch a team, the job moves to Ongoing jobs. Preview Full View opens the patient page when you have patients:read."
       >
         {!rows ? (
           <div className="text-sm text-red-700 dark:text-red-300">
@@ -71,7 +72,7 @@ export default async function UpcomingJobsPage() {
             crewCandidates={crewCandidates}
             canPreview={canPreview}
             canAssignTeam={canAssignTeam}
-            canMarkArrived={canEditDispatch}
+            canFullViewBooking={canFullViewBooking}
           />
         )}
       </Card>

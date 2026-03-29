@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/dashboard/dispatching/upcoming-jobs", label: "Upcoming jobs" },
+  { href: "/dashboard/dispatching/ongoing-jobs", label: "Ongoing jobs" },
 ] as const;
 
 export function DispatchingSubnav() {

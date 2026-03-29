@@ -97,6 +97,12 @@ const navItems: NavItem[] = [
         icon: <Navigation className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["dispatch:list", "dispatch:read", "dispatch:update"],
       },
+      {
+        href: "/dashboard/dispatching/ongoing-jobs",
+        label: "Ongoing jobs",
+        icon: <Navigation className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["dispatch:list", "dispatch:read", "dispatch:update"],
+      },
     ],
   },
   {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import type { MedicalTeam } from "@/components/admin/MedicalTeamManager";
@@ -7,38 +8,15 @@ import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { toast } from "@/lib/toast";
 
-export type DispatchMemberCandidate = {
-  id: string;
-  fullName: string;
-  email: string;
-  role?: { id: string; roleName: string } | null;
-};
+import { DispatchPreviewPanel } from "./DispatchPreviewPanel";
+import { formatScheduled } from "./dispatchDisplay";
+import type {
+  DispatchMemberCandidate,
+  DispatchVehicleOption,
+  UpcomingBookingRow,
+} from "./types";
 
-export type DispatchVehicleOption = {
-  id: string;
-  vehicleNo: string;
-  model?: string | null;
-};
-
-export type UpcomingBookingRow = {
-  id: string;
-  scheduledDate: string | null;
-  bookingRemark?: string | null;
-  patient?: { id: string; fullName: string; contactNo?: string | null };
-  requestedDoctor?: { id: string; fullName: string; email: string } | null;
-  doctorStatusLookup?: { id: string; lookupKey: string; lookupValue: string } | null;
-  dispatchRecords: Array<{
-    id: string;
-    dispatchedAt: string;
-    statusLookup: { id: string; lookupKey: string; lookupValue: string } | null;
-    vehicle: { id: string; vehicleNo: string; model: string | null };
-    assignments: Array<{
-      id: string;
-      isTeamLeader: boolean;
-      user: { id: string; fullName: string; email: string };
-    }>;
-  }>;
-};
+export type { DispatchMemberCandidate, DispatchVehicleOption, UpcomingBookingRow };
 
 type UpcomingJobsTableProps = {
   initialRows: UpcomingBookingRow[];
@@ -49,24 +27,9 @@ type UpcomingJobsTableProps = {
   /** Read-only booking / dispatch details (e.g. `dispatch:read`). */
   canPreview: boolean;
   canAssignTeam: boolean;
-  canMarkArrived: boolean;
+  /** Show “Full view” in preview linking to Manage Bookings (`bookings:read`). */
+  canFullViewBooking?: boolean;
 };
-
-function teamNameForVehicle(teams: MedicalTeam[], vehicleId: string) {
-  const t = teams.find((x) => x.vehicleId === vehicleId);
-  if (!t) return null;
-  return t.teamName?.trim() || "Unnamed team";
-}
-
-function formatScheduled(iso: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
 
 export function UpcomingJobsTable({
   initialRows,
@@ -75,7 +38,7 @@ export function UpcomingJobsTable({
   crewCandidates,
   canPreview,
   canAssignTeam,
-  canMarkArrived,
+  canFullViewBooking = false,
 }: UpcomingJobsTableProps) {
   const [rows, setRows] = useState<UpcomingBookingRow[]>(initialRows);
   const [dispatchBookingId, setDispatchBookingId] = useState<string | null>(null);
@@ -160,15 +123,23 @@ export function UpcomingJobsTable({
     });
   }, [memberUserIdsOrdered, teamLeadMember]);
 
-  const nameByUserId = useMemo(() => {
+  const labelByUserId = useMemo(() => {
     const m = new Map<string, string>();
-    crewCandidates?.forEach((c) => m.set(c.id, c.fullName));
+    const put = (
+      id: string,
+      fullName: string,
+      role?: { roleName: string } | null,
+    ) => {
+      const r = role?.roleName?.trim();
+      m.set(id, r ? `${fullName} (${r})` : fullName);
+    };
+    crewCandidates?.forEach((c) => put(c.id, c.fullName, c.role));
     teamsWithMembers.forEach((t) => {
-      t.members?.forEach((mem) => m.set(mem.user.id, mem.user.fullName));
+      t.members?.forEach((mem) => put(mem.user.id, mem.user.fullName, mem.user.role));
     });
     const doc = dispatchTarget?.requestedDoctor;
     if (doc?.id) {
-      m.set(doc.id, doc.fullName);
+      put(doc.id, doc.fullName, null);
     }
     return m;
   }, [crewCandidates, teamsWithMembers, dispatchTarget?.requestedDoctor]);
@@ -182,6 +153,11 @@ export function UpcomingJobsTable({
 
   const isPreview = modalMode === "preview";
   const modalOpen = dispatchBookingId !== null && modalMode !== null;
+
+  const previewFullViewHref =
+    dispatchTarget?.patient?.id != null
+      ? `/dashboard/clients/patient/${dispatchTarget.patient.id}`
+      : "/dashboard/bookings/manage-bookings";
 
   function closeModal() {
     setDispatchBookingId(null);
@@ -265,27 +241,6 @@ export function UpcomingJobsTable({
     }
   }
 
-  async function markArrived(dispatchId: string) {
-    setBusyId(dispatchId);
-    try {
-      const res = await fetch(`/api/dispatch/${dispatchId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ statusLookupKey: "ARRIVED" }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { message?: string };
-      if (!res.ok) {
-        throw new Error(data.message || "Update failed");
-      }
-      toast.success("Marked as arrived");
-      await refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {canAssignTeam && teams === null ? (
@@ -320,13 +275,7 @@ export function UpcomingJobsTable({
             ) : (
               rows.map((row) => {
                 const latest = row.dispatchRecords[0];
-                const statusKey = latest?.statusLookup?.lookupKey;
-                const inTransit = statusKey === "IN_TRANSIT";
                 const showAssignTeam = !latest && canAssignTeam && teamsWithMembers.length > 0;
-                const assignedTeamName =
-                  latest && teams?.length
-                    ? teamNameForVehicle(teams, latest.vehicle.id)
-                    : null;
 
                 return (
                   <tr key={row.id} className="border-b border-[var(--border)] last:border-0">
@@ -343,23 +292,7 @@ export function UpcomingJobsTable({
                       {row.bookingRemark?.trim() ? row.bookingRemark : "—"}
                     </td>
                     <td className="px-3 py-2 text-[var(--text-secondary)]">
-                      {!latest ? (
-                        <span className="text-[var(--text-muted)]">No team assigned</span>
-                      ) : (
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-medium text-[var(--text-primary)]">
-                            {assignedTeamName ?? latest.vehicle.vehicleNo}
-                          </span>
-                          <span className="text-xs text-[var(--text-muted)]">
-                            {latest.statusLookup?.lookupValue ?? statusKey ?? "—"}
-                            {" · "}
-                            {latest.vehicle.vehicleNo}
-                            {latest.assignments.length
-                              ? ` · ${latest.assignments.map((a) => a.user.fullName).join(", ")}`
-                              : null}
-                          </span>
-                        </div>
-                      )}
+                      <span className="text-[var(--text-muted)]">No team assigned</span>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-2">
@@ -393,15 +326,6 @@ export function UpcomingJobsTable({
                             Assign team
                           </Button>
                         ) : null}
-                        {inTransit && canMarkArrived ? (
-                          <Button
-                            type="button"
-                            disabled={busyId !== null}
-                            onClick={() => markArrived(latest.id)}
-                          >
-                            {busyId === latest.id ? "…" : "Mark arrived"}
-                          </Button>
-                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -416,196 +340,38 @@ export function UpcomingJobsTable({
         open={modalOpen}
         onClose={closeModal}
         titleId="dispatch-team-title"
-        title={isPreview ? "Preview booking & dispatch" : "Assign team to booking"}
+        title={isPreview ? "Preview booking" : "Assign team to booking"}
         subtitle={
-          dispatchTarget && !isPreview
-            ? `Vehicle and on-site leader are chosen for this dispatch only. Crew and vehicle choices are not saved back to Admin teams or the fleet list.`
-            : ""
+          isPreview
+            ? "Read-only details."
+            : dispatchTarget
+              ? `Vehicle and on-site leader are chosen for this dispatch only. Crew and vehicle choices are not saved back to Admin teams or the fleet list.`
+              : ""
         }
         maxWidthClass="max-w-4xl"
+        headerTrailing={
+          isPreview && dispatchTarget && canFullViewBooking ? (
+            <Link
+              href={previewFullViewHref}
+              className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-2)]"
+            >
+              Full View
+            </Link>
+          ) : null
+        }
       >
-        <div className="flex flex-col gap-4 p-1">
-          {isPreview && !dispatchTarget ? (
-            <div className="space-y-4 text-sm text-[var(--text-secondary)]">
-              <p>This booking is no longer in the list. Close and refresh if needed.</p>
-              <div className="flex justify-end border-t border-[var(--border)] pt-4">
-                <Button type="button" variant="secondary" onClick={closeModal}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          ) : null}
+        {isPreview && !dispatchTarget ? (
+          <p className="text-sm text-[var(--text-secondary)]">
+            This booking is no longer in the list. Close and refresh if needed.
+          </p>
+        ) : null}
 
-          {isPreview && dispatchTarget ? (
-            <div className="space-y-4 text-sm text-[var(--text-primary)]">
-              <div className="grid gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                    Patient
-                  </p>
-                  <p className="mt-1 font-medium">{dispatchTarget.patient?.fullName ?? "—"}</p>
-                  {dispatchTarget.patient?.contactNo ? (
-                    <p className="mt-0.5 text-[var(--text-secondary)]">
-                      {dispatchTarget.patient.contactNo}
-                    </p>
-                  ) : null}
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                    Scheduled
-                  </p>
-                  <p className="mt-1 text-[var(--text-secondary)]">
-                    {formatScheduled(dispatchTarget.scheduledDate)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                    Doctor
-                  </p>
-                  <p className="mt-1 text-[var(--text-secondary)]">
-                    {dispatchTarget.requestedDoctor?.fullName ?? "—"}
-                  </p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                    Remark
-                  </p>
-                  <p className="mt-1 text-[var(--text-secondary)]">
-                    {dispatchTarget.bookingRemark?.trim() ? dispatchTarget.bookingRemark : "—"}
-                  </p>
-                </div>
-              </div>
+        {isPreview && dispatchTarget ? (
+          <DispatchPreviewPanel dispatchTarget={dispatchTarget} teams={teams} />
+        ) : null}
 
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                  Extra staff and final crew
-                </p>
-                <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                  {dispatchTarget.requestedDoctor ? (
-                    <>
-                      This booking has a requested doctor. When you assign a team, they are suggested on
-                      the crew if they are not already on the team roster; you can add other active staff
-                      from the directory.
-                    </>
-                  ) : (
-                    <>
-                      No requested doctor. When you assign a team, choose the medical team, vehicle, and
-                      on-site leader, and add any extra staff from the directory as needed.
-                    </>
-                  )}
-                </p>
-                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                  Crew on this dispatch
-                </p>
-                {(() => {
-                  const latestPrev = dispatchTarget.dispatchRecords[0];
-                  if (latestPrev) {
-                    return (
-                      <p className="mt-1 text-xs text-[var(--text-muted)]">
-                        See the list under &quot;Active dispatch&quot; below.
-                      </p>
-                    );
-                  }
-                  if (dispatchTarget.requestedDoctor) {
-                    return (
-                      <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                        Suggested when dispatching:{" "}
-                        <span className="font-medium text-[var(--text-primary)]">
-                          {dispatchTarget.requestedDoctor.fullName}
-                        </span>{" "}
-                        (requested doctor)
-                      </p>
-                    );
-                  }
-                  return (
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">
-                      Final crew is chosen when you assign a team.
-                    </p>
-                  );
-                })()}
-              </div>
-
-              {(() => {
-                const latest = dispatchTarget.dispatchRecords[0];
-                if (!latest) {
-                  return (
-                    <p className="text-[var(--text-secondary)]">
-                      No dispatch recorded for this booking yet.
-                    </p>
-                  );
-                }
-                const lead = latest.assignments.find((a) => a.isTeamLeader);
-                const others = latest.assignments.filter((a) => !a.isTeamLeader);
-                const teamLabel =
-                  teams?.length && latest.vehicle?.id
-                    ? teamNameForVehicle(teams, latest.vehicle.id)
-                    : null;
-                return (
-                  <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                      Active dispatch
-                    </p>
-                    <dl className="grid gap-2 text-[var(--text-secondary)] sm:grid-cols-2">
-                      <div>
-                        <dt className="text-xs text-[var(--text-muted)]">Status</dt>
-                        <dd className="font-medium text-[var(--text-primary)]">
-                          {latest.statusLookup?.lookupValue ??
-                            latest.statusLookup?.lookupKey ??
-                            "—"}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-[var(--text-muted)]">Vehicle</dt>
-                        <dd className="font-medium text-[var(--text-primary)]">
-                          {latest.vehicle.vehicleNo}
-                          {latest.vehicle.model?.trim() ? ` · ${latest.vehicle.model.trim()}` : ""}
-                        </dd>
-                      </div>
-                      {teamLabel ? (
-                        <div className="sm:col-span-2">
-                          <dt className="text-xs text-[var(--text-muted)]">Medical team (by vehicle)</dt>
-                          <dd className="text-[var(--text-primary)]">{teamLabel}</dd>
-                        </div>
-                      ) : null}
-                      <div className="sm:col-span-2">
-                        <dt className="text-xs text-[var(--text-muted)]">Dispatched at</dt>
-                        <dd>{formatScheduled(latest.dispatchedAt)}</dd>
-                      </div>
-                    </dl>
-                    {latest.assignments.length > 0 ? (
-                      <div>
-                        <p className="text-xs font-semibold text-[var(--text-muted)]">Crew</p>
-                        <ul className="mt-2 space-y-1.5">
-                          {lead ? (
-                            <li className="text-[var(--text-primary)]">
-                              <span className="font-medium">{lead.user.fullName}</span>
-                              <span className="text-[var(--text-muted)]"> — team leader</span>
-                            </li>
-                          ) : null}
-                          {others.map((a) => (
-                            <li key={a.id} className="text-[var(--text-secondary)]">
-                              {a.user.fullName}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-[var(--text-muted)]">No crew listed on this dispatch.</p>
-                    )}
-                  </div>
-                );
-              })()}
-
-              <div className="flex justify-end border-t border-[var(--border)] pt-4">
-                <Button type="button" variant="secondary" onClick={closeModal}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          {!isPreview ? (
-            <>
+        {!isPreview ? (
+          <div className="flex flex-col gap-4 p-1">
               {crewCandidates === null ? (
                 <p className="text-sm text-red-700 dark:text-red-300">
                   Could not load staff directory for adding crew. You can still edit the crew list on
@@ -677,7 +443,7 @@ export function UpcomingJobsTable({
                   </option>
                   {memberUserIdsOrdered.map((uid) => (
                     <option key={uid} value={uid}>
-                      {nameByUserId.get(uid) ?? uid}
+                      {labelByUserId.get(uid) ?? uid}
                       {teamLeadMember?.user.id === uid ? " (team’s default lead)" : ""}
                     </option>
                   ))}
@@ -759,7 +525,7 @@ export function UpcomingJobsTable({
                         key={uid}
                         className="flex items-center justify-between gap-2 rounded-md bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text-secondary)]"
                       >
-                        <span className="min-w-0 break-words">{nameByUserId.get(uid) ?? uid}</span>
+                        <span className="min-w-0 break-words">{labelByUserId.get(uid) ?? uid}</span>
                         <Button
                           type="button"
                           variant="ghost"
@@ -796,9 +562,8 @@ export function UpcomingJobsTable({
               {busyId === dispatchBookingId ? "Saving…" : "Dispatch"}
             </Button>
           </div>
-            </>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </ModalShell>
     </div>
   );

@@ -5,6 +5,7 @@ import { resolveBookingListScope } from "../services/bookingService";
 import {
   createDispatchFromTeam,
   listDispatchMemberCandidates,
+  listOngoingForDispatch,
   listUpcomingAcceptedForDispatch,
   updateDispatchStatus,
 } from "../services/dispatchService";
@@ -18,6 +19,13 @@ export async function listUpcomingDispatchHandler(req: Request, res: Response) {
   const scope = await getScope(req);
   const userId = req.authUser?.sub;
   const rows = await listUpcomingAcceptedForDispatch({ userId, scope });
+  return res.json(rows);
+}
+
+export async function listOngoingDispatchHandler(req: Request, res: Response) {
+  const scope = await getScope(req);
+  const userId = req.authUser?.sub;
+  const rows = await listOngoingForDispatch({ userId, scope });
   return res.json(rows);
 }
 

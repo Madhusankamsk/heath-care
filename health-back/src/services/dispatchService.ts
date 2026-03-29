@@ -1,6 +1,13 @@
 import prisma from "../prisma/client";
 import type { BookingListScope } from "./bookingService";
 
+const dispatchAssignmentUserSelect = {
+  id: true,
+  fullName: true,
+  email: true,
+  role: { select: { id: true, roleName: true } },
+} as const;
+
 async function getDispatchStatusLookupId(lookupKey: string): Promise<string | null> {
   const cat = await prisma.lookupCategory.findUnique({
     where: { categoryName: "DISPATCH_STATUS" },
@@ -26,7 +33,7 @@ const upcomingInclude = {
       vehicle: { select: { id: true, vehicleNo: true, model: true } },
       assignments: {
         include: {
-          user: { select: { id: true, fullName: true, email: true } },
+          user: { select: dispatchAssignmentUserSelect },
         },
       },
     },
@@ -52,13 +59,33 @@ export async function listUpcomingAcceptedForDispatch(params: {
     where: {
       doctorStatusLookup: { lookupKey: "ACCEPTED" },
       OR: [{ scheduledDate: null }, { scheduledDate: { gte: startOfToday } }],
-      NOT: {
-        dispatchRecords: {
-          some: {
-            statusLookup: { lookupKey: "ARRIVED" },
-          },
-        },
-      },
+      /** Not yet dispatched — once a dispatch exists, the job moves to Ongoing. */
+      dispatchRecords: { none: {} },
+      ...scopeWhere,
+    },
+    orderBy: { scheduledDate: { sort: "asc", nulls: "last" } },
+    include: upcomingInclude,
+  });
+}
+
+/** Accepted bookings with an in-transit or arrived dispatch and no visit started yet. */
+export async function listOngoingForDispatch(params: {
+  userId: string | undefined;
+  scope: BookingListScope;
+}) {
+  const scopeWhere =
+    params.scope === "own" && params.userId
+      ? { requestedDoctorId: params.userId }
+      : {};
+
+  return prisma.booking.findMany({
+    where: {
+      doctorStatusLookup: { lookupKey: "ACCEPTED" },
+      visitRecord: null,
+      OR: [
+        { dispatchRecords: { some: { statusLookup: { lookupKey: "IN_TRANSIT" } } } },
+        { dispatchRecords: { some: { statusLookup: { lookupKey: "ARRIVED" } } } },
+      ],
       ...scopeWhere,
     },
     orderBy: { scheduledDate: { sort: "asc", nulls: "last" } },
@@ -239,7 +266,7 @@ export async function createDispatchFromTeam(
         vehicle: { select: { id: true, vehicleNo: true, model: true } },
         assignments: {
           include: {
-            user: { select: { id: true, fullName: true, email: true } },
+            user: { select: dispatchAssignmentUserSelect },
           },
         },
       },
@@ -303,7 +330,7 @@ export async function updateDispatchStatus(
       vehicle: { select: { id: true, vehicleNo: true, model: true } },
       assignments: {
         include: {
-          user: { select: { id: true, fullName: true, email: true } },
+          user: { select: dispatchAssignmentUserSelect },
         },
       },
       booking: {

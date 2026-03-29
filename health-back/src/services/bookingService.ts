@@ -47,6 +47,51 @@ const bookingInclude = {
   },
 } as const;
 
+const dispatchAssignmentUserSelect = {
+  id: true,
+  fullName: true,
+  email: true,
+  role: { select: { id: true, roleName: true } },
+} as const;
+
+/** Bookings for a patient profile: full dispatch history per booking. */
+const bookingWithDispatchInclude = {
+  patient: { select: { id: true, fullName: true, nicOrPassport: true, contactNo: true } },
+  requestedDoctor: { select: { id: true, fullName: true, email: true } },
+  doctorStatusLookup: {
+    select: { id: true, lookupKey: true, lookupValue: true },
+  },
+  visitRecord: { select: { id: true, completedAt: true } },
+  dispatchRecords: {
+    orderBy: { dispatchedAt: "desc" as const },
+    include: {
+      statusLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
+      vehicle: { select: { id: true, vehicleNo: true, model: true } },
+      assignments: {
+        include: {
+          user: { select: dispatchAssignmentUserSelect },
+        },
+      },
+    },
+  },
+} as const;
+
+export async function listBookingsForPatient(
+  patientId: string,
+  params: { userId: string | undefined; scope: BookingListScope },
+) {
+  const scopeWhere =
+    params.scope === "own" && params.userId
+      ? { requestedDoctorId: params.userId }
+      : {};
+
+  return prisma.booking.findMany({
+    where: { patientId, ...scopeWhere },
+    orderBy: { scheduledDate: { sort: "desc", nulls: "last" } },
+    include: bookingWithDispatchInclude,
+  });
+}
+
 export async function listBookings(params: {
   userId: string | undefined;
   scope: BookingListScope;
