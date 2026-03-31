@@ -3,7 +3,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
-  return <table className={cn("min-w-full text-left text-sm", className)} {...props} />;
+  return <table className={cn("w-max min-w-full text-left text-sm", className)} {...props} />;
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
