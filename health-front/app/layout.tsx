@@ -53,6 +53,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${appSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         <CompanyBrandingSync />
         {children}

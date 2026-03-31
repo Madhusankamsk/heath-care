@@ -53,7 +53,7 @@ export default async function PatientFullPreviewPage({
       : [];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/dashboard/clients/patient"
@@ -61,131 +61,81 @@ export default async function PatientFullPreviewPage({
         >
           Back
         </Link>
-        <div className="text-sm text-[var(--text-secondary)]">Full Preview</div>
+        <div />
       </div>
 
-      <Card
-        title="Patient Details"
-        description="Read-only patient information."
-      >
-        <div className="preview-shell sm:grid-cols-2">
-          <section className="preview-section">
-            <h3 className="preview-section-title">Identity</h3>
-            <dl className="preview-list">
-              <div className="preview-row">
-                <dt className="preview-label">Name</dt>
-                <dd className="preview-value">{patient.fullName}</dd>
-              </div>
-              {patient.shortName ? (
-                <div className="preview-row">
-                  <dt className="preview-label">Short name</dt>
-                  <dd className="preview-value">{patient.shortName}</dd>
-                </div>
-              ) : null}
-              <div className="preview-row">
-                <dt className="preview-label">NIC/Passport</dt>
-                <dd className="preview-value">{patient.nicOrPassport ?? "—"}</dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">DOB</dt>
-                <dd className="preview-value">
-                  {patient.dob ? String(patient.dob) : "—"}
-                </dd>
-              </div>
-            </dl>
-          </section>
+      <section className="surface-card p-4 sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
+            <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Patient</p>
+            <h1 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">
+              {patient.fullName}
+            </h1>
+            {patient.shortName ? (
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">{patient.shortName}</p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className={patient.isSubscribed ? "pill pill-success" : "pill pill-warning"}>
+                {patient.isSubscribed ? "Subscribed" : "Not subscribed"}
+              </span>
+              <span className={patient.hasInsurance ? "pill pill-info" : "pill pill-warning"}>
+                Insurance: {patient.hasInsurance ? "Yes" : "No"}
+              </span>
+              <span className={patient.hasGuardian ? "pill pill-info" : "pill pill-warning"}>
+                Guardian: {patient.hasGuardian ? "Yes" : "No"}
+              </span>
+            </div>
+          </div>
 
-          <section className="preview-section">
-            <h3 className="preview-section-title">Contact</h3>
-            <dl className="preview-list">
-              <div className="preview-row">
-                <dt className="preview-label">Contact</dt>
-                <dd className="preview-value">{patient.contactNo ?? "—"}</dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">Patient WhatsApp</dt>
-                <dd className="preview-value">{patient.whatsappNo ?? "—"}</dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">Address</dt>
-                <dd className="preview-value">{patient.address ?? "—"}</dd>
-              </div>
-            </dl>
-          </section>
-
-          <section className="preview-section">
-            <h3 className="preview-section-title">Demographics</h3>
-            <dl className="preview-list">
-              <div className="preview-row">
-                <dt className="preview-label">Gender</dt>
-                <dd className="preview-value">
-                  {patient.genderLookup?.lookupValue ?? patient.gender ?? "—"}
-                </dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">Billing Recipient</dt>
-                <dd className="preview-value">
-                  {patient.billingRecipientLookup?.lookupValue ?? "—"}
-                </dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">Subscribed</dt>
-                <dd className="preview-value">{patient.isSubscribed ? "Yes" : "No"}</dd>
-              </div>
-              {patient.isSubscribed ? (
-                <div className="preview-row">
-                  <dt className="preview-label">Subscription Plan</dt>
-                  <dd className="preview-value">{patient.subscriptionPlanName ?? "—"}</dd>
-                </div>
-              ) : null}
-              {patient.isSubscribed ? (
-                <div className="preview-row">
-                  <dt className="preview-label">Subscription Status</dt>
-                  <dd className="preview-value">{patient.subscriptionStatusName ?? "—"}</dd>
-                </div>
-              ) : null}
-            </dl>
-          </section>
-
-          <section className="preview-section">
-            <h3 className="preview-section-title">Guardian & Coverage</h3>
-            <dl className="preview-list">
-              <div className="preview-row">
-                <dt className="preview-label">Has Insurance</dt>
-                <dd className="preview-value">{patient.hasInsurance ? "Yes" : "No"}</dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">Has Guardian</dt>
-                <dd className="preview-value">{patient.hasGuardian ? "Yes" : "No"}</dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">Guardian Name</dt>
-                <dd className="preview-value">{patient.guardianName ?? "—"}</dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">Guardian Email</dt>
-                <dd className="preview-value">{patient.guardianEmail ?? "—"}</dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">Guardian WhatsApp</dt>
-                <dd className="preview-value">{patient.guardianWhatsappNo ?? "—"}</dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">Guardian Contact No</dt>
-                <dd className="preview-value">{patient.guardianContactNo ?? "—"}</dd>
-              </div>
-              <div className="preview-row">
-                <dt className="preview-label">Guardian Relationship</dt>
-                <dd className="preview-value">{patient.guardianRelationship ?? "—"}</dd>
-              </div>
-            </dl>
-          </section>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 lg:col-span-2">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <CompactItem label="NIC/Passport" value={patient.nicOrPassport ?? "—"} />
+              <CompactItem label="DOB" value={patient.dob ? String(patient.dob) : "—"} />
+              <CompactItem
+                label="Gender"
+                value={patient.genderLookup?.lookupValue ?? patient.gender ?? "—"}
+              />
+              <CompactItem label="Contact" value={patient.contactNo ?? "—"} />
+              <CompactItem label="WhatsApp" value={patient.whatsappNo ?? "—"} />
+              <CompactItem
+                label="Billing Recipient"
+                value={patient.billingRecipientLookup?.lookupValue ?? "—"}
+              />
+              <CompactItem
+                label="Subscription Plan"
+                value={patient.isSubscribed ? patient.subscriptionPlanName ?? "—" : "—"}
+              />
+              <CompactItem
+                label="Subscription Status"
+                value={patient.isSubscribed ? patient.subscriptionStatusName ?? "—" : "—"}
+              />
+            </div>
+            <div className="mt-4 border-t border-[var(--border)] pt-3">
+              <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Address</p>
+              <p className="mt-1 text-sm font-medium text-[var(--text-primary)]">
+                {patient.address ?? "—"}
+              </p>
+            </div>
+          </div>
         </div>
-      </Card>
+
+        {patient.hasGuardian ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <CompactItem label="Guardian Name" value={patient.guardianName ?? "—"} />
+            <CompactItem label="Guardian Email" value={patient.guardianEmail ?? "—"} />
+            <CompactItem label="Guardian Contact" value={patient.guardianContactNo ?? "—"} />
+            <CompactItem label="Guardian WhatsApp" value={patient.guardianWhatsappNo ?? "—"} />
+            <CompactItem
+              label="Guardian Relationship"
+              value={patient.guardianRelationship ?? "—"}
+            />
+          </div>
+        ) : null}
+      </section>
 
       <Card
-        title="Bookings and dispatch"
-        description="Each visit request, dispatch run, and crew assignment for this patient."
+        title="Bookings and Dispatch"
+        description="Visit requests, dispatch runs, and crew assignments."
       >
         {canSeeBookings ? (
           patientBookings === null ? (
@@ -210,6 +160,15 @@ export default async function PatientFullPreviewPage({
         )}
       </Card>
     </div>
+  );
+}
+
+function CompactItem({ label, value }: { label: string; value: string }) {
+  return (
+    <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
+      <p className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
+      <p className="mt-1 text-sm font-medium text-[var(--text-primary)]">{value}</p>
+    </section>
   );
 }
 
