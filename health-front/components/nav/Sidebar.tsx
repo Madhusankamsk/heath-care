@@ -109,42 +109,10 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    href: "/dashboard/inventory",
+    href: "/dashboard/inventory/medicines",
     label: "Inventory",
     icon: <Package className="h-4 w-4" aria-hidden />,
     requiresAnyPermissions: ["inventory:list", "inventory:read"],
-    children: [
-      {
-        href: "/dashboard/inventory/medicines",
-        label: "Medicines",
-        icon: <Package className="h-4 w-4" aria-hidden />,
-        requiresAnyPermissions: ["inventory:list", "inventory:read"],
-      },
-      {
-        href: "/dashboard/inventory/medical-items",
-        label: "Medical Items",
-        icon: <Package className="h-4 w-4" aria-hidden />,
-        requiresAnyPermissions: ["inventory:list", "inventory:read"],
-      },
-      {
-        href: "/dashboard/inventory/batches",
-        label: "Batches",
-        icon: <Package className="h-4 w-4" aria-hidden />,
-        requiresAnyPermissions: ["inventory:batches:manage", "inventory:read"],
-      },
-      {
-        href: "/dashboard/inventory/mobile-substores",
-        label: "Mobile Substores",
-        icon: <Package className="h-4 w-4" aria-hidden />,
-        requiresAnyPermissions: ["inventory:substores:manage", "inventory:read"],
-      },
-      {
-        href: "/dashboard/inventory/stock-movements",
-        label: "Stock Movements",
-        icon: <Package className="h-4 w-4" aria-hidden />,
-        requiresAnyPermissions: ["inventory:movements:manage", "inventory:read"],
-      },
-    ],
   },
   {
     href: "/dashboard/payments",
