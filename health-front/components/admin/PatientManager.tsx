@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Input } from "@/components/ui/Input";
+import { CheckboxBase } from "@/components/ui/checkbox-base";
+import { SelectBase } from "@/components/ui/select-base";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { openInvoicePdf } from "@/lib/openInvoicePdf";
 import { toast } from "@/lib/toast";
@@ -348,36 +351,36 @@ export function PatientManager({
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">NIC/Passport</th>
-              <th className="px-4 py-3">Contact</th>
-              <th className="px-4 py-3">Gender</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>NIC/Passport</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Gender</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {patients.map((p) => {
               const isBusy = busyId === p.id;
               return (
-                <tr key={p.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-3 font-medium">{p.fullName}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                <TableRow key={p.id} >
+                  <TableCell className="font-medium">{p.fullName}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {p.nicOrPassport ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {p.contactNo ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {p.genderLookup?.lookupValue ?? p.gender ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {p.isSubscribed ? p.subscriptionStatusName ?? "—" : "Not subscribed"}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-end gap-2">
                       {canPreview ? (
                         <Button
@@ -417,12 +420,12 @@ export function PatientManager({
                         </Button>
                       ) : null}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -611,8 +614,7 @@ function PatientForm({
         {includeSubscriptionPlan ? (
           <>
             <label className="flex items-center gap-2 text-sm sm:col-span-2">
-              <input
-                type="checkbox"
+              <CheckboxBase
                 checked={Boolean(values.isSubscribed)}
                 onChange={(e) => {
                   const checked = e.target.checked;
@@ -633,7 +635,7 @@ function PatientForm({
                 <span className="font-medium text-[var(--text-primary)]">
                   Assign Subscription Plan
                 </span>
-                <select
+                <SelectBase
                   className={selectClass}
                   value={values.subscriptionPlanId ?? ""}
                   required
@@ -647,7 +649,7 @@ function PatientForm({
                       {plan.planName}
                     </option>
                   ))}
-                </select>
+                </SelectBase>
               </label>
             ) : null}
             {values.isSubscribed ? (
@@ -655,7 +657,7 @@ function PatientForm({
                 <span className="font-medium text-[var(--text-primary)]">
                   Subscription Status
                 </span>
-                <select
+                <SelectBase
                   className={selectClass}
                   value={values.subscriptionStatusId ?? ""}
                   disabled={subscriptionStatusDisabled}
@@ -669,7 +671,7 @@ function PatientForm({
                       {status.lookupValue}
                     </option>
                   ))}
-                </select>
+                </SelectBase>
                 {subscriptionStatusDisabled ? (
                   <div className="text-xs text-[var(--text-secondary)]">
                     Status is locked for shared subscription accounts.
@@ -718,8 +720,7 @@ function PatientForm({
           }
         />
         <label className="flex items-center gap-2 self-end pb-2 text-xs text-[var(--text-secondary)]">
-          <input
-            type="checkbox"
+          <CheckboxBase
             checked={isWhatsappSameAsContact}
             disabled={!hasPatientContactNo}
             onChange={(e) => {
@@ -741,7 +742,7 @@ function PatientForm({
         />
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-[var(--text-primary)]">Gender (Lookup)</span>
-          <select
+          <SelectBase
             className={selectClass}
             value={values.genderId ?? ""}
             onChange={(e) => setValues((v) => ({ ...v, genderId: e.target.value }))}
@@ -752,7 +753,7 @@ function PatientForm({
                 {g.lookupValue}
               </option>
             ))}
-          </select>
+          </SelectBase>
         </label>
         <Input
           label="Address"
@@ -762,16 +763,14 @@ function PatientForm({
           className="sm:col-span-2"
         />
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
-          <input
-            type="checkbox"
+          <CheckboxBase
             checked={Boolean(values.hasInsurance)}
             onChange={(e) => setValues((v) => ({ ...v, hasInsurance: e.target.checked }))}
           />
           Has insurance
         </label>
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
-          <input
-            type="checkbox"
+          <CheckboxBase
             checked={Boolean(values.hasGuardian)}
             onChange={(e) => {
               const checked = e.target.checked;
@@ -826,8 +825,7 @@ function PatientForm({
               }
             />
             <label className="flex items-center gap-2 self-end pb-2 text-xs text-[var(--text-secondary)]">
-              <input
-                type="checkbox"
+              <CheckboxBase
                 checked={isGuardianWhatsappSameAsContact}
                 disabled={!hasGuardianContactNo}
                 onChange={(e) => {
@@ -865,7 +863,7 @@ function PatientForm({
         {values.hasGuardian ? (
           <label className="flex flex-col gap-2 text-sm sm:col-span-2">
             <span className="font-medium text-[var(--text-primary)]">Billing Recipient</span>
-            <select
+            <SelectBase
               className={selectClass}
               value={values.billingRecipientId ?? ""}
               onChange={(e) => setValues((v) => ({ ...v, billingRecipientId: e.target.value }))}
@@ -876,7 +874,7 @@ function PatientForm({
                   {br.lookupValue}
                 </option>
               ))}
-            </select>
+            </SelectBase>
           </label>
         ) : null}
         <div className="flex items-center justify-end gap-2 sm:col-span-2">

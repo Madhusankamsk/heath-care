@@ -7,6 +7,9 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { Input } from "@/components/ui/Input";
+import { SelectBase } from "@/components/ui/select-base";
+import { TextareaBase } from "@/components/ui/textarea-base";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 
@@ -386,18 +389,18 @@ export function BookingManager({
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Patient</th>
-              <th className="px-4 py-3">Date & Time</th>
-              <th className="px-4 py-3">Doctor</th>
-              <th className="px-4 py-3">Dr. status</th>
-              <th className="px-4 py-3">Booking remark</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Patient</TableHead>
+              <TableHead>Date & Time</TableHead>
+              <TableHead>Doctor</TableHead>
+              <TableHead>Dr. status</TableHead>
+              <TableHead>Booking remark</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {bookings.map((booking) => {
               const isBusy = busyId === booking.id;
               const showPendingActions =
@@ -405,19 +408,19 @@ export function BookingManager({
                 booking.requestedDoctorId === currentUserId &&
                 booking.doctorStatusLookup?.lookupKey === "PENDING";
               return (
-                <tr key={booking.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-3 font-medium">{booking.patient?.fullName ?? "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                <TableRow key={booking.id} >
+                  <TableCell className="font-medium">{booking.patient?.fullName ?? "—"}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {formatDateTime(booking.scheduledDate)}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {booking.requestedDoctor?.fullName ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {booking.doctorStatusLookup?.lookupValue ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{booking.bookingRemark ?? "—"}</td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">{booking.bookingRemark ?? "—"}</TableCell>
+                  <TableCell>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       {showPendingActions ? (
                         <>
@@ -483,12 +486,12 @@ export function BookingManager({
                         </Button>
                       ) : null}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -553,7 +556,10 @@ function SearchablePatientSelect({
   }, [open]);
 
   useEffect(() => {
-    if (!open) setQ("");
+    if (!open) {
+      const timer = window.setTimeout(() => setQ(""), 0);
+      return () => window.clearTimeout(timer);
+    }
   }, [open]);
 
   return (
@@ -649,7 +655,10 @@ function SearchableDoctorSelect({
   }, [open]);
 
   useEffect(() => {
-    if (!open) setQ("");
+    if (!open) {
+      const timer = window.setTimeout(() => setQ(""), 0);
+      return () => window.clearTimeout(timer);
+    }
   }, [open]);
 
   return (
@@ -855,7 +864,7 @@ function BookingForm({
         {intent === "edit" && doctorStatuses?.length ? (
           <label className="flex flex-col gap-2 text-sm sm:col-span-2">
             <span className="font-medium text-[var(--text-primary)]">Doctor acceptance</span>
-            <select
+            <SelectBase
               className={selectClass}
               value={values.doctorStatusId}
               onChange={(e) => setValues((v) => ({ ...v, doctorStatusId: e.target.value }))}
@@ -866,13 +875,13 @@ function BookingForm({
                   {d.lookupValue}
                 </option>
               ))}
-            </select>
+            </SelectBase>
           </label>
         ) : null}
 
         <label className="flex flex-col gap-2 text-sm sm:col-span-2">
           <span className="font-medium text-[var(--text-primary)]">Booking remark</span>
-          <textarea
+          <TextareaBase
             className={`${selectClass} min-h-[88px] py-2`}
             value={values.bookingRemark}
             onChange={(e) => setValues((v) => ({ ...v, bookingRemark: e.target.value }))}
@@ -954,7 +963,7 @@ function DoctorScopedEditForm({
       >
         <label className="flex flex-col gap-2 text-sm sm:col-span-2">
           <span className="font-medium text-[var(--text-primary)]">Doctor acceptance</span>
-          <select
+          <SelectBase
             className={selectClass}
             value={values.doctorStatusId}
             onChange={(e) => setValues((v) => ({ ...v, doctorStatusId: e.target.value }))}
@@ -965,12 +974,12 @@ function DoctorScopedEditForm({
                 {d.lookupValue}
               </option>
             ))}
-          </select>
+          </SelectBase>
         </label>
 
         <label className="flex flex-col gap-2 text-sm sm:col-span-2">
           <span className="font-medium text-[var(--text-primary)]">Booking remark</span>
-          <textarea
+          <TextareaBase
             className={`${selectClass} min-h-[88px] py-2`}
             value={values.bookingRemark}
             onChange={(e) => setValues((v) => ({ ...v, bookingRemark: e.target.value }))}

@@ -6,6 +6,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { SelectBase } from "@/components/ui/select-base";
+import { TextareaBase } from "@/components/ui/textarea-base";
 import {
   formatCrewMemberName,
   formatScheduled,
@@ -530,7 +532,7 @@ export function PatientBookingsHistory({
                               Diagnosis remark
                             </span>
                             {canSaveVisitDraft ? (
-                              <textarea
+                              <TextareaBase
                                 rows={5}
                                 value={diagnosisRemarkDraftForBooking(b)}
                                 onChange={(e) => setDiagnosisRemarkDraft(b.id, e.target.value)}
@@ -668,7 +670,7 @@ export function PatientBookingsHistory({
                                       <span className="font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                                         Sample type *
                                       </span>
-                                      <select
+                                      <SelectBase
                                         value={sampleFormForBooking(b).sampleTypeLookupId}
                                         onChange={(e) =>
                                           setSampleFormByBookingId((prev) => {
@@ -698,7 +700,7 @@ export function PatientBookingsHistory({
                                             {opt.lookupValue}
                                           </option>
                                         ))}
-                                      </select>
+                                      </SelectBase>
                                     </label>
                                     <label className="flex flex-col gap-1 text-xs">
                                       <span className="font-semibold uppercase tracking-wide text-[var(--text-muted)]">

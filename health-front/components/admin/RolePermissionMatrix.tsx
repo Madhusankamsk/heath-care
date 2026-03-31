@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 
 type Role = {
@@ -204,26 +205,26 @@ export function RolePermissionMatrix({ roles, permissions }: RolePermissionMatri
       </div>
 
       <div className="max-h-96 overflow-x-auto overflow-y-auto rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <table className="min-w-full text-left text-sm border-collapse">
-          <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-950">
-            <tr className="border-b border-zinc-200 text-xs uppercase text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-              <th className="px-3 py-2">Permission</th>
+        <Table className="border-collapse">
+          <TableHeader className="sticky top-0 z-10 bg-white dark:bg-zinc-950">
+            <TableRow className="border-b border-zinc-200 text-xs uppercase text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+              <TableHead className="px-3 py-2">Permission</TableHead>
               {sortedRoles.map((role) => (
-                <th key={role.id} className="px-3 py-2 text-center">
+                <TableHead key={role.id} className="px-3 py-2 text-center">
                   {role.roleName}
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {sortedPermissions.map((perm) => {
               const canDelete = !Object.values(mapping).some((set) => set.has(perm.id));
               return (
-                <tr
+                <TableRow
                   key={perm.id}
                   className="border-t border-zinc-200 align-middle dark:border-zinc-800"
                 >
-                  <td className="px-3 py-2">
+                  <TableCell className="px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-[11px] text-zinc-700 dark:text-zinc-300">
                         {perm.permissionKey}
@@ -239,11 +240,11 @@ export function RolePermissionMatrix({ roles, permissions }: RolePermissionMatri
                         </Button>
                       ) : null}
                     </div>
-                  </td>
+                  </TableCell>
                   {sortedRoles.map((role) => {
                     const has = mapping[role.id]?.has(perm.id) ?? false;
                     return (
-                      <td key={role.id} className="px-3 py-1 text-center">
+                      <TableCell key={role.id} className="px-3 py-1 text-center">
                         <button
                           type="button"
                           onClick={() => toggle(role.id, perm)}
@@ -261,14 +262,14 @@ export function RolePermissionMatrix({ roles, permissions }: RolePermissionMatri
                         >
                           {has ? "●" : "○"}
                         </button>
-                      </td>
+                      </TableCell>
                     );
                   })}
-                </tr>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <div className="flex items-center justify-end gap-2 text-xs text-zinc-500 dark:text-zinc-400">

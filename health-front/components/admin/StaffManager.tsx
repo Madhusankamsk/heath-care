@@ -7,6 +7,9 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { Input } from "@/components/ui/Input";
+import { CheckboxBase } from "@/components/ui/checkbox-base";
+import { SelectBase } from "@/components/ui/select-base";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 
@@ -331,27 +334,27 @@ export function StaffManager({
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Role</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {profiles.map((p) => {
               const isBusy = busyId === p.id;
               return (
-                <tr key={p.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-3 font-medium">{p.fullName}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{p.email}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                <TableRow key={p.id} >
+                  <TableCell className="font-medium">{p.fullName}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">{p.email}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {p.role?.roleName ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <span
                       className={[
                         "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
@@ -362,8 +365,8 @@ export function StaffManager({
                     >
                       {p.isActive ? "Active" : "Inactive"}
                     </span>
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-end gap-2">
                       {canPreview ? (
                         <Button
@@ -418,12 +421,12 @@ export function StaffManager({
                         </Button>
                       ) : null}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -567,7 +570,7 @@ function StaffForm({
         />
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-[var(--text-primary)]">Role</span>
-          <select
+          <SelectBase
             className={selectClass}
             value={values.roleId}
             onChange={(e) => setValues((v) => ({ ...v, roleId: e.target.value }))}
@@ -581,12 +584,11 @@ function StaffForm({
                 {r.roleName}
               </option>
             ))}
-          </select>
+          </SelectBase>
         </label>
 
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
-          <input
-            type="checkbox"
+          <CheckboxBase
             checked={Boolean(values.isActive)}
             onChange={(e) => setValues((v) => ({ ...v, isActive: e.target.checked }))}
           />

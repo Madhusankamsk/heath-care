@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from "react";
+import { InputBase } from "@/components/ui/input-base";
 
 export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
@@ -23,18 +24,13 @@ export function Input({
       <span className="font-medium text-[var(--text-secondary)]">
         {label}
       </span>
-      <input
+      <InputBase
         {...rest}
         id={inputId}
         aria-invalid={hasError}
         aria-describedby={hasError ? errorId : undefined}
         className={[
-          "h-11 rounded-xl border px-3 text-sm outline-none transition-colors",
-          "border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]",
-          "focus:border-[var(--brand-primary)]",
-          hasError
-            ? "border-[var(--danger)]"
-            : "",
+          hasError ? "border-[var(--danger)]" : "",
           className,
         ]
           .filter(Boolean)

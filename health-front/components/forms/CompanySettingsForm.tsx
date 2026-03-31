@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { CheckboxBase } from "@/components/ui/checkbox-base";
 import { Input } from "@/components/ui/Input";
 import { toast } from "@/lib/toast";
 
@@ -276,8 +277,7 @@ export function CompanySettingsForm({
           }
         />
         <label className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
-          <input
-            type="checkbox"
+          <CheckboxBase
             checked={form.isSetupCompleted}
             onChange={(e) =>
               setForm((p) => ({ ...p, isSetupCompleted: e.target.checked }))

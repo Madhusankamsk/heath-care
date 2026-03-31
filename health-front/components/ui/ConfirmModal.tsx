@@ -3,6 +3,7 @@
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export type ConfirmModalVariant = "delete" | "edit" | "primary";
 
@@ -34,14 +35,11 @@ export function ConfirmModal({
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4 py-8"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-modal-title"
-      onClick={onCancel}
-    >
-      <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
+      <DialogContent
+        className="z-[81] max-w-md"
+        overlayClassName="z-[80] bg-black/40"
+      >
         <Card>
           <h2
             id="confirm-modal-title"
@@ -69,7 +67,7 @@ export function ConfirmModal({
             </Button>
           </div>
         </Card>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

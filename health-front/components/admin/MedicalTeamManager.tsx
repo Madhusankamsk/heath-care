@@ -7,6 +7,9 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { Input } from "@/components/ui/Input";
+import { CheckboxBase } from "@/components/ui/checkbox-base";
+import { SelectBase } from "@/components/ui/select-base";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 
@@ -342,28 +345,28 @@ export function MedicalTeamManager({
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Team Name</th>
-              <th className="px-4 py-3">Vehicle</th>
-              <th className="px-4 py-3">Members</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Team Name</TableHead>
+              <TableHead>Vehicle</TableHead>
+              <TableHead>Members</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {teams.map((team) => {
               const isBusy = busyId === team.id;
               return (
-                <tr key={team.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-3 font-medium">{team.teamName ?? "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                <TableRow key={team.id} >
+                  <TableCell className="font-medium">{team.teamName ?? "—"}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {team.vehicle.vehicleNo}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {team._count?.members ?? 0}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-end gap-2">
                       {canPreview ? (
                         <Button
@@ -407,12 +410,12 @@ export function MedicalTeamManager({
                         </Button>
                       ) : null}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -511,7 +514,7 @@ function MedicalTeamForm({
 
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-[var(--text-primary)]">Vehicle</span>
-          <select
+          <SelectBase
             className={selectClass}
             value={values.vehicleId}
             onChange={(e) => setValues((v) => ({ ...v, vehicleId: e.target.value }))}
@@ -522,7 +525,7 @@ function MedicalTeamForm({
                 {vehicle.vehicleNo} ({vehicle.status})
               </option>
             ))}
-          </select>
+          </SelectBase>
         </label>
 
         <div className="sm:col-span-2">
@@ -532,8 +535,7 @@ function MedicalTeamForm({
               const checked = values.memberIds.includes(member.id);
               return (
                 <label key={member.id} className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
+                  <CheckboxBase
                     checked={checked}
                     onChange={(e) => {
                       const nextIds = e.target.checked
@@ -561,7 +563,7 @@ function MedicalTeamForm({
 
         <label className="flex flex-col gap-2 text-sm sm:col-span-2">
           <span className="font-medium text-[var(--text-primary)]">Team Lead</span>
-          <select
+          <SelectBase
             className={selectClass}
             value={values.leadMemberId ?? ""}
             onChange={(e) =>
@@ -580,7 +582,7 @@ function MedicalTeamForm({
                   {member.fullName}
                 </option>
               ))}
-          </select>
+          </SelectBase>
         </label>
 
         <div className="flex items-center justify-end gap-2 sm:col-span-2">

@@ -7,6 +7,9 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { Input } from "@/components/ui/Input";
+import { CheckboxBase } from "@/components/ui/checkbox-base";
+import { SelectBase } from "@/components/ui/select-base";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 
@@ -302,34 +305,34 @@ export function SubscriptionPlanManager({
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Plan</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3">Duration</th>
-              <th className="px-4 py-3">Members</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Plan</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Duration</TableHead>
+              <TableHead>Members</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {plans.map((plan) => {
               const isBusy = busyId === plan.id;
               return (
-                <tr key={plan.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-3 font-medium">{plan.planName}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                <TableRow key={plan.id} >
+                  <TableCell className="font-medium">{plan.planName}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {plan.planTypeLookup?.lookupValue ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{String(plan.price)}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{plan.durationDays}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{plan.maxMembers}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">{String(plan.price)}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">{plan.durationDays}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">{plan.maxMembers}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {plan.isActive ? "Active" : "Inactive"}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-end gap-2">
                       <Button
                         type="button"
@@ -370,12 +373,12 @@ export function SubscriptionPlanManager({
                         </Button>
                       ) : null}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -463,7 +466,7 @@ function SubscriptionPlanForm({
         />
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-[var(--text-primary)]">Plan type</span>
-          <select
+          <SelectBase
             className="h-11 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)]/25"
             value={values.planTypeId}
             onChange={(e) => setValues((v) => ({ ...v, planTypeId: e.target.value }))}
@@ -474,7 +477,7 @@ function SubscriptionPlanForm({
                 {type.lookupValue}
               </option>
             ))}
-          </select>
+          </SelectBase>
         </label>
         <Input
           label="Price"
@@ -501,8 +504,7 @@ function SubscriptionPlanForm({
           required
         />
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
-          <input
-            type="checkbox"
+          <CheckboxBase
             checked={values.isActive}
             onChange={(e) => setValues((v) => ({ ...v, isActive: e.target.checked }))}
           />

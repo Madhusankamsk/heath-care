@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { MedicalTeam } from "@/components/admin/MedicalTeamManager";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { SelectBase } from "@/components/ui/select-base";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 
 import { DispatchPreviewPanel } from "./DispatchPreviewPanel";
@@ -254,47 +256,47 @@ export function UpcomingJobsTable({
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Patient</th>
-              <th className="px-4 py-3">Scheduled</th>
-              <th className="px-4 py-3">Doctor</th>
-              <th className="px-4 py-3">Remark</th>
-              <th className="px-4 py-3">Assigned team</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Patient</TableHead>
+              <TableHead>Scheduled</TableHead>
+              <TableHead>Doctor</TableHead>
+              <TableHead>Remark</TableHead>
+              <TableHead>Assigned team</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-[var(--text-muted)]">
+              <TableRow>
+                <TableCell colSpan={6} className="py-8 text-center text-[var(--text-muted)]">
                   No upcoming jobs. Accept bookings in Manage Bookings to queue them here.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               rows.map((row) => {
                 const latest = row.dispatchRecords[0];
                 const showAssignTeam = !latest && canAssignTeam && teamsWithMembers.length > 0;
 
                 return (
-                  <tr key={row.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                    <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
+                  <TableRow key={row.id} >
+                    <TableCell className="font-medium text-[var(--text-primary)]">
                       {row.patient?.fullName ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                    </TableCell>
+                    <TableCell className="text-[var(--text-secondary)]">
                       {formatScheduled(row.scheduledDate)}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                    </TableCell>
+                    <TableCell className="text-[var(--text-secondary)]">
                       {row.requestedDoctor?.fullName ?? "—"}
-                    </td>
-                    <td className="max-w-[200px] truncate px-4 py-3 text-[var(--text-secondary)]">
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate text-[var(--text-secondary)]">
                       {row.bookingRemark?.trim() ? row.bookingRemark : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                    </TableCell>
+                    <TableCell className="text-[var(--text-secondary)]">
                       <span className="text-[var(--text-muted)]">No team assigned</span>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center justify-end gap-2">
                         {canPreview ? (
                           <Button
@@ -329,13 +331,13 @@ export function UpcomingJobsTable({
                           </Button>
                         ) : null}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <ModalShell
@@ -388,7 +390,7 @@ export function UpcomingJobsTable({
               </p>
               <label className="flex flex-col gap-1.5 text-sm">
                 <span className="font-medium text-[var(--text-secondary)]">Medical team</span>
-                <select
+                <SelectBase
                   className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--text-primary)]"
                   value={teamId}
                   onChange={(e) => setTeamId(e.target.value)}
@@ -399,7 +401,7 @@ export function UpcomingJobsTable({
                       {t.teamName?.trim() || "Unnamed team"}
                     </option>
                   ))}
-                </select>
+                </SelectBase>
               </label>
 
               {vehicles === null ? (
@@ -414,7 +416,7 @@ export function UpcomingJobsTable({
                   <span className="font-medium text-[var(--text-secondary)]">
                     Vehicle for this dispatch
                   </span>
-                  <select
+                  <SelectBase
                     className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--text-primary)]"
                     value={dispatchVehicleId}
                     onChange={(e) => setDispatchVehicleId(e.target.value)}
@@ -426,7 +428,7 @@ export function UpcomingJobsTable({
                         {v.model?.trim() ? ` · ${v.model.trim()}` : ""}
                       </option>
                     ))}
-                  </select>
+                  </SelectBase>
                 </label>
               )}
 
@@ -434,7 +436,7 @@ export function UpcomingJobsTable({
                 <span className="font-medium text-[var(--text-secondary)]">
                   Team leader for this dispatch
                 </span>
-                <select
+                <SelectBase
                   className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--text-primary)] disabled:opacity-60"
                   value={dispatchLeadUserId}
                   disabled={memberUserIdsOrdered.length === 0}
@@ -449,7 +451,7 @@ export function UpcomingJobsTable({
                       {teamLeadMember?.user.id === uid ? " (team’s default lead)" : ""}
                     </option>
                   ))}
-                </select>
+                </SelectBase>
               </label>
             </div>
 
@@ -463,7 +465,7 @@ export function UpcomingJobsTable({
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                     <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-[var(--text-secondary)]">
                       Staff member
-                      <select
+                      <SelectBase
                         className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-2 text-sm text-[var(--text-primary)]"
                         value={addUserId}
                         onChange={(e) => setAddUserId(e.target.value)}
@@ -475,7 +477,7 @@ export function UpcomingJobsTable({
                             {c.role?.roleName ? ` · ${c.role.roleName}` : ""}
                           </option>
                         ))}
-                      </select>
+                      </SelectBase>
                     </label>
                     <Button
                       type="button"

@@ -1,4 +1,11 @@
 import type { ReactNode } from "react";
+import {
+  CardBase,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card-base";
 
 export type CardProps = {
   title?: string;
@@ -8,21 +15,15 @@ export type CardProps = {
 
 export function Card({ title, description, children }: CardProps) {
   return (
-    <section className="surface-card p-5 sm:p-6">
+    <CardBase className="p-5 sm:p-6">
       {title ? (
-        <header className="mb-5 flex flex-col gap-1 border-b border-[var(--border)] pb-4">
-          <h2 className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
-            {title}
-          </h2>
-          {description ? (
-            <p className="text-sm text-[var(--text-secondary)]">
-              {description}
-            </p>
-          ) : null}
-        </header>
+        <CardHeader className="mb-5 border-b border-[var(--border)] pb-4">
+          <CardTitle>{title}</CardTitle>
+          {description ? <CardDescription>{description}</CardDescription> : null}
+        </CardHeader>
       ) : null}
-      {children}
-    </section>
+      <CardContent>{children}</CardContent>
+    </CardBase>
   );
 }
 

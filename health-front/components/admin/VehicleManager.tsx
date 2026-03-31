@@ -7,6 +7,8 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { Input } from "@/components/ui/Input";
+import { SelectBase } from "@/components/ui/select-base";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 
@@ -294,28 +296,28 @@ export function VehicleManager({
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Vehicle No</th>
-              <th className="px-4 py-3">Model</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Current Driver</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Vehicle No</TableHead>
+              <TableHead>Model</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Current Driver</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {vehicles.map((v) => {
               const isBusy = busyId === v.id;
               return (
-                <tr key={v.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-3 font-medium">{v.vehicleNo}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{v.model ?? "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{v.status}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                <TableRow key={v.id} >
+                  <TableCell className="font-medium">{v.vehicleNo}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">{v.model ?? "—"}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">{v.status}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {v.currentDriver?.fullName ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-end gap-2">
                       {canPreview ? (
                         <Button
@@ -355,12 +357,12 @@ export function VehicleManager({
                         </Button>
                       ) : null}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -460,7 +462,7 @@ function VehicleForm({
 
         <label className="flex flex-col gap-2 text-sm sm:col-span-2">
           <span className="font-medium text-[var(--text-primary)]">Status</span>
-          <select
+          <SelectBase
             className={selectClass}
             value={values.status ?? "Available"}
             onChange={(e) => setValues((v) => ({ ...v, status: e.target.value }))}
@@ -470,12 +472,12 @@ function VehicleForm({
                 {s}
               </option>
             ))}
-          </select>
+          </SelectBase>
         </label>
 
         <label className="flex flex-col gap-2 text-sm sm:col-span-2">
           <span className="font-medium text-[var(--text-primary)]">Current Driver</span>
-          <select
+          <SelectBase
             className={selectClass}
             value={values.currentDriverId ?? ""}
             onChange={(e) => setValues((v) => ({ ...v, currentDriverId: e.target.value }))}
@@ -486,7 +488,7 @@ function VehicleForm({
                 {driver.fullName}
               </option>
             ))}
-          </select>
+          </SelectBase>
         </label>
 
         <div className="flex items-center justify-end gap-2 sm:col-span-2">

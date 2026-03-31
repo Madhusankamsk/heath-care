@@ -8,6 +8,9 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { Input } from "@/components/ui/Input";
+import { CheckboxBase } from "@/components/ui/checkbox-base";
+import { SelectBase } from "@/components/ui/select-base";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { openInvoicePdf } from "@/lib/openInvoicePdf";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
@@ -627,7 +630,7 @@ export function SubscriptionAccountManager({
                 />
                 <label className="flex flex-col gap-2 text-sm">
                   <span className="font-medium text-[var(--text-primary)]">Gender</span>
-                  <select
+                  <SelectBase
                     className={selectClass}
                     value={memberPatientValues.genderId ?? ""}
                     onChange={(e) =>
@@ -640,7 +643,7 @@ export function SubscriptionAccountManager({
                         {g.lookupValue}
                       </option>
                     ))}
-                  </select>
+                  </SelectBase>
                 </label>
 
                 <Input
@@ -672,8 +675,7 @@ export function SubscriptionAccountManager({
                 </div>
 
                 <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                  <input
-                    type="checkbox"
+                  <CheckboxBase
                     checked={Boolean(memberPatientValues.hasInsurance)}
                     onChange={(e) =>
                       setMemberPatientValues((v) => ({
@@ -686,8 +688,7 @@ export function SubscriptionAccountManager({
                 </label>
 
                 <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                  <input
-                    type="checkbox"
+                  <CheckboxBase
                     checked={Boolean(memberPatientValues.hasGuardian)}
                     onChange={(e) => {
                       const checked = e.target.checked;
@@ -778,7 +779,7 @@ export function SubscriptionAccountManager({
                       <span className="font-medium text-[var(--text-primary)]">
                         Billing Recipient
                       </span>
-                      <select
+                      <SelectBase
                         className={selectClass}
                         value={memberPatientValues.billingRecipientId ?? ""}
                         onChange={(e) =>
@@ -794,7 +795,7 @@ export function SubscriptionAccountManager({
                             {br.lookupValue}
                           </option>
                         ))}
-                      </select>
+                      </SelectBase>
                     </label>
                   </>
                 ) : null}
@@ -898,34 +899,34 @@ export function SubscriptionAccountManager({
       ) : null}
 
       <div className="tbl-shell overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Account</th>
-              <th className="px-4 py-3">Plan</th>
-              <th className="px-4 py-3">Members</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Account</TableHead>
+              <TableHead>Plan</TableHead>
+              <TableHead>Members</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {accounts.map((row) => {
               const isBusy = busyId === row.id;
               const membersCount = row.members?.length ?? 0;
               const maxMembers = row.plan?.maxMembers;
               return (
-                <tr key={row.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-3 font-medium">{row.accountName ?? "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                <TableRow key={row.id} >
+                  <TableCell className="font-medium">{row.accountName ?? "—"}</TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {row.plan?.planName ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {typeof maxMembers === "number" ? `${membersCount}/${maxMembers}` : membersCount}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
                     {row.statusLookup?.lookupValue ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-end gap-2">
                       {canManageMembers ? (
                         <Button
@@ -973,12 +974,12 @@ export function SubscriptionAccountManager({
                         </Button>
                       ) : null}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -1088,7 +1089,7 @@ function SubscriptionAccountForm({
         />
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-[var(--text-primary)]">Plan</span>
-          <select
+          <SelectBase
             className={selectClass}
             value={values.planId}
             onChange={(e) => setValues((v) => ({ ...v, planId: e.target.value }))}
@@ -1100,7 +1101,7 @@ function SubscriptionAccountForm({
                 {plan.planName}
               </option>
             ))}
-          </select>
+          </SelectBase>
         </label>
         <Input
           label="Contact Email"
@@ -1144,7 +1145,7 @@ function SubscriptionAccountForm({
         </div>
         <label className="flex flex-col gap-2 text-sm sm:col-span-2">
           <span className="font-medium text-[var(--text-primary)]">Status</span>
-          <select
+          <SelectBase
             className={selectClass}
             value={values.statusId ?? ""}
             onChange={(e) => setValues((v) => ({ ...v, statusId: e.target.value }))}
@@ -1155,7 +1156,7 @@ function SubscriptionAccountForm({
                 {st.lookupValue}
               </option>
             ))}
-          </select>
+          </SelectBase>
         </label>
         <div className="flex items-center justify-end gap-2 sm:col-span-2">
           <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>

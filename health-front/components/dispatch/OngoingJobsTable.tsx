@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import type { MedicalTeam } from "@/components/admin/MedicalTeamManager";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { DispatchPreviewPanel } from "./DispatchPreviewPanel";
 import {
@@ -49,25 +50,25 @@ export function OngoingJobsTable({
   return (
     <div className="flex flex-col gap-4">
       <div className="tbl-shell overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Patient</th>
-              <th className="px-4 py-3">Scheduled</th>
-              <th className="px-4 py-3">Doctor</th>
-              <th className="px-4 py-3">Remark</th>
-              <th className="px-4 py-3">Dispatch</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Patient</TableHead>
+              <TableHead>Scheduled</TableHead>
+              <TableHead>Doctor</TableHead>
+              <TableHead>Remark</TableHead>
+              <TableHead>Dispatch</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {initialRows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-[var(--text-muted)]">
+              <TableRow>
+                <TableCell colSpan={6} className="py-8 text-center text-[var(--text-muted)]">
                   No ongoing jobs. Dispatched bookings appear here while in transit or arrived on site
                   before the visit is started.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               initialRows.map((row) => {
                 const latest = row.dispatchRecords[0];
@@ -78,20 +79,20 @@ export function OngoingJobsTable({
                     : null;
 
                 return (
-                  <tr key={row.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                    <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
+                  <TableRow key={row.id} >
+                    <TableCell className="font-medium text-[var(--text-primary)]">
                       {row.patient?.fullName ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                    </TableCell>
+                    <TableCell className="text-[var(--text-secondary)]">
                       {formatScheduled(row.scheduledDate)}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                    </TableCell>
+                    <TableCell className="text-[var(--text-secondary)]">
                       {row.requestedDoctor?.fullName ?? "—"}
-                    </td>
-                    <td className="max-w-[200px] truncate px-4 py-3 text-[var(--text-secondary)]">
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate text-[var(--text-secondary)]">
                       {row.bookingRemark?.trim() ? row.bookingRemark : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                    </TableCell>
+                    <TableCell className="text-[var(--text-secondary)]">
                       {latest ? (
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium text-[var(--text-primary)]">
@@ -109,8 +110,8 @@ export function OngoingJobsTable({
                       ) : (
                         "—"
                       )}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center justify-end gap-2">
                         {canPreview ? (
                           <Button
@@ -123,13 +124,13 @@ export function OngoingJobsTable({
                           </Button>
                         ) : null}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <ModalShell

@@ -1,6 +1,14 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 
 export type ModalShellProps = {
@@ -31,43 +39,34 @@ export function ModalShell({
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/55 px-4 py-8 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      onClick={onClose}
-    >
-      <div
-        className={`max-h-[90vh] w-full ${maxWidthClass} overflow-y-auto`}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent className={maxWidthClass}>
         <Card>
           <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h2
-                id={titleId}
-                className="text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-              >
+            <DialogHeader>
+              <DialogTitle id={titleId} className="text-[var(--text-primary)]">
                 {title}
-              </h2>
-              <p className="text-sm text-[var(--text-secondary)]">{subtitle}</p>
-            </div>
+              </DialogTitle>
+              <DialogDescription className="text-[var(--text-secondary)]">
+                {subtitle}
+              </DialogDescription>
+            </DialogHeader>
             <div className="flex shrink-0 items-center gap-2">
               {headerTrailing}
-              <button
-                type="button"
-                aria-label="Close"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--danger)] hover:bg-[var(--danger)]/10 hover:text-[var(--action-delete-hover)]"
-                onClick={onClose}
-              >
-                ×
-              </button>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--danger)] hover:bg-[var(--danger)]/10 hover:text-[var(--action-delete-hover)]"
+                >
+                  ×
+                </button>
+              </DialogClose>
             </div>
           </div>
           {children}
         </Card>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
