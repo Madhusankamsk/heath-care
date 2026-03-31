@@ -3,23 +3,23 @@
 @import "sonner/dist/styles.css";
 
 :root {
-  --background: #f5f7fb;
-  --foreground: #0f172a;
-  --surface: #ffffff;
-  --surface-2: #f8fafc;
-  --surface-3: #f1f5f9;
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --text-muted: #64748b;
-  --brand-primary: #0ea5a4;
-  --brand-primary-strong: #0f766e;
-  --brand-secondary: #2563eb;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --purple: #8b5cf6;
+  --background: #edf3f8;
+  --foreground: #0d1b2f;
+  --surface: #fdfefe;
+  --surface-2: #f2f7fb;
+  --surface-3: #e6eef6;
+  --border: #d4e0ea;
+  --border-strong: #b5c7d7;
+  --text-primary: #11263d;
+  --text-secondary: #33516d;
+  --text-muted: #5a7691;
+  --brand-primary: #0f8f9d;
+  --brand-primary-strong: #0d6f7d;
+  --brand-secondary: #1b3b66;
+  --success: #109c79;
+  --warning: #c7851f;
+  --danger: #c7485b;
+  --purple: #6f63c7;
   --action-create: var(--success);
   --action-create-hover: #059669;
   --action-edit: var(--brand-secondary);
@@ -28,29 +28,29 @@
   --action-delete-hover: #dc2626;
   --action-preview: var(--purple);
   --action-preview-hover: #7c3aed;
-  --ring: color-mix(in srgb, var(--brand-secondary) 35%, transparent);
-  --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
-  --shadow-strong: 0 24px 60px rgba(15, 23, 42, 0.16);
+  --ring: color-mix(in srgb, var(--brand-primary) 42%, transparent);
+  --shadow-soft: 0 12px 32px rgba(8, 27, 52, 0.09);
+  --shadow-strong: 0 28px 68px rgba(8, 27, 52, 0.18);
 }
 
 :root.dark {
-  --background: #020617;
-  --foreground: #e2e8f0;
-  --surface: #0f172a;
-  --surface-2: #111c31;
-  --surface-3: #1e293b;
-  --border: #1f2937;
-  --border-strong: #334155;
-  --text-primary: #e2e8f0;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --brand-primary: #2dd4bf;
-  --brand-primary-strong: #14b8a6;
-  --brand-secondary: #60a5fa;
-  --success: #34d399;
-  --warning: #fbbf24;
-  --danger: #f87171;
-  --purple: #a78bfa;
+  --background: #071321;
+  --foreground: #dce9f7;
+  --surface: #0c1c31;
+  --surface-2: #122741;
+  --surface-3: #183451;
+  --border: #213a54;
+  --border-strong: #315072;
+  --text-primary: #e4eef8;
+  --text-secondary: #c0d3e5;
+  --text-muted: #8ea7bf;
+  --brand-primary: #33b2c1;
+  --brand-primary-strong: #2199a9;
+  --brand-secondary: #7fb3ff;
+  --success: #3cc89f;
+  --warning: #e0aa51;
+  --danger: #f07b8c;
+  --purple: #a494ef;
   --action-create: var(--success);
   --action-create-hover: #059669;
   --action-edit: var(--brand-secondary);
@@ -59,9 +59,9 @@
   --action-delete-hover: #ef4444;
   --action-preview: var(--purple);
   --action-preview-hover: #8b5cf6;
-  --ring: color-mix(in srgb, var(--brand-secondary) 45%, transparent);
-  --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.35);
-  --shadow-strong: 0 30px 70px rgba(0, 0, 0, 0.5);
+  --ring: color-mix(in srgb, var(--brand-primary) 50%, transparent);
+  --shadow-soft: 0 14px 34px rgba(2, 12, 26, 0.44);
+  --shadow-strong: 0 34px 78px rgba(2, 12, 26, 0.62);
 }
 
 @theme inline {
