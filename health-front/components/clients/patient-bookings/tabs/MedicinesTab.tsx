@@ -28,7 +28,6 @@ type Props = {
   onChangeQty: (qty: string) => void;
   issuingBookingId: string | null;
   onIssueMedicine: () => void;
-  onRemoveQueuedMedicine: (queuedItemId: string) => void;
   issuedMedicineSamples: IssuedMedicineSampleRow[];
 };
 
@@ -47,7 +46,6 @@ export function MedicinesTab({
   onChangeQty,
   issuingBookingId,
   onIssueMedicine,
-  onRemoveQueuedMedicine,
   issuedMedicineSamples,
 }: Props) {
   const [batchDropdownOpen, setBatchDropdownOpen] = useState(false);
@@ -214,7 +212,7 @@ export function MedicinesTab({
                     disabled={issuingBookingId === b.id || !selectedBatchId || qtyInvalid || qtyTooHigh}
                     onClick={onIssueMedicine}
                   >
-                    {issuingBookingId === b.id ? "Issuing..." : "Add medicine"}
+                    {issuingBookingId === b.id ? "Issuing..." : "Issue to patient"}
                   </Button>
                 </div>
                 {qtyTooHigh ? (
@@ -235,24 +233,9 @@ export function MedicinesTab({
             <ul className="divide-y divide-[var(--border)]">
               {issuedMedicineSamples.map((s) => (
                 <li key={s.id} className="px-3 py-2 text-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-[var(--text-primary)]">{s.sampleType}</p>
-                      <p className="text-[var(--text-secondary)]">{s.labName?.trim() ? s.labName : "—"}</p>
-                      <p className="text-xs text-[var(--text-muted)]">{formatScheduled(s.collectedAt)}</p>
-                    </div>
-                    {s.id.startsWith("queued-") ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="h-7 px-2 text-[11px]"
-                        disabled={issuingBookingId === b.id}
-                        onClick={() => onRemoveQueuedMedicine(s.id)}
-                      >
-                        Remove
-                      </Button>
-                    ) : null}
-                  </div>
+                  <p className="font-medium text-[var(--text-primary)]">{s.sampleType}</p>
+                  <p className="text-[var(--text-secondary)]">{s.labName?.trim() ? s.labName : "—"}</p>
+                  <p className="text-xs text-[var(--text-muted)]">{formatScheduled(s.collectedAt)}</p>
                 </li>
               ))}
             </ul>

@@ -111,6 +111,7 @@ export async function issueMedicineToPatientApi(payload: {
   batchId: string;
   quantity: number;
   patientId: string;
+  bookingId?: string;
 }) {
   const res = await fetch("/api/inventory/stock-movements", {
     method: "POST",
@@ -120,6 +121,7 @@ export async function issueMedicineToPatientApi(payload: {
       quantity: payload.quantity,
       toLocationType: "PATIENT",
       toLocationId: payload.patientId,
+      bookingId: payload.bookingId,
     }),
   });
   const data = await readJson<IssueMedicineApiResponse & MessageResponse>(res, {});

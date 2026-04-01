@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { SelectBase } from "@/components/ui/select-base";
-import { ModalShell } from "@/components/ui/ModalShell";
 import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import { CompletedVisitReport } from "@/components/clients/patient-bookings/CompletedVisitReport";
 import { MedicinesTab } from "@/components/clients/patient-bookings/tabs/MedicinesTab";
@@ -22,6 +20,9 @@ type Props = {
   setActiveDiagnosticTab: (tab: DiagnosticTabId) => void;
   diagnosisRemark: string;
   setDiagnosisRemark: (value: string) => void;
+  saveVisitDraftDisabled: boolean;
+  savingBookingId: string | null;
+  onSaveVisitDraft: () => void;
   uploadingReportBookingId: string | null;
   onUploadReports: (files: FileList | null) => void;
   sampleForm: SampleForm;
@@ -44,7 +45,6 @@ type Props = {
   onChangeQty: (qty: string) => void;
   issuingBookingId: string | null;
   onIssueMedicine: () => void;
-  onRemoveQueuedMedicine: (queuedItemId: string) => void;
   onConfirmComplete: () => void;
 };
 
@@ -58,6 +58,9 @@ export function DiagnosticWorkflowPanel(props: Props) {
     setActiveDiagnosticTab,
     diagnosisRemark,
     setDiagnosisRemark,
+    saveVisitDraftDisabled,
+    savingBookingId,
+    onSaveVisitDraft,
     uploadingReportBookingId,
     onUploadReports,
     sampleForm,
@@ -80,10 +83,8 @@ export function DiagnosticWorkflowPanel(props: Props) {
     onChangeQty,
     issuingBookingId,
     onIssueMedicine,
-    onRemoveQueuedMedicine,
     onConfirmComplete,
   } = props;
-  const [billModalOpen, setBillModalOpen] = useState(false);
 
   const arrived = arrivedDispatchForBooking(b);
   const visitDone = Boolean(b.visitRecord?.completedAt);
@@ -97,6 +98,7 @@ export function DiagnosticWorkflowPanel(props: Props) {
     0,
     DIAGNOSTIC_TABS.findIndex((t) => t.id === activeDiagnosticTab),
   );
+  const reports = b.visitRecord?.diagnosticReports ?? [];
   const reportBusy = uploadingReportBookingId === b.id;
 
   if (isCompleted) {
@@ -201,60 +203,35 @@ export function DiagnosticWorkflowPanel(props: Props) {
             onChangeQty={onChangeQty}
             issuingBookingId={issuingBookingId}
             onIssueMedicine={onIssueMedicine}
-            onRemoveQueuedMedicine={onRemoveQueuedMedicine}
             issuedMedicineSamples={issuedMedicineSamples}
           />
         </div>
       </div>
 
       <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
+        {canSaveVisitDraft ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-9 px-4 text-xs font-medium"
+            disabled={saveVisitDraftDisabled}
+            onClick={onSaveVisitDraft}
+          >
+            {savingBookingId === b.id ? "Saving…" : "Save draft"}
+          </Button>
+        ) : null}
         {canUpdateDispatch ? (
           <Button
             type="button"
             variant="primary"
             className="h-9 px-4 text-xs font-medium"
             disabled={busyDispatchId !== null}
-            onClick={() => setBillModalOpen(true)}
+            onClick={onConfirmComplete}
           >
-            Generate bill
+            Complete
           </Button>
         ) : null}
       </div>
-
-      <ModalShell
-        open={billModalOpen}
-        onClose={() => setBillModalOpen(false)}
-        titleId={`patient-booking-${b.id}-bill-preview`}
-        title="Bill preview"
-        subtitle="Hardcoded preview for now."
-        maxWidthClass="max-w-2xl"
-      >
-        <div className="space-y-3 text-sm">
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-            <p className="font-semibold text-[var(--text-primary)]">Patient visit bill</p>
-            <p className="text-[var(--text-secondary)]">Consultation fee: LKR 2,500</p>
-            <p className="text-[var(--text-secondary)]">Nursing service: LKR 1,500</p>
-            <p className="text-[var(--text-secondary)]">Medicine charges: LKR 1,000</p>
-            <p className="mt-2 border-t border-[var(--border)] pt-2 font-semibold text-[var(--text-primary)]">
-              Total: LKR 5,000
-            </p>
-          </div>
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="primary"
-              className="h-9 px-4 text-xs font-medium"
-              disabled={busyDispatchId !== null}
-              onClick={() => {
-                onConfirmComplete();
-                setBillModalOpen(false);
-              }}
-            >
-              Complete
-            </Button>
-          </div>
-        </div>
-      </ModalShell>
     </>
   );
 }

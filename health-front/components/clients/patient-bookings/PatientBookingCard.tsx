@@ -20,6 +20,9 @@ type Props = {
   setActiveDiagnosticTab: (tab: DiagnosticTabId) => void;
   diagnosisRemark: string;
   setDiagnosisRemark: (value: string) => void;
+  saveVisitDraftDisabled: boolean;
+  savingBookingId: string | null;
+  onSaveVisitDraft: () => void;
   uploadingReportBookingId: string | null;
   onUploadReports: (files: FileList | null) => void;
   sampleForm: SampleForm;
@@ -41,7 +44,6 @@ type Props = {
   onChangeQty: (qty: string) => void;
   issuingBookingId: string | null;
   onIssueMedicine: () => void;
-  onRemoveQueuedMedicine: (queuedItemId: string) => void;
 };
 
 export function PatientBookingCard(props: Props) {
@@ -58,6 +60,9 @@ export function PatientBookingCard(props: Props) {
     setActiveDiagnosticTab,
     diagnosisRemark,
     setDiagnosisRemark,
+    saveVisitDraftDisabled,
+    savingBookingId,
+    onSaveVisitDraft,
     uploadingReportBookingId,
     onUploadReports,
     sampleForm,
@@ -79,7 +84,6 @@ export function PatientBookingCard(props: Props) {
     onChangeQty,
     issuingBookingId,
     onIssueMedicine,
-    onRemoveQueuedMedicine,
   } = props;
 
   const inTransit = inTransitDispatchForBooking(b);
@@ -132,6 +136,9 @@ export function PatientBookingCard(props: Props) {
         setActiveDiagnosticTab={setActiveDiagnosticTab}
         diagnosisRemark={diagnosisRemark}
         setDiagnosisRemark={setDiagnosisRemark}
+        saveVisitDraftDisabled={saveVisitDraftDisabled}
+        savingBookingId={savingBookingId}
+        onSaveVisitDraft={onSaveVisitDraft}
         uploadingReportBookingId={uploadingReportBookingId}
         onUploadReports={onUploadReports}
         sampleForm={sampleForm}
@@ -154,7 +161,6 @@ export function PatientBookingCard(props: Props) {
         onChangeQty={onChangeQty}
         issuingBookingId={issuingBookingId}
         onIssueMedicine={onIssueMedicine}
-        onRemoveQueuedMedicine={onRemoveQueuedMedicine}
         onConfirmComplete={() => {
           if (arrived) onSetPendingComplete(arrived.id);
         }}

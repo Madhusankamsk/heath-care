@@ -17,9 +17,6 @@ export function useInventoryIssue() {
   const [issuedMedicineSamplesByBookingId, setIssuedMedicineSamplesByBookingId] = useState<
     Record<string, IssuedMedicineSampleRow[]>
   >({});
-  const [pendingIssuesByBookingId, setPendingIssuesByBookingId] = useState<
-    Record<string, Array<{ tempId: string; batchId: string; quantity: number }>>
-  >({});
 
   async function ensureInventoryLoaded() {
     if (inventoryBatches !== null || inventoryError) return;
@@ -58,77 +55,42 @@ export function useInventoryIssue() {
       toast.error("Enter a valid quantity.");
       return;
     }
-    const selectedBatch = teamLeaderBatchesForBooking(b).find((x) => x.id === batchId);
-    if (!selectedBatch) {
-      toast.error("Selected batch is unavailable.");
+    if (!b.patient?.id) {
+      toast.error("Patient reference is missing for this booking.");
       return;
     }
 
-    const tempId = `queued-${crypto.randomUUID()}`;
-    setPendingIssuesByBookingId((prev) => ({
-      ...prev,
-      [b.id]: [...(prev[b.id] ?? []), { tempId, batchId, quantity }],
-    }));
-    const medicineName = selectedBatch.medicine?.name?.trim() || "Medicine";
-    const batchNo = selectedBatch.batchNo?.trim() || "—";
-    const queuedRow: IssuedMedicineSampleRow = {
-      id: tempId,
-      sampleType: medicineName,
-      collectedAt: new Date().toISOString(),
-      labName: `Queued qty ${quantity} from batch ${batchNo}`,
-      statusLabel: "Queued",
-    };
-    setIssuedMedicineSamplesByBookingId((prev) => ({
-      ...prev,
-      [b.id]: [queuedRow, ...(prev[b.id] ?? [])],
-    }));
-    setIssueQtyByBookingId((prev) => ({ ...prev, [b.id]: "1" }));
-    setSelectedBatchByBookingId((prev) => ({ ...prev, [b.id]: "" }));
-    toast.success("Medicine added. It will be issued when visit is completed.");
-  }
-
-  function removePendingIssue(bookingId: string, queuedItemId: string) {
-    setPendingIssuesByBookingId((prev) => ({
-      ...prev,
-      [bookingId]: (prev[bookingId] ?? []).filter((item) => item.tempId !== queuedItemId),
-    }));
-    setIssuedMedicineSamplesByBookingId((prev) => ({
-      ...prev,
-      [bookingId]: (prev[bookingId] ?? []).filter((item) => item.id !== queuedItemId),
-    }));
-  }
-
-  async function persistPendingIssuesForBooking(b: UpcomingBookingRow): Promise<boolean> {
-    const pending = pendingIssuesByBookingId[b.id] ?? [];
-    if (pending.length === 0) return true;
-    if (!b.patient?.id) {
-      toast.error("Patient reference is missing for this booking.");
-      return false;
-    }
     setIssuingBookingId(b.id);
     try {
-      for (const item of pending) {
-        await issueMedicineToPatientApi({
-          batchId: item.batchId,
-          quantity: item.quantity,
-          patientId: b.patient.id,
-        });
-      }
-      setPendingIssuesByBookingId((prev) => {
-        const next = { ...prev };
-        delete next[b.id];
-        return next;
+      const data = await issueMedicineToPatientApi({
+        batchId,
+        quantity,
+        patientId: b.patient.id,
+        bookingId: b.id,
       });
+
+      toast.success("Medicine issued to patient.");
+      const medicineName = data.medicine?.name?.trim() || "Medicine";
+      const batchNo = data.batch?.batchNo?.trim() || "—";
+      const statusLabel = data.statusLookup?.lookupValue ?? data.statusLookup?.lookupKey ?? "Issued";
+      const qtyLabel = Number.isInteger(data.quantity) ? String(data.quantity) : String(quantity);
+      const issuedRow: IssuedMedicineSampleRow = {
+        id: data.id || `issued-${crypto.randomUUID()}`,
+        sampleType: medicineName,
+        collectedAt: data.createdAt || new Date().toISOString(),
+        labName: `Issued qty ${qtyLabel} from batch ${batchNo}`,
+        statusLabel,
+      };
       setIssuedMedicineSamplesByBookingId((prev) => ({
         ...prev,
-        [b.id]: [],
+        [b.id]: [issuedRow, ...(prev[b.id] ?? [])],
       }));
+      setIssueQtyByBookingId((prev) => ({ ...prev, [b.id]: "1" }));
+      setSelectedBatchByBookingId((prev) => ({ ...prev, [b.id]: "" }));
       setInventoryBatches(null);
       setInventoryError(null);
-      return true;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not issue queued medicines");
-      return false;
+      toast.error(e instanceof Error ? e.message : "Could not issue medicine");
     } finally {
       setIssuingBookingId(null);
     }
@@ -144,8 +106,6 @@ export function useInventoryIssue() {
     ensureInventoryLoaded,
     teamLeaderBatchesForBooking,
     issueMedicineToPatient,
-    persistPendingIssuesForBooking,
-    removePendingIssue,
     setSelectedBatchByBookingId,
     setIssueQtyByBookingId,
   };

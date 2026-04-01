@@ -312,6 +312,7 @@ export async function createStockMovement(input: {
   quantity: number;
   toLocationType: string;
   toLocationId?: string | null;
+  bookingId?: string | null;
   transferredById: string;
 }) {
   const completedStatusId = await getLookupId("TRANSFER_STATUS", "COMPLETED");
@@ -321,7 +322,7 @@ export async function createStockMovement(input: {
       locationType: toLocationType,
       locationId: input.toLocationId?.trim() || null,
     });
-    return tx.stockTransfer.create({
+    const transfer = await tx.stockTransfer.create({
       data: {
         medicineId: sourceBatch.medicineId,
         batchId: sourceBatch.id,
@@ -334,5 +335,36 @@ export async function createStockMovement(input: {
       },
       include: { medicine: true, batch: true, transferredBy: true, statusLookup: true },
     });
+
+    if (toLocationType === "PATIENT" && input.bookingId?.trim()) {
+      const bookingId = input.bookingId.trim();
+      let visit = await tx.visitRecord.findUnique({
+        where: { bookingId },
+        select: { id: true },
+      });
+      if (!visit) {
+        const booking = await tx.booking.findUnique({
+          where: { id: bookingId },
+          select: { patientId: true },
+        });
+        if (!booking) throw new Error("Booking not found");
+        visit = await tx.visitRecord.create({
+          data: { bookingId, patientId: booking.patientId },
+          select: { id: true },
+        });
+      }
+      await tx.dispensedMedicine.create({
+        data: {
+          visitId: visit.id,
+          medicineId: sourceBatch.medicineId,
+          batchId: sourceBatch.id,
+          quantity: input.quantity,
+          dispensedById: input.transferredById,
+          unitPriceAtTime: sourceBatch.buyingPrice,
+        },
+      });
+    }
+
+    return transfer;
   });
 }

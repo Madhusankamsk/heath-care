@@ -175,6 +175,7 @@ export async function createStockMovementHandler(req: Request, res: Response) {
       quantity: parseIntNumber(body.quantity, "quantity"),
       toLocationType: String(body.toLocationType ?? "WAREHOUSE"),
       toLocationId: body.toLocationId ? String(body.toLocationId) : null,
+      bookingId: body.bookingId ? String(body.bookingId).trim() : null,
       transferredById: userId,
     });
     return res.status(201).json(row);
