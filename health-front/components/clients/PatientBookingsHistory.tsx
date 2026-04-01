@@ -54,6 +54,14 @@ type InventoryBatchRow = {
   };
 };
 
+type IssuedMedicineSampleRow = {
+  id: string;
+  sampleType: string;
+  collectedAt: string;
+  labName: string | null;
+  statusLabel: string;
+};
+
 type DiagnosticTabId = "remark" | "reports" | "samples" | "medicines";
 
 const DIAGNOSTIC_TABS: { id: DiagnosticTabId; label: string }[] = [
@@ -256,6 +264,9 @@ export function PatientBookingsHistory({
   const [selectedBatchByBookingId, setSelectedBatchByBookingId] = useState<Record<string, string>>({});
   const [issueQtyByBookingId, setIssueQtyByBookingId] = useState<Record<string, string>>({});
   const [issuingBookingId, setIssuingBookingId] = useState<string | null>(null);
+  const [issuedMedicineSamplesByBookingId, setIssuedMedicineSamplesByBookingId] = useState<
+    Record<string, IssuedMedicineSampleRow[]>
+  >({});
 
   const inventoryFeatureEnabled = canUpdateDispatch;
 
@@ -491,15 +502,37 @@ export function PatientBookingsHistory({
           toLocationId: b.patient.id,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        id?: string;
+        quantity?: number;
+        createdAt?: string;
+        batch?: { batchNo?: string | null };
+        medicine?: { name?: string | null };
+        statusLookup?: { lookupValue?: string | null; lookupKey?: string | null } | null;
+        message?: string;
+      };
       if (!res.ok) throw new Error(data.message || "Could not issue medicine");
 
       toast.success("Medicine issued to patient.");
+      const medicineName = data.medicine?.name?.trim() || "Medicine";
+      const batchNo = data.batch?.batchNo?.trim() || "—";
+      const statusLabel = data.statusLookup?.lookupValue ?? data.statusLookup?.lookupKey ?? "Issued";
+      const qtyLabel = Number.isInteger(data.quantity) ? String(data.quantity) : String(quantity);
+      const issuedRow: IssuedMedicineSampleRow = {
+        id: data.id || `issued-${crypto.randomUUID()}`,
+        sampleType: medicineName,
+        collectedAt: data.createdAt || new Date().toISOString(),
+        labName: `Issued qty ${qtyLabel} from batch ${batchNo}`,
+        statusLabel,
+      };
+      setIssuedMedicineSamplesByBookingId((prev) => ({
+        ...prev,
+        [b.id]: [issuedRow, ...(prev[b.id] ?? [])],
+      }));
       setIssueQtyByBookingId((prev) => ({ ...prev, [b.id]: "1" }));
       setSelectedBatchByBookingId((prev) => ({ ...prev, [b.id]: "" }));
       setInventoryBatches(null);
       setInventoryError(null);
-      router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not issue medicine");
     } finally {
@@ -771,6 +804,7 @@ export function PatientBookingsHistory({
                     >
                         {(() => {
                           const samples = b.visitRecord?.labSamples ?? [];
+                          const issuedMedicineSamples = issuedMedicineSamplesByBookingId[b.id] ?? [];
                           return (
                             <div className="flex flex-col gap-3">
                               {canSaveVisitDraft ? (
@@ -877,7 +911,7 @@ export function PatientBookingsHistory({
                                     </span>
                                   ) : null}
                                 </div>
-                                {samples.length === 0 ? (
+                                {samples.length === 0 && issuedMedicineSamples.length === 0 ? (
                                   <div className="px-3 py-6 text-center text-sm text-[var(--text-muted)]">
                                     No samples recorded yet.
                                   </div>
@@ -913,6 +947,28 @@ export function PatientBookingsHistory({
                                               {removingSampleId === s.id ? "…" : "Remove"}
                                             </button>
                                           </span>
+                                        ) : null}
+                                      </li>
+                                    ))}
+                                    {issuedMedicineSamples.map((s) => (
+                                      <li
+                                        key={s.id}
+                                        className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm"
+                                      >
+                                        <span className="min-w-0 flex-[2] font-medium text-[var(--text-primary)] sm:flex-1">
+                                          {s.sampleType}
+                                        </span>
+                                        <span className="hidden min-w-0 flex-1 text-[var(--text-secondary)] sm:block">
+                                          {s.labName?.trim() ? s.labName : "—"}
+                                        </span>
+                                        <span className="hidden flex-none text-xs text-[var(--text-secondary)] sm:block sm:min-w-[9rem]">
+                                          {formatScheduled(s.collectedAt)}
+                                        </span>
+                                        <span className="min-w-0 flex-1 text-xs text-[var(--text-secondary)] sm:flex-none sm:min-w-[7rem] sm:text-sm">
+                                          {s.statusLabel}
+                                        </span>
+                                        {canSaveVisitDraft ? (
+                                          <span className="ml-auto w-14 shrink-0 text-right sm:ml-0" />
                                         ) : null}
                                       </li>
                                     ))}
