@@ -40,13 +40,12 @@ export function ConfirmModal({
         className="z-[81] max-w-md"
         overlayClassName="z-[80] bg-black/40"
       >
+        {/* Keep a direct title descendant so Radix never misses it. */}
+        <DialogTitle className="sr-only">{title}</DialogTitle>
         <Card>
-          <DialogTitle
-            id="confirm-modal-title"
-            className="mb-2 text-lg font-semibold tracking-tight text-[var(--text-primary)]"
-          >
+          <h2 className="mb-2 text-lg font-semibold tracking-tight text-[var(--text-primary)]">
             {title}
-          </DialogTitle>
+          </h2>
           <DialogDescription className="text-sm text-[var(--text-secondary)]">
             {message}
           </DialogDescription>

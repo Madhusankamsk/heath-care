@@ -278,7 +278,7 @@ export async function createDispatchFromTeam(
   });
 }
 
-export type DispatchStatusUpdateKey = "ARRIVED" | "DIAGNOSTIC" | "COMPLETED";
+export type DispatchStatusUpdateKey = "ARRIVED" | "COMPLETED";
 
 const dispatchUpdateInclude = {
   statusLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
@@ -342,34 +342,8 @@ export async function updateDispatchStatus(
     });
   }
 
-  if (statusLookupKey === "DIAGNOSTIC") {
-    if (current !== "ARRIVED") {
-      const err = new Error("INVALID_TRANSITION") as Error & { code?: string };
-      err.code = "INVALID_TRANSITION";
-      throw err;
-    }
-    const diagnosticId = await getDispatchStatusLookupId("DIAGNOSTIC");
-    if (!diagnosticId) throw new Error("DISPATCH_STATUS DIAGNOSTIC lookup missing");
-
-    return prisma.$transaction(async (tx) => {
-      await tx.visitRecord.upsert({
-        where: { bookingId: dispatch.booking.id },
-        create: {
-          bookingId: dispatch.booking.id,
-          patientId: dispatch.booking.patientId,
-        },
-        update: {},
-      });
-      return tx.dispatchRecord.update({
-        where: { id: dispatchId },
-        data: { statusId: diagnosticId },
-        include: dispatchUpdateInclude,
-      });
-    });
-  }
-
   if (statusLookupKey === "COMPLETED") {
-    if (current !== "DIAGNOSTIC") {
+    if (current !== "ARRIVED") {
       const err = new Error("INVALID_TRANSITION") as Error & { code?: string };
       err.code = "INVALID_TRANSITION";
       throw err;

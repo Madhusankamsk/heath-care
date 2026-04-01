@@ -109,7 +109,7 @@ export async function createDispatchHandler(req: Request, res: Response) {
   }
 }
 
-const DISPATCH_STATUS_KEYS: DispatchStatusUpdateKey[] = ["ARRIVED", "DIAGNOSTIC", "COMPLETED"];
+const DISPATCH_STATUS_KEYS: DispatchStatusUpdateKey[] = ["ARRIVED", "COMPLETED"];
 
 export async function patchDispatchStatusHandler(req: Request, res: Response) {
   const { id } = req.params;
@@ -122,7 +122,7 @@ export async function patchDispatchStatusHandler(req: Request, res: Response) {
   const key = statusLookupKey?.trim() as DispatchStatusUpdateKey | undefined;
   if (!key || !DISPATCH_STATUS_KEYS.includes(key)) {
     return res.status(400).json({
-      message: "statusLookupKey must be ARRIVED, DIAGNOSTIC, or COMPLETED",
+      message: "statusLookupKey must be ARRIVED or COMPLETED",
     });
   }
 
@@ -141,9 +141,7 @@ export async function patchDispatchStatusHandler(req: Request, res: Response) {
         message:
           key === "ARRIVED"
             ? "Only an in-transit dispatch can be marked arrived"
-            : key === "DIAGNOSTIC"
-              ? "Only an arrived dispatch can enter diagnostic"
-              : "Only a diagnostic-stage dispatch can be completed",
+            : "Only an arrived dispatch can be completed",
       });
     }
     if (err.code === "INVALID_STATUS") {
