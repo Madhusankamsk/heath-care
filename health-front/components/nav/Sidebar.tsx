@@ -164,9 +164,15 @@ const navItems: NavItem[] = [
     requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
     children: [
       {
-        href: "/dashboard/payments/record",
-        label: "Record payment",
+        href: "/dashboard/payments/member",
+        label: "Member payments",
         icon: <Banknote className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
+      },
+      {
+        href: "/dashboard/payments/visit",
+        label: "Visit payments",
+        icon: <CalendarCheck2 className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
       },
       {

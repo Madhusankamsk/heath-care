@@ -1,5 +1,6 @@
 import prisma from "../prisma/client";
 import type { BookingListScope } from "./bookingService";
+import { createVisitInvoiceIfAbsent } from "./visitInvoiceService";
 
 const dispatchAssignmentUserSelect = {
   id: true,
@@ -365,6 +366,10 @@ export async function updateDispatchStatus(
           completedAt: new Date(),
           ...(data?.remark !== undefined ? { remark: data.remark } : {}),
         },
+      });
+      await createVisitInvoiceIfAbsent(tx, {
+        bookingId: dispatch.booking.id,
+        patientId: dispatch.booking.patientId,
       });
       return tx.dispatchRecord.update({
         where: { id: dispatchId },

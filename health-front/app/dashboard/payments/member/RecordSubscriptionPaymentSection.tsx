@@ -67,8 +67,8 @@ export function RecordSubscriptionPaymentSection({
   if (invoices.length === 0) {
     return (
       <p className="text-sm text-[var(--text-secondary)]">
-        No subscription invoices with a balance due. New registrations create invoices here; record
-        payments when money is collected.
+        No member subscription invoices with a balance due. New registrations create invoices here;
+        record payments when money is collected.
       </p>
     );
   }
@@ -107,9 +107,9 @@ export function RecordSubscriptionPaymentSection({
   return (
     <div className="flex flex-col gap-6">
       <CrudToolbar
-        title="Record subscription payments"
+        title="Member payments"
         note="Actions are controlled by permissions."
-        description="Record payments against outstanding subscription invoices."
+        description="Record payments against outstanding subscription invoices for members."
       >
         <Button
           type="button"

@@ -100,6 +100,10 @@ import {
   recordSubscriptionInvoicePaymentHandler,
 } from "../controllers/subscriptionInvoicePaymentController";
 import {
+  listOutstandingVisitInvoicesHandler,
+  recordVisitInvoicePaymentHandler,
+} from "../controllers/visitInvoicePaymentController";
+import {
   assignMobileSubstoreHandler,
   createInventoryBatchHandler,
   createInventoryMedicineHandler,
@@ -380,6 +384,17 @@ router.post(
   "/subscription-invoices/:id/payments",
   requireAnyPermission(["invoices:read", "patients:read", "profiles:read"]),
   recordSubscriptionInvoicePaymentHandler,
+);
+
+router.get(
+  "/visit-invoices/outstanding",
+  requireAnyPermission(["invoices:read", "patients:read", "profiles:read"]),
+  listOutstandingVisitInvoicesHandler,
+);
+router.post(
+  "/visit-invoices/:id/payments",
+  requireAnyPermission(["invoices:read", "patients:read", "profiles:read"]),
+  recordVisitInvoicePaymentHandler,
 );
 
 // Subscription plans

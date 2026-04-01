@@ -84,8 +84,8 @@ export function RecordSubscriptionPaymentModal({
     <ModalShell
       open={isOpen}
       onClose={onClose}
-      titleId="pay-invoice-title"
-      title="Record payment"
+      titleId="pay-member-invoice-title"
+      title="Record member payment"
       subtitle={
         invoice
           ? `${invoice.accountName ?? "Subscription"} — balance ${invoice.balanceDue}`
@@ -157,7 +157,7 @@ export function RecordSubscriptionPaymentModal({
                 Cancel
               </Button>
               <Button type="submit" variant="create" isLoading={submitting}>
-                Record payment
+                Record member payment
               </Button>
             </div>
           </form>
