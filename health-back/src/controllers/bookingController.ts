@@ -198,7 +198,7 @@ export async function updateBookingHandler(req: Request, res: Response) {
 
 export async function patchVisitDraftHandler(req: Request, res: Response) {
   const { id } = req.params;
-  const body = req.body as Partial<{ clinicalNotes: string | null; diagnosis: string | null }>;
+  const body = req.body as Partial<{ remark: string | null }>;
 
   if (!id?.trim()) {
     return res.status(400).json({ message: "Invalid booking id" });
@@ -210,8 +210,7 @@ export async function patchVisitDraftHandler(req: Request, res: Response) {
     const visit = await saveVisitDraft(
       id.trim(),
       {
-        clinicalNotes: body.clinicalNotes,
-        diagnosis: body.diagnosis,
+        remark: body.remark,
       },
       { userId, scope },
     );

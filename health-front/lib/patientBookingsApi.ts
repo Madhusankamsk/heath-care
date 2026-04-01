@@ -19,13 +19,12 @@ export async function patchDispatchStatusApi(
   if (!res.ok) throw new Error(data.message || "Update failed");
 }
 
-export async function saveVisitDraftApi(bookingId: string, diagnosis: string | null) {
+export async function saveVisitDraftApi(bookingId: string, remark: string | null) {
   const res = await fetch(`/api/bookings/${bookingId}/visit-draft`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      clinicalNotes: null,
-      diagnosis,
+      remark,
     }),
   });
   const data = await readJson<MessageResponse>(res, {});

@@ -96,6 +96,9 @@ export function PatientBookingCard(props: Props) {
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-[var(--text-primary)]">{formatScheduled(b.scheduledDate)}</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {b.bookingRemark?.trim() ? b.bookingRemark.trim() : "No booking remark"}
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {canUpdateDispatch && inTransit ? (

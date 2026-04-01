@@ -65,8 +65,7 @@ const bookingWithDispatchInclude = {
     select: {
       id: true,
       completedAt: true,
-      clinicalNotes: true,
-      diagnosis: true,
+      remark: true,
       diagnosticReports: {
         orderBy: { uploadedAt: "desc" as const },
         select: {

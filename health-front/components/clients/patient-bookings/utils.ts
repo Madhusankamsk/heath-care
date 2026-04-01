@@ -8,15 +8,10 @@ export function safeFileKeySegment(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
 }
 
-/** Combined clinical notes + diagnosis as one "diagnosis remark" (legacy rows may have both). */
+/** Visit remark for current schema with fallback for legacy rows. */
 export function diagnosisRemarkFromVisit(b: UpcomingBookingRow): string {
-  const c = b.visitRecord?.clinicalNotes?.trim() ?? "";
-  const d = b.visitRecord?.diagnosis?.trim() ?? "";
-  if (!c && !d) return "";
-  if (!c) return d;
-  if (!d) return c;
-  if (c === d) return d;
-  return `${c}\n\n${d}`;
+  const remark = b.visitRecord?.remark?.trim() ?? "";
+  return remark;
 }
 
 export function inTransitDispatchForBooking(b: UpcomingBookingRow): DispatchRecordRow | null {

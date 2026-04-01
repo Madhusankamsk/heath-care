@@ -34,15 +34,14 @@ export async function ensureVisitRecordForBooking(
     data: {
       bookingId,
       patientId: booking.patientId,
-      clinicalNotes: null,
-      diagnosis: null,
+      remark: null,
     },
   });
 }
 
 export async function saveVisitDraft(
   bookingId: string,
-  data: { clinicalNotes?: string | null; diagnosis?: string | null },
+  data: { remark?: string | null },
   access?: { userId: string | undefined; scope: BookingListScope },
 ) {
   const booking = await prisma.booking.findUnique({
@@ -74,13 +73,10 @@ export async function saveVisitDraft(
     create: {
       bookingId,
       patientId: booking.patientId,
-      clinicalNotes:
-        data.clinicalNotes === undefined ? null : data.clinicalNotes,
-      diagnosis: data.diagnosis === undefined ? null : data.diagnosis,
+      remark: data.remark === undefined ? null : data.remark,
     },
     update: {
-      ...(data.clinicalNotes !== undefined ? { clinicalNotes: data.clinicalNotes } : {}),
-      ...(data.diagnosis !== undefined ? { diagnosis: data.diagnosis } : {}),
+      ...(data.remark !== undefined ? { remark: data.remark } : {}),
     },
   });
 }

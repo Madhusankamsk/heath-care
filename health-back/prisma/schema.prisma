@@ -176,9 +176,7 @@ model VisitRecord {
   id                String              @id @default(uuid())
   bookingId         String              @unique
   patientId         String
-  diagnosis         String?
-  vitals            Json?
-  clinicalNotes     String?
+  remark            String?
   completedAt       DateTime?
   booking           Booking             @relation(fields: [bookingId], references: [id])
   patient           Patient             @relation(fields: [patientId], references: [id])

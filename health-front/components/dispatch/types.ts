@@ -22,8 +22,7 @@ export type UpcomingBookingRow = {
   visitRecord?: {
     id: string;
     completedAt: string | null;
-    clinicalNotes?: string | null;
-    diagnosis?: string | null;
+    remark?: string | null;
     diagnosticReports?: Array<{
       id: string;
       reportName: string;
