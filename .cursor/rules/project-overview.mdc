@@ -1,9 +1,9 @@
 ---
-description: Repo overview + core conventions for Moodify Health
+description: Repo overview + core conventions for Health Scan
 alwaysApply: true
 ---
 
-# Moodify Health (monorepo) conventions
+# Health Scan (monorepo) conventions
 
 - Repo apps:
   - `health-back/`: Express + Prisma (PostgreSQL), TypeScript source in `src/**/*.ts`

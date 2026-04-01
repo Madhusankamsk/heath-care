@@ -446,8 +446,8 @@ async function main() {
   if (!existingCompanySettings) {
     await prisma.companySettings.create({
       data: {
-        companyName: "Moodify Health",
-        companyEmail: "support@moodify.health",
+        companyName: "Health Scan",
+        companyEmail: "support@healthscan.health",
         currencyCode: "LKR",
         invoicePrefix: "INV-",
         isSetupCompleted: false,

@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Moodify Health",
-  description: "Moodify healthcare dashboard",
-  applicationName: "Moodify Health",
+  title: "Health Scan",
+  description: "Healthcare operations dashboard",
+  applicationName: "Health Scan",
   manifest: "/manifest.webmanifest",
 };
 

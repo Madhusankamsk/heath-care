@@ -1,4 +1,4 @@
-# Moodify Health — Monorepo
+# Health Scan — Monorepo
 
 This repo contains:
 

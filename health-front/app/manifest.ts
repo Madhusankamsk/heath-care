@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Moodify Health",
-    short_name: "Moodify",
-    description: "Moodify healthcare dashboard",
+    name: "Health Scan",
+    short_name: "Health Scan",
+    description: "Healthcare operations dashboard",
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#0a0a0a",
