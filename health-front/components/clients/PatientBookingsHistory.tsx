@@ -3,23 +3,32 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { BookingDetailContent } from "@/components/clients/patient-bookings/BookingDetailContent";
+import { BookingHistoryCardHeader } from "@/components/clients/patient-bookings/BookingHistoryCardHeader";
+import { DiagnosticActionFooter } from "@/components/clients/patient-bookings/DiagnosticActionFooter";
+import { IssuedMedicineList } from "@/components/clients/patient-bookings/IssuedMedicineList";
+import {
+  DIAGNOSTIC_TABS,
+  arrivedDispatchForBooking,
+  diagnosisRemarkFromVisit,
+  diagnosticDispatchForBooking,
+  inTransitDispatchForBooking,
+  preferredDispatchForInventory,
+  safeFileKeySegment,
+  type DiagnosticTabId,
+  type InventoryBatchRow,
+  type IssuedMedicineSampleRow,
+  type LabSampleTypeLookup,
+  type PendingConfirm,
+} from "@/components/clients/patient-bookings/shared";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { SelectBase } from "@/components/ui/select-base";
 import { TextareaBase } from "@/components/ui/textarea-base";
-import {
-  formatCrewMemberName,
-  formatScheduled,
-} from "@/components/dispatch/dispatchDisplay";
+import { formatScheduled } from "@/components/dispatch/dispatchDisplay";
 import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import { toast } from "@/lib/toast";
-
-export type LabSampleTypeLookup = {
-  id: string;
-  lookupKey: string;
-  lookupValue: string;
-};
 
 type PatientBookingsHistoryProps = {
   bookings: UpcomingBookingRow[];
@@ -31,209 +40,6 @@ type PatientBookingsHistoryProps = {
   labSampleTypeLookups?: LabSampleTypeLookup[];
 };
 
-type DispatchRecordRow = UpcomingBookingRow["dispatchRecords"][number];
-
-type PendingConfirm =
-  | null
-  | { type: "arrived"; dispatchId: string }
-  | { type: "diagnostic"; dispatchId: string }
-  | { type: "complete"; dispatchId: string };
-
-type InventoryBatchRow = {
-  id: string;
-  medicineId: string;
-  batchNo: string;
-  quantity: number;
-  expiryDate: string;
-  locationType: string;
-  locationId?: string | null;
-  medicine?: {
-    id: string;
-    name: string;
-    uom?: string | null;
-  };
-};
-
-type IssuedMedicineSampleRow = {
-  id: string;
-  sampleType: string;
-  collectedAt: string;
-  labName: string | null;
-  statusLabel: string;
-};
-
-type DiagnosticTabId = "remark" | "reports" | "samples" | "medicines";
-
-const DIAGNOSTIC_TABS: { id: DiagnosticTabId; label: string }[] = [
-  { id: "remark", label: "Remark" },
-  { id: "reports", label: "Reports upload" },
-  { id: "samples", label: "Samples" },
-  { id: "medicines", label: "Medicines" },
-];
-
-function safeFileKeySegment(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
-}
-
-/** Combined clinical notes + diagnosis as one "diagnosis remark" (legacy rows may have both). */
-function diagnosisRemarkFromVisit(b: UpcomingBookingRow): string {
-  const c = b.visitRecord?.clinicalNotes?.trim() ?? "";
-  const d = b.visitRecord?.diagnosis?.trim() ?? "";
-  if (!c && !d) return "";
-  if (!c) return d;
-  if (!d) return c;
-  if (c === d) return d;
-  return `${c}\n\n${d}`;
-}
-
-function dispatchLead(dr: DispatchRecordRow) {
-  return dr.assignments.find((a) => a.isTeamLeader);
-}
-
-function dispatchOthers(dr: DispatchRecordRow) {
-  return dr.assignments.filter((a) => !a.isTeamLeader);
-}
-
-function inTransitDispatchForBooking(b: UpcomingBookingRow): DispatchRecordRow | null {
-  return b.dispatchRecords.find((dr) => dr.statusLookup?.lookupKey === "IN_TRANSIT") ?? null;
-}
-
-function arrivedDispatchForBooking(b: UpcomingBookingRow): DispatchRecordRow | null {
-  return b.dispatchRecords.find((dr) => dr.statusLookup?.lookupKey === "ARRIVED") ?? null;
-}
-
-function diagnosticDispatchForBooking(b: UpcomingBookingRow): DispatchRecordRow | null {
-  return b.dispatchRecords.find((dr) => dr.statusLookup?.lookupKey === "DIAGNOSTIC") ?? null;
-}
-
-function preferredDispatchForInventory(b: UpcomingBookingRow): DispatchRecordRow | null {
-  return (
-    diagnosticDispatchForBooking(b) ??
-    arrivedDispatchForBooking(b) ??
-    inTransitDispatchForBooking(b) ??
-    b.dispatchRecords[0] ??
-    null
-  );
-}
-
-/** Schedule & doctor, visit, and dispatch blocks (used in the card and in the details popup). */
-function BookingDetailContent({
-  b,
-  className = "",
-}: {
-  b: UpcomingBookingRow;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <div className="preview-shell sm:grid-cols-2">
-        <section className="preview-section">
-          <h3 className="preview-section-title">Schedule &amp; doctor</h3>
-          <dl className="preview-list">
-            <div className="preview-row">
-              <dt className="preview-label">Scheduled</dt>
-              <dd className="preview-value">{formatScheduled(b.scheduledDate)}</dd>
-            </div>
-            <div className="preview-row">
-              <dt className="preview-label">Doctor status</dt>
-              <dd className="preview-value">
-                {b.doctorStatusLookup?.lookupValue ??
-                  b.doctorStatusLookup?.lookupKey ??
-                  "—"}
-              </dd>
-            </div>
-            <div className="preview-row">
-              <dt className="preview-label">Requested doctor</dt>
-              <dd className="preview-value">{b.requestedDoctor?.fullName ?? "—"}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <section className="preview-section">
-          <h3 className="preview-section-title">Visit</h3>
-          <dl className="preview-list">
-            <div className="preview-row">
-              <dt className="preview-label">Visit on file</dt>
-              <dd className="preview-value">
-                {b.visitRecord
-                  ? b.visitRecord.completedAt
-                    ? `Completed ${formatScheduled(b.visitRecord.completedAt)}`
-                    : "Started (not completed)"
-                  : "—"}
-              </dd>
-            </div>
-          </dl>
-        </section>
-      </div>
-
-      <div className="mt-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-          Dispatching
-        </p>
-        {b.dispatchRecords.length === 0 ? (
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            No dispatch recorded for this booking yet.
-          </p>
-        ) : (
-          <ul className="mt-3 space-y-4">
-            {b.dispatchRecords.map((dr) => {
-              const l = dispatchLead(dr);
-              const o = dispatchOthers(dr);
-              return (
-                <li
-                  key={dr.id}
-                  className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3"
-                >
-                  <dl className="grid gap-2 text-sm text-[var(--text-secondary)] sm:grid-cols-2">
-                    <div>
-                      <dt className="text-xs text-[var(--text-muted)]">Status</dt>
-                      <dd className="font-medium text-[var(--text-primary)]">
-                        {dr.statusLookup?.lookupValue ?? dr.statusLookup?.lookupKey ?? "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-[var(--text-muted)]">Vehicle</dt>
-                      <dd className="font-medium text-[var(--text-primary)]">
-                        {dr.vehicle.vehicleNo}
-                        {dr.vehicle.model?.trim() ? ` · ${dr.vehicle.model.trim()}` : ""}
-                      </dd>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <dt className="text-xs text-[var(--text-muted)]">Dispatched at</dt>
-                      <dd>{formatScheduled(dr.dispatchedAt)}</dd>
-                    </div>
-                  </dl>
-                  {dr.assignments.length > 0 ? (
-                    <div className="mt-3 border-t border-[var(--border)] pt-3">
-                      <p className="text-xs font-semibold text-[var(--text-muted)]">Crew</p>
-                      <ul className="mt-2 space-y-1.5">
-                        {l ? (
-                          <li className="text-[var(--text-primary)]">
-                            <span className="font-medium">{formatCrewMemberName(l.user)}</span>
-                            <span className="text-[var(--text-muted)]"> — team leader</span>
-                          </li>
-                        ) : null}
-                        {o.map((a) => (
-                          <li key={a.id} className="text-[var(--text-secondary)]">
-                            {formatCrewMemberName(a.user)}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs text-[var(--text-muted)]">
-                      No crew listed on this dispatch.
-                    </p>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export function PatientBookingsHistory({
   bookings,
@@ -276,15 +82,13 @@ export function PatientBookingsHistory({
   ) {
     setBusyDispatchId(dispatchId);
     try {
-      const res = await fetch(`/api/dispatch/${dispatchId}/status`, {
+      const res = await fetch(`/api/clients/patient-bookings/dispatch/${dispatchId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ statusLookupKey }),
       });
       const data = (await res.json().catch(() => ({}))) as { message?: string };
-      if (!res.ok) {
-        throw new Error(data.message || "Update failed");
-      }
+      if (!res.ok) throw new Error(data.message || "Update failed");
       const msg =
         statusLookupKey === "ARRIVED"
           ? "Marked as arrived."
@@ -316,7 +120,7 @@ export function PatientBookingsHistory({
     const text = diagnosisRemarkDraftForBooking(b).trim();
     setSavingBookingId(b.id);
     try {
-      const res = await fetch(`/api/bookings/${b.id}/visit-draft`, {
+      const res = await fetch(`/api/clients/patient-bookings/bookings/${b.id}/visit-draft`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -346,7 +150,7 @@ export function PatientBookingsHistory({
     try {
       for (const file of Array.from(files)) {
         const key = `diagnostic-reports/${b.id}/${crypto.randomUUID()}-${safeFileKeySegment(file.name)}`;
-        const up = await fetch("/api/files/upload", {
+        const up = await fetch("/api/clients/patient-bookings/files/upload", {
           method: "POST",
           headers: {
             "Content-Type": file.type || "application/octet-stream",
@@ -359,16 +163,19 @@ export function PatientBookingsHistory({
         const url = upData.url;
         if (!url) throw new Error("No file URL returned");
 
-        const create = await fetch(`/api/bookings/${b.id}/diagnostic-reports`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            reportName: file.name,
-            fileUrl: url,
-          }),
-        });
-        const cData = (await create.json().catch(() => ({}))) as { message?: string };
-        if (!create.ok) throw new Error(cData.message || "Could not save report");
+        const create = await fetch(
+          `/api/clients/patient-bookings/bookings/${b.id}/diagnostic-reports`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reportName: file.name,
+              fileUrl: url,
+            }),
+          },
+        );
+        const createData = (await create.json().catch(() => ({}))) as { message?: string };
+        if (!create.ok) throw new Error(createData.message || "Could not save report");
       }
       toast.success(files.length > 1 ? "Reports uploaded." : "Report uploaded.");
       router.refresh();
@@ -398,7 +205,7 @@ export function PatientBookingsHistory({
     }
     setAddingSampleBookingId(b.id);
     try {
-      const res = await fetch(`/api/bookings/${b.id}/lab-samples`, {
+      const res = await fetch(`/api/clients/patient-bookings/bookings/${b.id}/lab-samples`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -424,9 +231,10 @@ export function PatientBookingsHistory({
   async function removeLabSample(b: UpcomingBookingRow, sampleId: string) {
     setRemovingSampleId(sampleId);
     try {
-      const res = await fetch(`/api/bookings/${b.id}/lab-samples/${sampleId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/clients/patient-bookings/bookings/${b.id}/lab-samples/${sampleId}`,
+        { method: "DELETE" },
+      );
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { message?: string };
         throw new Error(data.message || "Could not remove sample");
@@ -443,7 +251,7 @@ export function PatientBookingsHistory({
   async function ensureInventoryLoaded() {
     if (inventoryBatches !== null || inventoryError) return;
     try {
-      const res = await fetch("/api/inventory/batches", { cache: "no-store" });
+      const res = await fetch("/api/clients/patient-bookings", { cache: "no-store" });
       const data = (await res.json().catch(() => [])) as InventoryBatchRow[] | { message?: string };
       if (!res.ok) {
         throw new Error(
@@ -492,7 +300,7 @@ export function PatientBookingsHistory({
 
     setIssuingBookingId(b.id);
     try {
-      const res = await fetch("/api/inventory/stock-movements", {
+      const res = await fetch("/api/clients/patient-bookings/stock-movements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -571,53 +379,18 @@ export function PatientBookingsHistory({
             key={b.id}
             className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5"
           >
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-[var(--text-primary)]">
-                  {formatScheduled(b.scheduledDate)}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-                {canUpdateDispatch && inTransit ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="shrink-0"
-                    disabled={busyDispatchId !== null}
-                    onClick={() => setPendingConfirm({ type: "arrived", dispatchId: inTransit.id })}
-                  >
-                    {busyDispatchId === inTransit.id ? "…" : "Mark arrived"}
-                  </Button>
-                ) : null}
-                {canUpdateDispatch && arrived && !inTransit ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="shrink-0"
-                    disabled={busyDispatchId !== null}
-                    onClick={() =>
-                      setPendingConfirm({ type: "diagnostic", dispatchId: arrived.id })
-                    }
-                  >
-                    {busyDispatchId === arrived.id ? "…" : "Start diagnostic"}
-                  </Button>
-                ) : null}
-                <button
-                  type="button"
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-lg leading-none text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]/25"
-                  aria-label="View booking details"
-                  aria-haspopup="dialog"
-                  aria-expanded={detailBookingId === b.id}
-                  onClick={() =>
-                    setDetailBookingId((current) => (current === b.id ? null : b.id))
-                  }
-                >
-                  <span aria-hidden className="block translate-y-[-1px]">
-                    ⋮
-                  </span>
-                </button>
-              </div>
-            </div>
+            <BookingHistoryCardHeader
+              booking={b}
+              canUpdateDispatch={canUpdateDispatch}
+              busyDispatchId={busyDispatchId}
+              inTransit={inTransit}
+              arrived={arrived}
+              detailBookingId={detailBookingId}
+              setPendingConfirm={setPendingConfirm}
+              toggleDetails={(bookingId) =>
+                setDetailBookingId((current) => (current === bookingId ? null : bookingId))
+              }
+            />
 
             {inDiagnosticPhase && (canUpdateDispatch || canSaveVisitDraft) ? (
               <>
@@ -951,10 +724,7 @@ export function PatientBookingsHistory({
                                       </li>
                                     ))}
                                     {issuedMedicineSamples.map((s) => (
-                                      <li
-                                        key={s.id}
-                                        className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm"
-                                      >
+                                      <li key={s.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
                                         <span className="min-w-0 flex-[2] font-medium text-[var(--text-primary)] sm:flex-1">
                                           {s.sampleType}
                                         </span>
@@ -967,9 +737,7 @@ export function PatientBookingsHistory({
                                         <span className="min-w-0 flex-1 text-xs text-[var(--text-secondary)] sm:flex-none sm:min-w-[7rem] sm:text-sm">
                                           {s.statusLabel}
                                         </span>
-                                        {canSaveVisitDraft ? (
-                                          <span className="ml-auto w-14 shrink-0 text-right sm:ml-0" />
-                                        ) : null}
+                                        {canSaveVisitDraft ? <span className="ml-auto w-14 shrink-0 text-right sm:ml-0" /> : null}
                                       </li>
                                     ))}
                                   </ul>
@@ -985,6 +753,18 @@ export function PatientBookingsHistory({
                       hidden={activeDiagnosticTab !== "medicines"}
                       className="px-3 py-3"
                     >
+                      {(() => {
+                        const issuedMedicineRows = issuedMedicineSamplesByBookingId[b.id] ?? [];
+                        const sourceDispatch = preferredDispatchForInventory(b);
+                        const lead = sourceDispatch?.assignments.find((a) => a.isTeamLeader)?.user ?? null;
+                        const options = teamLeaderBatchesForBooking(b);
+                        const selectedBatchId = selectedBatchByBookingId[b.id] ?? "";
+                        const selectedBatch = options.find((x) => x.id === selectedBatchId) ?? null;
+                        const qtyText = issueQtyByBookingId[b.id] ?? "1";
+                        const qtyInt = Number.parseInt(qtyText, 10);
+                        const qtyInvalid = !Number.isInteger(qtyInt) || qtyInt <= 0;
+                        const qtyTooHigh = !!selectedBatch && qtyInt > selectedBatch.quantity;
+                        return (
                       <div className="flex flex-col gap-3">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
@@ -1014,18 +794,7 @@ export function PatientBookingsHistory({
                           <p className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-secondary)]">
                             Click load to view the assigned team leader stock.
                           </p>
-                        ) : (() => {
-                            const sourceDispatch = preferredDispatchForInventory(b);
-                            const lead = sourceDispatch?.assignments.find((a) => a.isTeamLeader)?.user ?? null;
-                            const options = teamLeaderBatchesForBooking(b);
-                            const selectedBatchId = selectedBatchByBookingId[b.id] ?? "";
-                            const selectedBatch = options.find((x) => x.id === selectedBatchId) ?? null;
-                            const qtyText = issueQtyByBookingId[b.id] ?? "1";
-                            const qtyInt = Number.parseInt(qtyText, 10);
-                            const qtyInvalid = !Number.isInteger(qtyInt) || qtyInt <= 0;
-                            const qtyTooHigh = !!selectedBatch && qtyInt > selectedBatch.quantity;
-
-                            return (
+                        ) : (
                               <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
                                 <p className="text-sm text-[var(--text-secondary)]">
                                   Team leader:{" "}
@@ -1112,47 +881,31 @@ export function PatientBookingsHistory({
                                   </>
                                 )}
                               </div>
-                            );
-                          })()}
+                        )}
+                        <IssuedMedicineList
+                          rows={issuedMedicineRows}
+                          emptyLabel="No medicines issued yet."
+                        />
                       </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
-                  {canSaveVisitDraft ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-9 px-4 text-xs font-medium"
-                      disabled={
-                        busyDispatchId !== null ||
-                        savingBookingId !== null ||
-                        uploadingReportBookingId !== null ||
-                        addingSampleBookingId !== null ||
-                        removingSampleId !== null
-                      }
-                      onClick={() => void saveVisitDraftForBooking(b)}
-                    >
-                      {savingBookingId === b.id ? "Saving…" : "Save draft"}
-                    </Button>
-                  ) : null}
-                  {canUpdateDispatch ? (
-                    <Button
-                      type="button"
-                      variant="primary"
-                      className="h-9 px-4 text-xs font-medium"
-                      disabled={busyDispatchId !== null}
-                      onClick={() =>
-                        diagnostic
-                          ? setPendingConfirm({ type: "complete", dispatchId: diagnostic.id })
-                          : undefined
-                      }
-                    >
-                      Complete
-                    </Button>
-                  ) : null}
-                </div>
+                <DiagnosticActionFooter
+                  canSaveVisitDraft={canSaveVisitDraft}
+                  canUpdateDispatch={canUpdateDispatch}
+                  busyDispatchId={busyDispatchId}
+                  savingBookingId={savingBookingId}
+                  uploadingReportBookingId={uploadingReportBookingId}
+                  addingSampleBookingId={addingSampleBookingId}
+                  removingSampleId={removingSampleId}
+                  bookingId={b.id}
+                  diagnosticDispatch={diagnostic}
+                  onSaveDraft={() => void saveVisitDraftForBooking(b)}
+                  setPendingConfirm={setPendingConfirm}
+                />
               </>
             ) : null}
           </article>
