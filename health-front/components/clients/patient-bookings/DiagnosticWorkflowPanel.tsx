@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { SelectBase } from "@/components/ui/select-base";
 import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import { CompletedVisitReport } from "@/components/clients/patient-bookings/CompletedVisitReport";
 import { MedicinesTab } from "@/components/clients/patient-bookings/tabs/MedicinesTab";
@@ -107,8 +108,23 @@ export function DiagnosticWorkflowPanel(props: Props) {
   return (
     <>
       <div className="mt-4 flex flex-col gap-3">
+        <label className="flex flex-col gap-1 text-xs md:hidden">
+          <span className="font-semibold uppercase tracking-wide text-[var(--text-muted)]">Visit workflow</span>
+          <SelectBase
+            value={activeDiagnosticTab}
+            onChange={(e) => setActiveDiagnosticTab(e.target.value as DiagnosticTabId)}
+            className="h-10 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm text-[var(--text-primary)]"
+            aria-label="Select visit workflow section"
+          >
+            {DIAGNOSTIC_TABS.map((tab) => (
+              <option key={tab.id} value={tab.id}>
+                {tab.label}
+              </option>
+            ))}
+          </SelectBase>
+        </label>
         <div
-          className="relative flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-1"
+          className="relative hidden rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-1 md:flex"
           role="tablist"
           aria-label="Visit workflow"
         >
