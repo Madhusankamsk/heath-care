@@ -299,6 +299,7 @@ const dispatchUpdateInclude = {
 export async function updateDispatchStatus(
   dispatchId: string,
   statusLookupKey: DispatchStatusUpdateKey,
+  data?: { remark?: string | null },
   access?: { userId: string | undefined; scope: BookingListScope },
 ) {
   const dispatch = await prisma.dispatchRecord.findUnique({
@@ -357,9 +358,13 @@ export async function updateDispatchStatus(
         create: {
           bookingId: dispatch.booking.id,
           patientId: dispatch.booking.patientId,
+          ...(data?.remark !== undefined ? { remark: data.remark } : {}),
           completedAt: new Date(),
         },
-        update: { completedAt: new Date() },
+        update: {
+          completedAt: new Date(),
+          ...(data?.remark !== undefined ? { remark: data.remark } : {}),
+        },
       });
       return tx.dispatchRecord.update({
         where: { id: dispatchId },

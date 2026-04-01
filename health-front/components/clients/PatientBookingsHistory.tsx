@@ -155,7 +155,17 @@ export function PatientBookingsHistory({
         onCancel={() => setPendingConfirm(null)}
         onConfirm={() => {
           if (pendingConfirm?.type === "complete") {
-            void bookingActions.patchDispatchStatus(pendingConfirm.dispatchId, "COMPLETED");
+            const activeBooking = bookings.find((row) =>
+              row.dispatchRecords.some((dr) => dr.id === pendingConfirm.dispatchId),
+            );
+            const remarkText = activeBooking
+              ? bookingActions.diagnosisRemarkDraftForBooking(activeBooking).trim()
+              : "";
+            void bookingActions.patchDispatchStatus(
+              pendingConfirm.dispatchId,
+              "COMPLETED",
+              remarkText ? remarkText : null,
+            );
             setPendingConfirm(null);
           }
         }}

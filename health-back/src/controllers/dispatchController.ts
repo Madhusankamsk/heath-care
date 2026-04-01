@@ -113,7 +113,10 @@ const DISPATCH_STATUS_KEYS: DispatchStatusUpdateKey[] = ["ARRIVED", "COMPLETED"]
 
 export async function patchDispatchStatusHandler(req: Request, res: Response) {
   const { id } = req.params;
-  const { statusLookupKey } = req.body as Partial<{ statusLookupKey: string }>;
+  const { statusLookupKey, remark } = req.body as Partial<{
+    statusLookupKey: string;
+    remark: string | null;
+  }>;
 
   if (!id?.trim()) {
     return res.status(400).json({ message: "Invalid dispatch id" });
@@ -129,7 +132,12 @@ export async function patchDispatchStatusHandler(req: Request, res: Response) {
   try {
     const scope = await getScope(req);
     const userId = req.authUser?.sub;
-    const updated = await updateDispatchStatus(id.trim(), key, { userId, scope });
+    const updated = await updateDispatchStatus(
+      id.trim(),
+      key,
+      { remark: remark === undefined ? undefined : remark },
+      { userId, scope },
+    );
     return res.json(updated);
   } catch (e) {
     const err = e as { code?: string; message?: string };

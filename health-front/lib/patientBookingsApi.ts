@@ -9,11 +9,15 @@ async function readJson<T>(res: Response, fallback: T): Promise<T> {
 export async function patchDispatchStatusApi(
   dispatchId: string,
   statusLookupKey: "ARRIVED" | "COMPLETED",
+  remark?: string | null,
 ) {
   const res = await fetch(`/api/dispatch/${dispatchId}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ statusLookupKey }),
+    body: JSON.stringify({
+      statusLookupKey,
+      ...(remark !== undefined ? { remark } : {}),
+    }),
   });
   const data = await readJson<MessageResponse>(res, {});
   if (!res.ok) throw new Error(data.message || "Update failed");

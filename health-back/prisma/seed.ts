@@ -522,7 +522,17 @@ async function main() {
 
     const dispatchPermissions = await prisma.permission.findMany({
       where: {
-        permissionKey: { in: ["dispatch:list", "dispatch:read", "dispatch:update"] },
+        permissionKey: {
+          in: [
+            "dispatch:list",
+            "dispatch:read",
+            "dispatch:update",
+            "medical_teams:list",
+            "medical_teams:read",
+            "vehicles:list",
+            "vehicles:read",
+          ],
+        },
       },
       select: { id: true },
     });
@@ -701,6 +711,18 @@ async function main() {
       teamName: "Primary Response Team",
       vehicleId: vehicle.id,
     },
+  });
+
+  // Ensure demo medical team has members so dispatch assignment is available in UI previews
+  await prisma.teamMember.upsert({
+    where: { teamId_userId: { teamId: team.id, userId: superAdminUser.id } },
+    update: { isLead: true },
+    create: { teamId: team.id, userId: superAdminUser.id, isLead: true },
+  });
+  await prisma.teamMember.upsert({
+    where: { teamId_userId: { teamId: team.id, userId: inventoryAgent.id } },
+    update: { isLead: false },
+    create: { teamId: team.id, userId: inventoryAgent.id, isLead: false },
   });
 
   // Sample patient

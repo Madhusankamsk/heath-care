@@ -48,10 +48,11 @@ export function usePatientBookingActions(onAfterSuccess: () => void) {
   async function patchDispatchStatus(
     dispatchId: string,
     statusLookupKey: "ARRIVED" | "COMPLETED",
+    remark?: string | null,
   ) {
     setBusyDispatchId(dispatchId);
     try {
-      await patchDispatchStatusApi(dispatchId, statusLookupKey);
+      await patchDispatchStatusApi(dispatchId, statusLookupKey, remark);
       const msg =
         statusLookupKey === "ARRIVED"
           ? "Marked as arrived."
