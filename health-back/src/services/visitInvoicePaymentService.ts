@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 
 import prisma from "../prisma/client";
 
+import { notifyVisitPaymentRecorded } from "./email/notifications";
+
 async function requireLookupId(
   tx: Prisma.TransactionClient,
   categoryName: string,
@@ -89,7 +91,7 @@ export async function recordVisitInvoicePayment(params: {
   transactionRef?: string | null;
   collectedByUserId: string;
 }): Promise<{ invoiceId: string; balanceDue: string }> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const invoice = await tx.invoice.findUnique({
       where: { id: params.invoiceId },
       select: {
@@ -167,4 +169,8 @@ export async function recordVisitInvoicePayment(params: {
 
     return { invoiceId: invoice.id, balanceDue: newBalance.toString() };
   });
+
+  void notifyVisitPaymentRecorded(result.invoiceId);
+
+  return result;
 }

@@ -46,6 +46,16 @@ Copy `.env.example` → `.env` and configure:
 - **`AUTH_JWT_SECRET`**: secret used to sign and verify JWTs
   - Required for `/api/auth/login` and any protected routes
 
+### Transactional email (optional)
+
+Leave **`EMAIL_ENABLED`** unset or `false` for local development; no SMTP is required.
+
+- **`EMAIL_ENABLED`**: set to `true` to send mail (requires SMTP + **`EMAIL_FROM`**).
+- **`EMAIL_FROM`**: sender address, e.g. `Health Scan <support@healthscan.com>`.
+- **`EMAIL_LOG_ONLY`**: if `true`, logs the message instead of sending (for debugging).
+- **`SMTP_HOST`**, **`SMTP_PORT`**, **`SMTP_SECURE`**: SMTP server (`SMTP_SECURE` typically `true` for port 465, `false` for 587 STARTTLS).
+- **`SMTP_USER`**, **`SMTP_PASS`**: SMTP credentials.
+
 ### Cloudflare R2 (optional, only needed for file routes)
 
 - **`R2_ACCOUNT_ID`**
@@ -76,6 +86,7 @@ From `health-back/`:
 - `src/routes/rbacRoutes.ts`: roles/permissions/profiles routes (protected)
 - `src/routes/fileRoutes.ts`: R2 upload/delete routes (protected)
 - `src/services/*`: domain services (RBAC, R2 storage, etc.)
+- `src/services/email/*`: transactional email (`sendEmail`, `notifications`)
 - `prisma/schema.prisma`: DB schema
 
 ## Authentication

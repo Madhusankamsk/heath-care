@@ -447,7 +447,7 @@ async function main() {
     await prisma.companySettings.create({
       data: {
         companyName: "Health Scan",
-        companyEmail: "support@healthscan.health",
+        companyEmail: "support@healthscan.com",
         currencyCode: "LKR",
         invoicePrefix: "INV-",
         isSetupCompleted: false,

@@ -33,9 +33,33 @@ type CompanyRow = {
   currencyCode: string | null;
 };
 
+/** Default product name on PDFs; legacy "Moodify Health" from DB is normalized here. */
+const BRAND_NAME = "Health Scan";
+
+const COL = {
+  headerBg: "#0f766e",
+  headerSub: "#ccfbf1",
+  muted: "#525252",
+  border: "#e5e5e5",
+  accent: "#0d9488",
+  rowAlt: "#fafafa",
+};
+
 function dash(s: string | null | undefined) {
   const t = s?.trim();
   return t && t.length > 0 ? t : "—";
+}
+
+/** Prefer company settings, but always show Health Scan instead of legacy Moodify Health. */
+function resolveDisplayCompanyName(company: CompanyRow | null): string {
+  const raw = company?.companyName?.trim();
+  if (!raw) {
+    return BRAND_NAME;
+  }
+  if (/^moodify\s*health$/i.test(raw)) {
+    return BRAND_NAME;
+  }
+  return raw;
 }
 
 export function buildSubscriptionInvoicePdfBuffer(
@@ -43,6 +67,7 @@ export function buildSubscriptionInvoicePdfBuffer(
   invoice: InvoicePdfRow,
 ): Promise<Buffer> {
   const currency = company?.currencyCode?.trim() || "LKR";
+  const displayName = resolveDisplayCompanyName(company);
 
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -51,67 +76,115 @@ export function buildSubscriptionInvoicePdfBuffer(
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const title = company?.companyName?.trim() || "Invoice";
-    doc.fontSize(18).text(title, { align: "center" });
-    doc.moveDown(0.5);
-    doc.fontSize(10).fillColor("#444444");
-    if (company?.companyAddress) doc.text(company.companyAddress, { align: "center" });
-    if (company?.companyPhone || company?.companyEmail) {
-      doc.text(
-        [company?.companyPhone, company?.companyEmail].filter(Boolean).join(" · "),
-        { align: "center" },
-      );
-    }
-    doc.fillColor("#000000");
-    doc.moveDown(1.2);
+    const pageW = doc.page.width;
+    const headerH = 86;
 
-    doc.fontSize(14).text("Subscription bill", { underline: true });
-    doc.moveDown(0.6);
-    doc.fontSize(10);
+    doc.rect(0, 0, pageW, headerH).fill(COL.headerBg);
+    doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(22).text(displayName, 48, 26, {
+      align: "center",
+      width: pageW - 96,
+    });
+    doc.font("Helvetica").fontSize(10).fillColor(COL.headerSub).text("Subscription invoice", 48, 56, {
+      align: "center",
+      width: pageW - 96,
+    });
+
+    doc.y = headerH + 28;
+    doc.fillColor(COL.muted).fontSize(9);
+    if (company?.companyAddress) {
+      doc.text(company.companyAddress, { align: "center" });
+    }
+    if (company?.companyPhone || company?.companyEmail) {
+      doc.text([company?.companyPhone, company?.companyEmail].filter(Boolean).join(" · "), {
+        align: "center",
+      });
+    }
+    doc.moveDown(1);
+
+    doc.fillColor("#171717").font("Helvetica-Bold").fontSize(12).text("Invoice details", { underline: false });
+    doc.moveDown(0.35);
+    doc.font("Helvetica").fontSize(10).fillColor("#262626");
     doc.text(`Invoice ID: ${invoice.id}`);
     doc.text(`Date: ${invoice.createdAt.toLocaleString()}`);
     doc.text(`Status: ${invoice.paymentStatusLookup?.lookupValue ?? invoice.paymentStatus}`);
-    doc.moveDown();
+    doc.moveDown(0.8);
 
-    doc.text("Bill to:");
+    const boxTop = doc.y;
+    doc.rect(48, boxTop, pageW - 96, 1).fill(COL.accent);
+    doc.y = boxTop + 12;
+
+    doc.fillColor("#171717").font("Helvetica-Bold").fontSize(11).text("Bill to");
+    doc.moveDown(0.35);
+    doc.font("Helvetica").fontSize(10).fillColor("#404040");
+
     if (invoice.patient) {
-      doc.text(`  ${invoice.patient.fullName}`);
-      if (invoice.patient.nicOrPassport) doc.text(`  NIC / Passport: ${invoice.patient.nicOrPassport}`);
-      if (invoice.patient.contactNo) doc.text(`  Contact: ${invoice.patient.contactNo}`);
+      doc.text(invoice.patient.fullName);
+      if (invoice.patient.nicOrPassport) {
+        doc.text(`NIC / Passport: ${invoice.patient.nicOrPassport}`);
+      }
+      if (invoice.patient.contactNo) {
+        doc.text(`Contact: ${invoice.patient.contactNo}`);
+      }
     } else if (invoice.subscriptionAccount) {
       const acc = invoice.subscriptionAccount;
-      doc.text(`  ${dash(acc.accountName)}`);
-      if (acc.registrationNo?.trim()) doc.text(`  Registration: ${acc.registrationNo}`);
+      doc.text(dash(acc.accountName));
+      if (acc.registrationNo?.trim()) {
+        doc.text(`Registration: ${acc.registrationNo}`);
+      }
       if (acc.billingAddress?.trim()) {
-        doc.text(`  Address: ${acc.billingAddress}`);
+        doc.text(`Address: ${acc.billingAddress}`);
       }
       const contactLine = [acc.contactPhone, acc.contactEmail, acc.whatsappNo]
         .map((x) => x?.trim())
         .filter(Boolean)
         .join(" · ");
-      if (contactLine) doc.text(`  Contact: ${contactLine}`);
-      doc.text(`  Plan: ${acc.plan.planName}`);
+      if (contactLine) {
+        doc.text(`Contact: ${contactLine}`);
+      }
+      doc.text(`Plan: ${acc.plan.planName}`);
     } else {
-      doc.text("  —");
+      doc.text("—");
     }
 
     if (invoice.patient && invoice.subscriptionAccount) {
-      doc.moveDown(0.3);
+      doc.moveDown(0.25);
       doc.text(`Account: ${dash(invoice.subscriptionAccount.accountName)}`);
       doc.text(`Plan: ${invoice.subscriptionAccount.plan.planName}`);
     }
 
-    doc.moveDown();
+    doc.moveDown(0.6);
+    const afterBillY = doc.y;
 
-    const line = (label: string, value: string) => {
-      doc.text(`${label}: ${value}`);
+    doc.rect(48, boxTop + 8, pageW - 96, afterBillY - boxTop - 8 + 8).strokeColor(COL.border).lineWidth(0.5).stroke();
+    doc.y = afterBillY + 8;
+
+    doc.moveDown(0.4);
+    const summaryTop = doc.y;
+    doc.rect(48, summaryTop, pageW - 96, 112).fillAndStroke(COL.rowAlt, COL.border);
+
+    const labelX = 58;
+    const valueX = pageW - 180;
+    let rowY = summaryTop + 14;
+
+    const row = (label: string, value: string, bold = false) => {
+      doc.fillColor("#404040").font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(10);
+      doc.text(label, labelX, rowY, { width: 280 });
+      doc.text(value, valueX, rowY, { width: 120, align: "right" });
+      rowY += 18;
     };
-    line(`Subtotal (${currency})`, invoice.consultationTotal.toString());
-    line(`Total (${currency})`, invoice.totalAmount.toString());
-    line(`Paid (${currency})`, invoice.paidAmount.toString());
-    doc.font("Helvetica-Bold");
-    line(`Balance due (${currency})`, invoice.balanceDue.toString());
-    doc.font("Helvetica");
+
+    row(`Subtotal (${currency})`, invoice.consultationTotal.toString());
+    row(`Total (${currency})`, invoice.totalAmount.toString());
+    row(`Paid (${currency})`, invoice.paidAmount.toString());
+    doc.fillColor(COL.accent);
+    row(`Balance due (${currency})`, invoice.balanceDue.toString(), true);
+
+    doc.y = summaryTop + 120;
+    doc.moveDown(1.2);
+
+    doc.font("Helvetica").fontSize(8).fillColor("#a3a3a3").text(`Thank you · ${BRAND_NAME}`, {
+      align: "center",
+    });
 
     doc.end();
   });

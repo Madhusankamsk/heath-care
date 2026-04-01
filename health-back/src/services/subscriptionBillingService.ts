@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 
 import prisma from "../prisma/client";
 
+import { notifySubscriptionPaymentRecorded } from "./email/notifications";
+
 export type SubscriptionPaymentInput = {
   amountPaid: string | number;
   paymentMethodId: string;
@@ -280,7 +282,7 @@ export async function recordSubscriptionInvoicePayment(params: {
   transactionRef?: string | null;
   collectedByUserId: string;
 }): Promise<{ invoiceId: string; balanceDue: string }> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const invoice = await tx.invoice.findUnique({
       where: { id: params.invoiceId },
       select: {
@@ -382,4 +384,8 @@ export async function recordSubscriptionInvoicePayment(params: {
 
     return { invoiceId: invoice.id, balanceDue: newBalance.toString() };
   });
+
+  void notifySubscriptionPaymentRecorded(result.invoiceId);
+
+  return result;
 }

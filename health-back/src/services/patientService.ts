@@ -1,6 +1,7 @@
 import prisma from "../prisma/client";
 import type { Prisma } from "@prisma/client";
 
+import { notifySubscriptionAccountCreated } from "./email/notifications";
 import { createSubscriptionInvoiceWithLedger } from "./subscriptionBillingService";
 
 export type PatientCreateInput = {
@@ -157,8 +158,9 @@ export async function createPatient(data: PatientCreateInput) {
         ? new Date(data.dob)
         : data.dob;
 
-  return prisma.$transaction(async (tx) => {
+  const outcome = await prisma.$transaction(async (tx) => {
     let invoiceId: string | null = null;
+    let subscriptionAccountId: string | null = null;
     const patient = await tx.patient.create({
       data: {
         fullName: data.fullName,
@@ -230,6 +232,7 @@ export async function createPatient(data: PatientCreateInput) {
           collectedByUserId: "",
         });
         invoiceId = billing.invoiceId;
+        subscriptionAccountId = account.id;
       }
     }
 
@@ -282,8 +285,20 @@ export async function createPatient(data: PatientCreateInput) {
       isSubscriptionAccountShared: subscriptionAccountMembersCount > 1,
     };
 
-    return { patient: shaped, invoiceId };
+    return { patient: shaped, invoiceId, subscriptionAccountId };
   });
+
+  if (outcome.subscriptionAccountId && outcome.invoiceId) {
+    const recipientEmail =
+      data.hasGuardian && data.guardianEmail?.trim() ? data.guardianEmail.trim() : null;
+    void notifySubscriptionAccountCreated({
+      subscriptionAccountId: outcome.subscriptionAccountId,
+      invoiceId: outcome.invoiceId,
+      recipientEmail,
+    });
+  }
+
+  return { patient: outcome.patient, invoiceId: outcome.invoiceId };
 }
 
 export async function updatePatient(

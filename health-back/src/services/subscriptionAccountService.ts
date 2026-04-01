@@ -1,6 +1,7 @@
 import prisma from "../prisma/client";
 import type { Prisma } from "@prisma/client";
 
+import { notifySubscriptionAccountCreated } from "./email/notifications";
 import { createSubscriptionInvoiceWithLedger } from "./subscriptionBillingService";
 
 export type SubscriptionAccountCreateInput = {
@@ -135,7 +136,7 @@ export async function createSubscriptionAccount(data: SubscriptionAccountCreateI
   const startDate = toDateOrUndefined(data.startDate);
   const endDate = toDateOrUndefined(data.endDate);
 
-  return prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx) => {
     const resolvedStatusId = await resolveSubscriptionAccountStatusId(tx, data.statusId);
     const primaryPid = data.primaryPatientId?.trim();
     if (primaryPid) {
@@ -190,6 +191,13 @@ export async function createSubscriptionAccount(data: SubscriptionAccountCreateI
     });
     return { ...row, invoiceId };
   });
+
+  void notifySubscriptionAccountCreated({
+    subscriptionAccountId: created.id,
+    invoiceId: created.invoiceId,
+  });
+
+  return created;
 }
 
 export async function updateSubscriptionAccount(
