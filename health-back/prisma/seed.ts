@@ -74,6 +74,11 @@ async function main() {
     "bookings:delete",
     "bookings:scope_own",
     "bookings:scope_all",
+    "opd:list",
+    "opd:read",
+    "opd:create",
+    "opd:update",
+    "opd:delete",
 
     "dispatch:list",
     "dispatch:read",
@@ -500,6 +505,11 @@ async function main() {
             "bookings:scope_own",
             "bookings:scope_all",
             "invoices:read",
+            "opd:list",
+            "opd:read",
+            "opd:create",
+            "opd:update",
+            "opd:delete",
           ],
         },
       },
@@ -561,6 +571,31 @@ async function main() {
       update: { lookupValue: item.lookupValue, isActive: true },
       create: {
         categoryId: doctorBookingStatusCategory.id,
+        lookupKey: item.lookupKey,
+        lookupValue: item.lookupValue,
+        isActive: true,
+      },
+    });
+  }
+
+  const opdStatusCategory = await prisma.lookupCategory.upsert({
+    where: { categoryName: "OPD_STATUS" },
+    update: {},
+    create: { categoryName: "OPD_STATUS" },
+  });
+  for (const item of [
+    { lookupKey: "WAITING", lookupValue: "Waiting" },
+    { lookupKey: "IN_CONSULTATION", lookupValue: "In Consultation" },
+    { lookupKey: "COMPLETED", lookupValue: "Completed" },
+    { lookupKey: "CANCELLED", lookupValue: "Cancelled" },
+  ] as const) {
+    await prisma.lookup.upsert({
+      where: {
+        categoryId_lookupKey: { categoryId: opdStatusCategory.id, lookupKey: item.lookupKey },
+      },
+      update: { lookupValue: item.lookupValue, isActive: true },
+      create: {
+        categoryId: opdStatusCategory.id,
         lookupKey: item.lookupKey,
         lookupValue: item.lookupValue,
         isActive: true,

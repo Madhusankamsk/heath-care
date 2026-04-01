@@ -94,6 +94,12 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    href: "/dashboard/opd",
+    label: "OPD",
+    icon: <Stethoscope className="h-4 w-4" aria-hidden />,
+    requiresAnyPermissions: ["opd:list", "opd:read"],
+  },
+  {
     href: "/dashboard/dispatching",
     label: "Dispatching",
     icon: <Truck className="h-4 w-4" aria-hidden />,

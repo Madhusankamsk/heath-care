@@ -67,6 +67,12 @@ import {
   patchDispatchStatusHandler,
 } from "../controllers/dispatchController";
 import {
+  createOpdQueueHandler,
+  deleteOpdQueueHandler,
+  listOpdQueueHandler,
+  patchOpdQueueHandler,
+} from "../controllers/opdController";
+import {
   createSubscriptionPlanHandler,
   deleteSubscriptionPlanHandler,
   getSubscriptionPlanHandler,
@@ -279,7 +285,11 @@ router.delete(
   requireAnyPermission(["patients:delete"]),
   deletePatientHandler,
 );
-router.get("/lookups", requireAnyPermission(["patients:list", "patients:read"]), listLookupsHandler);
+router.get(
+  "/lookups",
+  requireAnyPermission(["patients:list", "patients:read", "opd:list", "opd:read"]),
+  listLookupsHandler,
+);
 
 // Bookings
 router.get("/bookings", requireAnyPermission(["bookings:list"]), listBookingsHandler);
@@ -330,6 +340,12 @@ router.patch(
   requireAnyPermission(["dispatch:update"]),
   patchDispatchStatusHandler,
 );
+
+// OPD queue
+router.get("/opd", requireAnyPermission(["opd:list", "opd:read"]), listOpdQueueHandler);
+router.post("/opd", requireAnyPermission(["opd:create"]), createOpdQueueHandler);
+router.patch("/opd/:id", requireAnyPermission(["opd:update"]), patchOpdQueueHandler);
+router.delete("/opd/:id", requireAnyPermission(["opd:delete"]), deleteOpdQueueHandler);
 
 // Invoices (subscription bill PDF)
 router.get(
