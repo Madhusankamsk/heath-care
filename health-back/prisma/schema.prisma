@@ -101,6 +101,8 @@ model Patient {
   dob                            DateTime?
   contactNo                      String?
   whatsappNo                     String?
+  /** Invoice and notification delivery */
+  email                          String?
   gender                         String?
   genderId                       String?
   genderLookup                   Lookup?               @relation("PatientGender", fields: [genderId], references: [id])

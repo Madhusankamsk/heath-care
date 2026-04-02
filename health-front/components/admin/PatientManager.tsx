@@ -12,6 +12,7 @@ import { CheckboxBase } from "@/components/ui/checkbox-base";
 import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
+import { emailInvoicePdf } from "@/lib/emailInvoicePdf";
 import { openInvoicePdf } from "@/lib/openInvoicePdf";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
@@ -24,6 +25,8 @@ export type Patient = {
   dob?: string | Date | null;
   contactNo?: string | null;
   whatsappNo?: string | null;
+  /** Invoice and notification delivery */
+  email?: string | null;
   gender?: string | null;
   genderId?: string | null;
   address?: string | null;
@@ -82,6 +85,7 @@ export function PatientManager({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionConfirm, setActionConfirm] = useState<ActionConfirm>(null);
+  const [invoiceReadyId, setInvoiceReadyId] = useState<string | null>(null);
   const router = useRouter();
 
   const selected = useMemo(() => {
@@ -105,6 +109,8 @@ export function PatientManager({
       (mode === "edit" && canEdit) ||
       (mode === "preview" && canPreview),
   );
+
+  useEscapeKey(() => setInvoiceReadyId(null), Boolean(invoiceReadyId));
 
   async function refresh() {
     const res = await fetch("/api/patients", { cache: "no-store" });
@@ -254,9 +260,39 @@ export function PatientManager({
                   await refresh();
                   setMode("none");
                   toast.success("Patient created");
-                  if (invoiceId) openInvoicePdf(invoiceId);
+                  if (invoiceId) setInvoiceReadyId(invoiceId);
                 }}
               />
+        </ModalShell>
+      ) : null}
+
+      {invoiceReadyId ? (
+        <ModalShell
+          open
+          titleId="invoice-ready-title"
+          title="Subscription invoice"
+          subtitle="Open the PDF or send it to the account contact email."
+          onClose={() => setInvoiceReadyId(null)}
+        >
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              className="h-10 px-4 text-xs sm:text-sm"
+              onClick={() => {
+                openInvoicePdf(invoiceReadyId);
+              }}
+            >
+              Open PDF
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-10 px-4 text-xs sm:text-sm"
+              onClick={() => void emailInvoicePdf(invoiceReadyId)}
+            >
+              Email invoice
+            </Button>
+          </div>
         </ModalShell>
       ) : null}
 
@@ -289,6 +325,7 @@ export function PatientManager({
                   dob: selected.dob ? String(selected.dob) : "",
                   contactNo: selected.contactNo ?? "",
                   whatsappNo: selected.whatsappNo ?? "",
+                  email: selected.email ?? "",
                   genderId: selected.genderId ?? "",
                   address: selected.address ?? "",
                   hasInsurance: Boolean(selected.hasInsurance),
@@ -439,6 +476,7 @@ type PatientFormValues = {
   dob?: string;
   contactNo?: string;
   whatsappNo?: string;
+  email?: string;
   genderId?: string;
   address?: string;
   hasInsurance?: boolean;
@@ -502,6 +540,7 @@ function PatientForm({
     dob: initial?.dob ?? "",
     contactNo: initial?.contactNo ?? "",
     whatsappNo: initial?.whatsappNo ?? "",
+    email: initial?.email ?? "",
     genderId: initial?.genderId ?? genders[0]?.id ?? "",
     address: initial?.address ?? "",
     hasInsurance: Boolean(initial?.hasInsurance),
@@ -584,6 +623,7 @@ function PatientForm({
               dob: values.dob?.trim() || undefined,
               contactNo: values.contactNo?.trim() || undefined,
               whatsappNo: values.whatsappNo?.trim() || undefined,
+              email: values.email?.trim() || undefined,
               genderId: values.genderId?.trim() || undefined,
               address: values.address?.trim() || undefined,
               hasInsurance: Boolean(values.hasInsurance),
@@ -739,6 +779,14 @@ function PatientForm({
           value={values.whatsappNo ?? ""}
           disabled={isWhatsappSameAsContact}
           onChange={(e) => setValues((v) => ({ ...v, whatsappNo: e.target.value }))}
+        />
+        <Input
+          label="Email (invoice delivery)"
+          name="email"
+          type="email"
+          autoComplete="email"
+          value={values.email ?? ""}
+          onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))}
         />
         <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium text-[var(--text-primary)]">Gender (Lookup)</span>

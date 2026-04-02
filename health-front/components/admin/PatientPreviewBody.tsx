@@ -38,6 +38,10 @@ export function PatientPreviewBody({ patient }: PatientPreviewBodyProps) {
             <dd className="preview-value">{selected.whatsappNo ?? "—"}</dd>
           </div>
           <div className="preview-row">
+            <dt className="preview-label">Email (invoice delivery)</dt>
+            <dd className="preview-value">{selected.email ?? "—"}</dd>
+          </div>
+          <div className="preview-row">
             <dt className="preview-label">Address</dt>
             <dd className="preview-value">{selected.address ?? "—"}</dd>
           </div>

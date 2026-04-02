@@ -28,6 +28,7 @@ export async function createPatientHandler(req: Request, res: Response) {
     dob,
     contactNo,
     whatsappNo,
+    email,
     gender,
     genderId,
     address,
@@ -48,6 +49,7 @@ export async function createPatientHandler(req: Request, res: Response) {
     dob: string | null;
     contactNo: string | null;
     whatsappNo: string | null;
+    email: string | null;
     gender: string | null;
     genderId: string | null;
     address: string | null;
@@ -75,6 +77,7 @@ export async function createPatientHandler(req: Request, res: Response) {
       dob: dob ?? undefined,
       contactNo: contactNo ?? undefined,
       whatsappNo: whatsappNo ?? undefined,
+      email: typeof email === "string" ? email.trim() || undefined : undefined,
       gender: gender ?? undefined,
       genderId: genderId ?? undefined,
       address: address ?? undefined,
@@ -109,6 +112,7 @@ export async function updatePatientHandler(req: Request, res: Response) {
     dob,
     contactNo,
     whatsappNo,
+    email,
     gender,
     genderId,
     address,
@@ -128,6 +132,7 @@ export async function updatePatientHandler(req: Request, res: Response) {
     dob: string | null;
     contactNo: string | null;
     whatsappNo: string | null;
+    email: string | null;
     gender: string | null;
     genderId: string | null;
     address: string | null;
@@ -150,6 +155,12 @@ export async function updatePatientHandler(req: Request, res: Response) {
       dob: dob ?? undefined,
       contactNo: contactNo ?? undefined,
       whatsappNo: whatsappNo ?? undefined,
+      email:
+        email !== undefined
+          ? typeof email === "string"
+            ? email.trim() || null
+            : null
+          : undefined,
       gender: gender ?? undefined,
       genderId: genderId ?? undefined,
       address: address ?? undefined,

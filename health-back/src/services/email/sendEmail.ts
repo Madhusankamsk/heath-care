@@ -1,10 +1,17 @@
 import nodemailer from "nodemailer";
 
+export type SendEmailAttachment = {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+};
+
 export type SendEmailInput = {
   to: string;
   subject: string;
   text: string;
   html?: string;
+  attachments?: SendEmailAttachment[];
 };
 
 export type SendEmailResult =
@@ -18,11 +25,18 @@ function envBool(name: string, defaultValue: boolean): boolean {
   return v === "1" || v.toLowerCase() === "true" || v.toLowerCase() === "yes";
 }
 
+/** Sender address: `EMAIL_FROM` preferred, else `SMTP_FROM` (common alias in .env files). */
+function resolveMailFrom(): string | undefined {
+  const a = process.env.EMAIL_FROM?.trim();
+  const b = process.env.SMTP_FROM?.trim();
+  return a || b || undefined;
+}
+
 function isEmailConfigured(): boolean {
   if (!envBool("EMAIL_ENABLED", false)) {
     return false;
   }
-  const from = process.env.EMAIL_FROM?.trim();
+  const from = resolveMailFrom();
   const host = process.env.SMTP_HOST?.trim();
   if (!from || !host) {
     return false;
@@ -40,7 +54,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     return { ok: true, skipped: true, reason: "EMAIL_ENABLED is not true" };
   }
 
-  const from = process.env.EMAIL_FROM?.trim();
+  const from = resolveMailFrom();
   const host = process.env.SMTP_HOST?.trim();
   const port = Number.parseInt(process.env.SMTP_PORT ?? "587", 10);
   const secure = envBool("SMTP_SECURE", false);
@@ -48,7 +62,11 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   const pass = process.env.SMTP_PASS ?? "";
 
   if (!from || !host) {
-    return { ok: true, skipped: true, reason: "EMAIL_FROM or SMTP_HOST missing" };
+    return {
+      ok: true,
+      skipped: true,
+      reason: "From address (EMAIL_FROM or SMTP_FROM) or SMTP_HOST missing",
+    };
   }
 
   const to = input.to.trim();
@@ -62,6 +80,8 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       to,
       subject: input.subject,
       textPreview: input.text.slice(0, 200),
+      attachmentNames: input.attachments?.map((a) => a.filename),
+      attachmentSizes: input.attachments?.map((a) => a.content.length),
     });
     return { ok: true, skipped: true, reason: "EMAIL_LOG_ONLY" };
   }
@@ -74,12 +94,19 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       auth: user ? { user, pass } : undefined,
     });
 
+    const attachments = input.attachments?.map((a) => ({
+      filename: a.filename,
+      content: a.content,
+      contentType: a.contentType ?? "application/octet-stream",
+    }));
+
     const info = await transporter.sendMail({
       from,
       to,
       subject: input.subject,
       text: input.text,
       html: input.html,
+      ...(attachments && attachments.length > 0 ? { attachments } : {}),
     });
 
     return { ok: true, messageId: info.messageId };

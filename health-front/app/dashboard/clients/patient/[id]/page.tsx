@@ -97,6 +97,7 @@ export default async function PatientFullPreviewPage({
               />
               <CompactItem label="Contact" value={patient.contactNo ?? "—"} />
               <CompactItem label="WhatsApp" value={patient.whatsappNo ?? "—"} />
+              <CompactItem label="Email (invoice delivery)" value={patient.email ?? "—"} />
               <CompactItem
                 label="Billing Recipient"
                 value={patient.billingRecipientLookup?.lookupValue ?? "—"}

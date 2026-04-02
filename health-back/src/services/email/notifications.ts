@@ -9,8 +9,9 @@ function logSendError(context: string, err: unknown) {
 }
 
 /**
- * New subscription account (dashboard flow). Uses `recipientEmail` when provided (e.g. patient onboarding);
- * otherwise `subscriptionAccount.contactEmail`.
+ * New subscription account (dashboard flow). Resolution order: explicit `recipientEmail`,
+ * then `subscriptionAccount.contactEmail`, then primary contact `patient.email`,
+ * then guardian email when `hasGuardian`.
  */
 export async function notifySubscriptionAccountCreated(params: {
   subscriptionAccountId: string;
@@ -25,16 +26,35 @@ export async function notifySubscriptionAccountCreated(params: {
       select: {
         accountName: true,
         contactEmail: true,
+        primaryContactId: true,
         plan: { select: { planName: true } },
       },
     });
+
+    const primary =
+      row?.primaryContactId != null
+        ? await prisma.patient.findUnique({
+            where: { id: row.primaryContactId },
+            select: { email: true, guardianEmail: true, hasGuardian: true },
+          })
+        : null;
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.invoiceId },
       select: { totalAmount: true, balanceDue: true, paidAmount: true },
     });
 
-    const resolvedTo = to || row?.contactEmail?.trim() || null;
+    const guardianTo =
+      primary?.hasGuardian && primary.guardianEmail?.trim()
+        ? primary.guardianEmail.trim()
+        : null;
+
+    const resolvedTo =
+      to ||
+      row?.contactEmail?.trim() ||
+      primary?.email?.trim() ||
+      guardianTo ||
+      null;
     if (!resolvedTo) {
       return;
     }
@@ -84,6 +104,9 @@ export async function notifySubscriptionPaymentRecorded(invoiceId: string): Prom
             contactEmail: true,
             accountName: true,
             plan: { select: { planName: true } },
+            primaryContact: {
+              select: { email: true, guardianEmail: true, hasGuardian: true },
+            },
           },
         },
         payments: {
@@ -98,7 +121,12 @@ export async function notifySubscriptionPaymentRecorded(invoiceId: string): Prom
       return;
     }
 
-    const email = data.subscriptionAccount?.contactEmail?.trim();
+    const acc = data.subscriptionAccount;
+    const pc = acc?.primaryContact;
+    const toGuardian =
+      pc?.hasGuardian && pc.guardianEmail?.trim() ? pc.guardianEmail.trim() : null;
+    const email =
+      acc?.contactEmail?.trim() || pc?.email?.trim() || toGuardian || null;
     if (!email) {
       return;
     }
@@ -148,6 +176,7 @@ export async function notifyVisitPaymentRecorded(invoiceId: string): Promise<voi
         patient: {
           select: {
             fullName: true,
+            email: true,
             guardianEmail: true,
             hasGuardian: true,
           },
@@ -165,10 +194,10 @@ export async function notifyVisitPaymentRecorded(invoiceId: string): Promise<voi
     }
 
     const patient = data.patient;
-    const to =
-      patient?.hasGuardian && patient.guardianEmail?.trim()
-        ? patient.guardianEmail.trim()
-        : null;
+    const toPatient = patient?.email?.trim() || null;
+    const toGuardian =
+      patient?.hasGuardian && patient.guardianEmail?.trim() ? patient.guardianEmail.trim() : null;
+    const to = toPatient || toGuardian;
     if (!to) {
       return;
     }

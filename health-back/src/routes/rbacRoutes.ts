@@ -89,7 +89,7 @@ import {
   listSubscriptionAccountsHandler,
   updateSubscriptionAccountHandler,
 } from "../controllers/subscriptionAccountController";
-import { getInvoicePdfHandler } from "../controllers/invoiceController";
+import { getInvoicePdfHandler, postSendInvoiceEmailHandler } from "../controllers/invoiceController";
 import {
   listCollectorDailySummaryHandler,
   listPaymentsHandler,
@@ -360,6 +360,11 @@ router.get(
   "/invoices/:id/pdf",
   requireAnyPermission(["invoices:read", "patients:read", "profiles:read"]),
   getInvoicePdfHandler,
+);
+router.post(
+  "/invoices/:id/email",
+  requireAnyPermission(["invoices:read", "patients:read", "profiles:read"]),
+  postSendInvoiceEmailHandler,
 );
 
 // Payments (subscription and other invoice payments)

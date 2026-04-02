@@ -11,6 +11,7 @@ export type PatientCreateInput = {
   dob?: string | Date | null;
   contactNo?: string | null;
   whatsappNo?: string | null;
+  email?: string | null;
   gender?: string | null;
   genderId?: string | null;
   address?: string | null;
@@ -169,6 +170,7 @@ export async function createPatient(data: PatientCreateInput) {
         dob: dobValue ?? undefined,
         contactNo: data.contactNo ?? undefined,
         whatsappNo: data.whatsappNo ?? undefined,
+        email: data.email?.trim() || undefined,
         gender: data.gender ?? undefined,
         genderId: data.genderId ?? undefined,
         address: data.address ?? undefined,
@@ -214,6 +216,7 @@ export async function createPatient(data: PatientCreateInput) {
             startDate,
             endDate,
             statusId: resolvedStatusId ?? fallbackActiveStatus?.id ?? undefined,
+            contactEmail: data.email?.trim() || undefined,
           },
         });
 
@@ -289,12 +292,9 @@ export async function createPatient(data: PatientCreateInput) {
   });
 
   if (outcome.subscriptionAccountId && outcome.invoiceId) {
-    const recipientEmail =
-      data.hasGuardian && data.guardianEmail?.trim() ? data.guardianEmail.trim() : null;
     void notifySubscriptionAccountCreated({
       subscriptionAccountId: outcome.subscriptionAccountId,
       invoiceId: outcome.invoiceId,
-      recipientEmail,
     });
   }
 
@@ -322,6 +322,9 @@ export async function updatePatient(
         dob: dobValue ?? undefined,
         contactNo: data.contactNo ?? undefined,
         whatsappNo: data.whatsappNo ?? undefined,
+        ...(data.email !== undefined
+          ? { email: data.email && data.email.trim() ? data.email.trim() : null }
+          : {}),
         gender: data.gender ?? undefined,
         genderId: data.genderId ?? undefined,
         address: data.address ?? undefined,
@@ -339,6 +342,33 @@ export async function updatePatient(
         billingRecipientLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
       },
     });
+
+    if (data.email !== undefined) {
+      const trimmed = data.email && data.email.trim() ? data.email.trim() : null;
+      const now = new Date();
+      const activeMembership = await tx.subscriptionMember.findFirst({
+        where: {
+          patientId: id,
+          subscriptionAccount: {
+            plan: { isActive: true },
+            OR: [{ endDate: null }, { endDate: { gte: now } }],
+          },
+        },
+        orderBy: { joinedAt: "desc" },
+        select: { subscriptionAccountId: true },
+      });
+      if (activeMembership?.subscriptionAccountId) {
+        const membersCount = await tx.subscriptionMember.count({
+          where: { subscriptionAccountId: activeMembership.subscriptionAccountId },
+        });
+        if (membersCount <= 1) {
+          await tx.subscriptionAccount.update({
+            where: { id: activeMembership.subscriptionAccountId },
+            data: { contactEmail: trimmed ?? undefined },
+          });
+        }
+      }
+    }
 
     if (data.subscriptionStatusId !== undefined) {
       const resolvedStatusId = await resolveSubscriptionStatusId(

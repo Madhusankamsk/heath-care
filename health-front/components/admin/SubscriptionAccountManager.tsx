@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input";
 import { CheckboxBase } from "@/components/ui/checkbox-base";
 import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { emailInvoicePdf } from "@/lib/emailInvoicePdf";
 import { openInvoicePdf } from "@/lib/openInvoicePdf";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
@@ -103,6 +104,7 @@ export function SubscriptionAccountManager({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionConfirm, setActionConfirm] = useState<ActionConfirm>(null);
+  const [invoiceReadyId, setInvoiceReadyId] = useState<string | null>(null);
   const router = useRouter();
   const [memberNicOrPassport, setMemberNicOrPassport] = useState("");
   const [matchedPatient, setMatchedPatient] = useState<Patient | null>(null);
@@ -151,6 +153,8 @@ export function SubscriptionAccountManager({
       mode === "preview" ||
       (mode === "addMember" && canManageMembers),
   );
+
+  useEscapeKey(() => setInvoiceReadyId(null), Boolean(invoiceReadyId));
 
   async function refresh() {
     const res = await fetch("/api/subscription-accounts", { cache: "no-store" });
@@ -324,9 +328,39 @@ export function SubscriptionAccountManager({
               await refresh();
               setMode("none");
               toast.success("Subscription account created");
-              if (invoiceId) openInvoicePdf(invoiceId);
+              if (invoiceId) setInvoiceReadyId(invoiceId);
             }}
           />
+        </ModalShell>
+      ) : null}
+
+      {invoiceReadyId ? (
+        <ModalShell
+          open
+          titleId="sub-invoice-ready-title"
+          title="Subscription invoice"
+          subtitle="Open the PDF or send it to the account contact email."
+          onClose={() => setInvoiceReadyId(null)}
+        >
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              className="h-10 px-4 text-xs sm:text-sm"
+              onClick={() => {
+                openInvoicePdf(invoiceReadyId);
+              }}
+            >
+              Open PDF
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-10 px-4 text-xs sm:text-sm"
+              onClick={() => void emailInvoicePdf(invoiceReadyId)}
+            >
+              Email invoice
+            </Button>
+          </div>
         </ModalShell>
       ) : null}
 
@@ -1103,12 +1137,19 @@ function SubscriptionAccountForm({
             ))}
           </SelectBase>
         </label>
-        <Input
-          label="Contact Email"
-          name="contactEmail"
-          value={values.contactEmail ?? ""}
-          onChange={(e) => setValues((v) => ({ ...v, contactEmail: e.target.value }))}
-        />
+        <div className="flex flex-col gap-1 sm:col-span-2">
+          <Input
+            label="Contact Email"
+            name="contactEmail"
+            type="email"
+            autoComplete="email"
+            value={values.contactEmail ?? ""}
+            onChange={(e) => setValues((v) => ({ ...v, contactEmail: e.target.value }))}
+          />
+          <p className="text-xs text-[var(--text-secondary)]">
+            Used for subscription invoices and notification emails.
+          </p>
+        </div>
         <Input
           label="Start Date"
           name="startDate"
