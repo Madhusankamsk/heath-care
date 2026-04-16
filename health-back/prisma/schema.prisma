@@ -133,6 +133,8 @@ model Patient {
   opdQueue                       OpdQueue[]
   visitRecords                   VisitRecord[]
   invoices                       Invoice[]
+  membershipInvoices             MembershipInvoice[]
+  visitInvoices                  VisitInvoice[]
   subscriptionMemberships        SubscriptionMember[]
   primaryContactForSubscriptionAccounts SubscriptionAccount[] @relation("SubscriptionAccountPrimaryContact")
   accountTransactions            AccountTransaction[]
@@ -155,6 +157,7 @@ model Booking {
   doctorStatusLookup  Lookup?      @relation("BookingDoctorStatus", fields: [doctorStatusId], references: [id])
   visitRecord         VisitRecord?
   invoices            Invoice[]
+  visitInvoices       VisitInvoice[]
   dispatchRecords     DispatchRecord[]
 
   @@index([requestedDoctorId])
@@ -234,6 +237,7 @@ model SubscriptionAccount {
   statusLookup         Lookup?              @relation("SubscriptionAccountStatus", fields: [statusId], references: [id])
   members              SubscriptionMember[]
   invoices             Invoice[]
+  membershipInvoices   MembershipInvoice[]
   accountTransactions  AccountTransaction[]
 
   @@index([primaryContactId])
@@ -347,9 +351,9 @@ model DispensedMedicine {
   dispensedBy     User           @relation(fields: [dispensedById], references: [id])
 }
 
-// 6. BILLING
 model Invoice {
   id                    String   @id @default(uuid())
+  invoiceTypeId         String
   bookingId             String?
   /** Null for corporate subscription bills billed to the account only. */
   patientId             String?
@@ -362,14 +366,44 @@ model Invoice {
   balanceDue            Decimal
   paymentStatus         String   @default("Unpaid")
   paymentStatusId       String?
+  invoiceTypeLookup     Lookup   @relation("InvoiceType", fields: [invoiceTypeId], references: [id])
   paymentStatusLookup   Lookup?  @relation("InvoicePaymentStatus", fields: [paymentStatusId], references: [id])
   booking               Booking? @relation(fields: [bookingId], references: [id])
   patient               Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   subscriptionAccount   SubscriptionAccount? @relation(fields: [subscriptionAccountId], references: [id], onDelete: Cascade)
   payments              Payment[]
+  membershipInvoice     MembershipInvoice?
+  visitInvoice          VisitInvoice?
   createdAt             DateTime @default(now())
 
+  @@index([invoiceTypeId])
   @@index([subscriptionAccountId])
+}
+
+model MembershipInvoice {
+  invoiceId              String   @id
+  subscriptionAccountId  String
+  /** Optional patient target for individual/family account invoices. */
+  patientId              String?
+  createdAt              DateTime @default(now())
+  invoice                Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  subscriptionAccount    SubscriptionAccount  @relation(fields: [subscriptionAccountId], references: [id], onDelete: Cascade)
+  patient                Patient?             @relation(fields: [patientId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([subscriptionAccountId])
+  @@index([patientId])
+}
+
+model VisitInvoice {
+  invoiceId    String   @id
+  bookingId    String   @unique
+  patientId    String?
+  createdAt    DateTime @default(now())
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  patient      Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([patientId])
 }
 
 model Payment {
@@ -476,6 +510,7 @@ model Lookup {
   medicineUoms                Medicine[]            @relation("MedicineUom")
   inventoryLocationTypes      InventoryBatch[]      @relation("InventoryLocationType")
   transferStatuses            StockTransfer[]       @relation("TransferStatus")
+  invoiceTypes                Invoice[]             @relation("InvoiceType")
   invoicePaymentStatuses      Invoice[]             @relation("InvoicePaymentStatus")
   opdStatuses                 OpdQueue[]            @relation("OpdStatus")
   subscriptionPlanTypes       SubscriptionPlan[]    @relation("SubscriptionPlanType")

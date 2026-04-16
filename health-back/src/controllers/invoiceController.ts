@@ -2,7 +2,13 @@ import type { Request, Response } from "express";
 
 import prisma from "../prisma/client";
 import { sendEmail } from "../services/email/sendEmail";
+import { listOutstandingInvoices } from "../services/invoiceService";
 import { buildSubscriptionInvoicePdfBuffer, buildVisitInvoicePdfBuffer } from "../services/invoicePdfService";
+
+export async function listOutstandingInvoicesHandler(_req: Request, res: Response) {
+  const rows = await listOutstandingInvoices();
+  return res.json(rows);
+}
 
 export async function getInvoicePdfHandler(req: Request, res: Response) {
   const { id } = req.params;
@@ -27,6 +33,27 @@ export async function getInvoicePdfHandler(req: Request, res: Response) {
       booking: {
         select: { scheduledDate: true },
       },
+      invoiceTypeLookup: { select: { lookupKey: true } },
+      membershipInvoice: {
+        select: {
+          subscriptionAccount: {
+            select: {
+              accountName: true,
+              registrationNo: true,
+              billingAddress: true,
+              contactEmail: true,
+              contactPhone: true,
+              whatsappNo: true,
+              plan: { select: { planName: true } },
+            },
+          },
+        },
+      },
+      visitInvoice: {
+        select: {
+          booking: { select: { scheduledDate: true } },
+        },
+      },
       paymentStatusLookup: { select: { lookupValue: true } },
     },
   });
@@ -40,14 +67,14 @@ export async function getInvoicePdfHandler(req: Request, res: Response) {
   });
 
   try {
-    if (invoice.subscriptionAccountId) {
+    if (invoice.invoiceTypeLookup.lookupKey === "MEMBERSHIP") {
       const pdf = await buildSubscriptionInvoicePdfBuffer(company, invoice);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="invoice-${invoice.id}.pdf"`);
       return res.status(200).send(pdf);
     }
 
-    if (invoice.bookingId) {
+    if (invoice.invoiceTypeLookup.lookupKey === "VISIT") {
       const pdf = await buildVisitInvoicePdfBuffer(company, invoice);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="visit-invoice-${invoice.id}.pdf"`);
@@ -93,6 +120,17 @@ export async function postSendInvoiceEmailHandler(req: Request, res: Response) {
       booking: {
         select: { scheduledDate: true },
       },
+      invoiceTypeLookup: { select: { lookupKey: true } },
+      membershipInvoice: {
+        select: {
+          subscriptionAccount: {
+            select: {
+              contactEmail: true,
+              plan: { select: { planName: true } },
+            },
+          },
+        },
+      },
       paymentStatusLookup: { select: { lookupValue: true } },
     },
   });
@@ -103,9 +141,12 @@ export async function postSendInvoiceEmailHandler(req: Request, res: Response) {
 
   let to = overrideTo;
   if (!to) {
-    if (invoice.subscriptionAccountId && invoice.subscriptionAccount) {
-      to = invoice.subscriptionAccount.contactEmail?.trim() || null;
-    } else if (invoice.bookingId && invoice.patient) {
+    if (invoice.invoiceTypeLookup.lookupKey === "MEMBERSHIP") {
+      to =
+        invoice.membershipInvoice?.subscriptionAccount?.contactEmail?.trim() ||
+        invoice.subscriptionAccount?.contactEmail?.trim() ||
+        null;
+    } else if (invoice.invoiceTypeLookup.lookupKey === "VISIT" && invoice.patient) {
       const p = invoice.patient;
       to = p.email?.trim() || null;
       if (!to && p.hasGuardian && p.guardianEmail?.trim()) {
@@ -130,11 +171,12 @@ export async function postSendInvoiceEmailHandler(req: Request, res: Response) {
   let subject: string;
 
   try {
-    if (invoice.subscriptionAccountId) {
+    if (invoice.invoiceTypeLookup.lookupKey === "MEMBERSHIP") {
       pdf = await buildSubscriptionInvoicePdfBuffer(company, invoice);
       filename = `invoice-${invoice.id}.pdf`;
-      subject = `Invoice — ${invoice.subscriptionAccount?.plan?.planName ?? "Subscription"}`;
-    } else if (invoice.bookingId) {
+      subject =
+        `Invoice — ${invoice.membershipInvoice?.subscriptionAccount?.plan?.planName ?? invoice.subscriptionAccount?.plan?.planName ?? "Subscription"}`;
+    } else if (invoice.invoiceTypeLookup.lookupKey === "VISIT") {
       pdf = await buildVisitInvoicePdfBuffer(company, invoice);
       filename = `visit-invoice-${invoice.id}.pdf`;
       subject = `Visit invoice — ${invoice.patient?.fullName ?? "Patient"}`;
@@ -150,8 +192,15 @@ export async function postSendInvoiceEmailHandler(req: Request, res: Response) {
   );
 
   const patientName = invoice.patient?.fullName?.trim() || "Customer";
-  const planName = invoice.subscriptionAccount?.plan?.planName?.trim();
-  const invoiceTypeLabel = invoice.subscriptionAccountId ? (planName ? `Subscription (${planName})` : "Subscription") : "Visit";
+  const planName =
+    invoice.membershipInvoice?.subscriptionAccount?.plan?.planName?.trim() ||
+    invoice.subscriptionAccount?.plan?.planName?.trim();
+  const invoiceTypeLabel =
+    invoice.invoiceTypeLookup.lookupKey === "MEMBERSHIP"
+      ? planName
+        ? `Subscription (${planName})`
+        : "Subscription"
+      : "Visit";
 
   const totalAmount = invoice.totalAmount?.toString?.() ?? "—";
   const balanceDue = invoice.balanceDue?.toString?.() ?? "—";

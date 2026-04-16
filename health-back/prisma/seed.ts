@@ -350,6 +350,32 @@ async function main() {
     });
   }
 
+  const invoiceTypeCategory = await prisma.lookupCategory.upsert({
+    where: { categoryName: "INVOICE_TYPE" },
+    update: {},
+    create: { categoryName: "INVOICE_TYPE" },
+  });
+  for (const item of [
+    { lookupKey: "MEMBERSHIP", lookupValue: "Membership" },
+    { lookupKey: "VISIT", lookupValue: "Visit" },
+  ] as const) {
+    await prisma.lookup.upsert({
+      where: {
+        categoryId_lookupKey: {
+          categoryId: invoiceTypeCategory.id,
+          lookupKey: item.lookupKey,
+        },
+      },
+      update: { lookupValue: item.lookupValue, isActive: true },
+      create: {
+        categoryId: invoiceTypeCategory.id,
+        lookupKey: item.lookupKey,
+        lookupValue: item.lookupValue,
+        isActive: true,
+      },
+    });
+  }
+
   const paymentMethodCategory = await prisma.lookupCategory.upsert({
     where: { categoryName: "PAYMENT_METHOD" },
     update: {},

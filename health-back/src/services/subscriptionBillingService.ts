@@ -132,6 +132,7 @@ export async function createSubscriptionInvoiceWithLedger(
     "INVOICE_PAYMENT_STATUS",
     paymentStatusKey,
   );
+  const invoiceTypeId = await requireLookupId(tx, "INVOICE_TYPE", "MEMBERSHIP");
 
   const debitTypeId = await requireLookupId(tx, "ACCOUNT_TRANSACTION_TYPE", "DEBIT");
   const creditTypeId = await requireLookupId(tx, "ACCOUNT_TRANSACTION_TYPE", "CREDIT");
@@ -140,6 +141,7 @@ export async function createSubscriptionInvoiceWithLedger(
 
   const invoice = await tx.invoice.create({
     data: {
+      invoiceTypeId,
       patientId: resolvedPatientId,
       subscriptionAccountId: params.subscriptionAccountId,
       bookingId: null,
@@ -151,6 +153,14 @@ export async function createSubscriptionInvoiceWithLedger(
       balanceDue,
       paymentStatus: paymentStatusLabel,
       paymentStatusId,
+    },
+  });
+
+  await tx.membershipInvoice.create({
+    data: {
+      invoiceId: invoice.id,
+      subscriptionAccountId: params.subscriptionAccountId,
+      patientId: resolvedPatientId,
     },
   });
 
@@ -221,7 +231,8 @@ export async function listOutstandingSubscriptionInvoices(): Promise<
 > {
   const rows = await prisma.invoice.findMany({
     where: {
-      subscriptionAccountId: { not: null },
+      invoiceTypeLookup: { is: { lookupKey: "MEMBERSHIP" } },
+      membershipInvoice: { isNot: null },
       balanceDue: { gt: 0 },
     },
     orderBy: { createdAt: "desc" },
@@ -232,19 +243,23 @@ export async function listOutstandingSubscriptionInvoices(): Promise<
       balanceDue: true,
       totalAmount: true,
       paidAmount: true,
-      subscriptionAccountId: true,
-      subscriptionAccount: {
+      membershipInvoice: {
         select: {
-          accountName: true,
-          plan: {
+          subscriptionAccountId: true,
+          subscriptionAccount: {
             select: {
-              planName: true,
-              planTypeLookup: { select: { lookupKey: true } },
+              accountName: true,
+              plan: {
+                select: {
+                  planName: true,
+                  planTypeLookup: { select: { lookupKey: true } },
+                },
+              },
             },
           },
+          patient: { select: { fullName: true } },
         },
       },
-      patient: { select: { fullName: true } },
     },
   });
 
@@ -252,7 +267,7 @@ export async function listOutstandingSubscriptionInvoices(): Promise<
   for (const r of rows) {
     const suggestedPaymentPurposeId = await resolveSubscriptionPaymentPurposeId(
       prisma,
-      r.subscriptionAccount?.plan?.planTypeLookup?.lookupKey,
+      r.membershipInvoice?.subscriptionAccount?.plan?.planTypeLookup?.lookupKey,
     );
     const purposeRow = await prisma.lookup.findUnique({
       where: { id: suggestedPaymentPurposeId },
@@ -264,10 +279,10 @@ export async function listOutstandingSubscriptionInvoices(): Promise<
       balanceDue: r.balanceDue.toString(),
       totalAmount: r.totalAmount.toString(),
       paidAmount: r.paidAmount.toString(),
-      subscriptionAccountId: r.subscriptionAccountId!,
-      accountName: r.subscriptionAccount?.accountName ?? null,
-      planName: r.subscriptionAccount?.plan?.planName ?? "—",
-      patientName: r.patient?.fullName ?? null,
+      subscriptionAccountId: r.membershipInvoice?.subscriptionAccountId ?? "",
+      accountName: r.membershipInvoice?.subscriptionAccount?.accountName ?? null,
+      planName: r.membershipInvoice?.subscriptionAccount?.plan?.planName ?? "—",
+      patientName: r.membershipInvoice?.patient?.fullName ?? null,
       suggestedPaymentPurposeId,
       suggestedPaymentPurposeLabel: purposeRow?.lookupValue ?? "—",
     });
@@ -288,20 +303,29 @@ export async function recordSubscriptionInvoicePayment(params: {
       where: { id: params.invoiceId },
       select: {
         id: true,
-        subscriptionAccountId: true,
+        invoiceTypeLookup: { select: { lookupKey: true } },
         paidAmount: true,
         balanceDue: true,
-        subscriptionAccount: {
+        membershipInvoice: {
           select: {
-            plan: {
-              select: { planTypeLookup: { select: { lookupKey: true } } },
+            subscriptionAccountId: true,
+            subscriptionAccount: {
+              select: {
+                plan: {
+                  select: { planTypeLookup: { select: { lookupKey: true } } },
+                },
+              },
             },
           },
         },
       },
     });
 
-    if (!invoice?.subscriptionAccountId) {
+    if (
+      !invoice ||
+      invoice.invoiceTypeLookup.lookupKey !== "MEMBERSHIP" ||
+      !invoice.membershipInvoice
+    ) {
       throw new Error("Invoice is not a subscription invoice");
     }
 
@@ -326,7 +350,7 @@ export async function recordSubscriptionInvoicePayment(params: {
 
     const paymentPurposeId = await resolveSubscriptionPaymentPurposeId(
       tx,
-      invoice.subscriptionAccount?.plan?.planTypeLookup?.lookupKey,
+      invoice.membershipInvoice.subscriptionAccount?.plan?.planTypeLookup?.lookupKey,
     );
 
     const creditTypeId = await requireLookupId(tx, "ACCOUNT_TRANSACTION_TYPE", "CREDIT");
@@ -346,7 +370,7 @@ export async function recordSubscriptionInvoicePayment(params: {
 
     await tx.accountTransaction.create({
       data: {
-        subscriptionAccountId: invoice.subscriptionAccountId,
+        subscriptionAccountId: invoice.membershipInvoice.subscriptionAccountId,
         transactionTypeId: creditTypeId,
         amount: amt,
         description: "Subscription payment",
@@ -379,7 +403,7 @@ export async function recordSubscriptionInvoicePayment(params: {
     });
 
     await tx.subscriptionAccount.update({
-      where: { id: invoice.subscriptionAccountId },
+      where: { id: invoice.membershipInvoice.subscriptionAccountId },
       data: {
         outstandingBalance: { decrement: amt },
       },

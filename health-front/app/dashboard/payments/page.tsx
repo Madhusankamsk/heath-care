@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function PaymentsIndexPage() {
-  redirect("/dashboard/payments/member");
+  redirect("/dashboard/payments/invoices");
 }

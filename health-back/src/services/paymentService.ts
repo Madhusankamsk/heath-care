@@ -17,6 +17,7 @@ export type PaymentListRow = {
   planName: string | null;
   collectedById: string;
   collectedByName: string;
+  invoiceType: "MEMBERSHIP" | "VISIT";
 };
 
 const LIST_LIMIT = 200;
@@ -34,12 +35,22 @@ export async function listPayments(): Promise<PaymentListRow[]> {
       invoice: {
         select: {
           id: true,
-          patient: { select: { id: true, fullName: true } },
-          subscriptionAccount: {
+          invoiceTypeLookup: { select: { lookupKey: true } },
+          membershipInvoice: {
             select: {
-              id: true,
-              accountName: true,
-              plan: { select: { planName: true } },
+              patient: { select: { id: true, fullName: true } },
+              subscriptionAccount: {
+                select: {
+                  id: true,
+                  accountName: true,
+                  plan: { select: { planName: true } },
+                },
+              },
+            },
+          },
+          visitInvoice: {
+            select: {
+              patient: { select: { id: true, fullName: true } },
             },
           },
         },
@@ -48,8 +59,10 @@ export async function listPayments(): Promise<PaymentListRow[]> {
   });
 
   return rows.map((p) => {
-    const patient = p.invoice.patient;
-    const accName = p.invoice.subscriptionAccount?.accountName ?? null;
+    const member = p.invoice.membershipInvoice;
+    const visit = p.invoice.visitInvoice;
+    const patient = member?.patient ?? visit?.patient ?? null;
+    const accName = member?.subscriptionAccount?.accountName ?? null;
     return {
       id: p.id,
       paidAt: p.paidAt.toISOString(),
@@ -61,11 +74,12 @@ export async function listPayments(): Promise<PaymentListRow[]> {
       invoiceId: p.invoice.id,
       patientId: patient?.id ?? null,
       patientName: patient?.fullName ?? accName ?? "—",
-      subscriptionAccountId: p.invoice.subscriptionAccount?.id ?? null,
+      subscriptionAccountId: member?.subscriptionAccount?.id ?? null,
       subscriptionAccountName: accName,
-      planName: p.invoice.subscriptionAccount?.plan?.planName ?? null,
+      planName: member?.subscriptionAccount?.plan?.planName ?? null,
       collectedById: p.collectedBy.id,
       collectedByName: p.collectedBy.fullName || p.collectedBy.email,
+      invoiceType: p.invoice.invoiceTypeLookup.lookupKey === "MEMBERSHIP" ? "MEMBERSHIP" : "VISIT",
     };
   });
 }

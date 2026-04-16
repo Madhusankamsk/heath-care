@@ -52,8 +52,8 @@ export type OutstandingVisitInvoiceRow = {
 export async function listOutstandingVisitInvoices(): Promise<OutstandingVisitInvoiceRow[]> {
   const rows = await prisma.invoice.findMany({
     where: {
-      bookingId: { not: null },
-      subscriptionAccountId: null,
+      invoiceTypeLookup: { is: { lookupKey: "VISIT" } },
+      visitInvoice: { isNot: null },
       balanceDue: { gt: 0 },
     },
     orderBy: { createdAt: "desc" },
@@ -64,10 +64,14 @@ export async function listOutstandingVisitInvoices(): Promise<OutstandingVisitIn
       balanceDue: true,
       totalAmount: true,
       paidAmount: true,
-      bookingId: true,
-      patientId: true,
-      patient: { select: { fullName: true } },
-      booking: { select: { id: true, scheduledDate: true } },
+      visitInvoice: {
+        select: {
+          bookingId: true,
+          patientId: true,
+          patient: { select: { fullName: true } },
+          booking: { select: { id: true, scheduledDate: true } },
+        },
+      },
     },
   });
 
@@ -77,10 +81,10 @@ export async function listOutstandingVisitInvoices(): Promise<OutstandingVisitIn
     balanceDue: r.balanceDue.toString(),
     totalAmount: r.totalAmount.toString(),
     paidAmount: r.paidAmount.toString(),
-    bookingId: r.bookingId!,
-    bookingScheduledDate: r.booking?.scheduledDate?.toISOString() ?? null,
-    patientId: r.patientId,
-    patientName: r.patient?.fullName ?? null,
+    bookingId: r.visitInvoice?.bookingId ?? "",
+    bookingScheduledDate: r.visitInvoice?.booking?.scheduledDate?.toISOString() ?? null,
+    patientId: r.visitInvoice?.patientId ?? null,
+    patientName: r.visitInvoice?.patient?.fullName ?? null,
   }));
 }
 
@@ -97,17 +101,18 @@ export async function recordVisitInvoicePayment(params: {
       where: { id: params.invoiceId },
       select: {
         id: true,
-        bookingId: true,
-        subscriptionAccountId: true,
+        invoiceTypeLookup: { select: { lookupKey: true } },
         paidAmount: true,
         balanceDue: true,
+        visitInvoice: { select: { bookingId: true } },
       },
     });
 
-    if (!invoice?.bookingId) {
-      throw new Error("Invoice is not a visit invoice");
-    }
-    if (invoice.subscriptionAccountId) {
+    if (
+      !invoice ||
+      invoice.invoiceTypeLookup.lookupKey !== "VISIT" ||
+      !invoice.visitInvoice?.bookingId
+    ) {
       throw new Error("Invoice is not a visit invoice");
     }
 

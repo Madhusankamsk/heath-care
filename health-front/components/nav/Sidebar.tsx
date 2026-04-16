@@ -209,14 +209,20 @@ const navItems: NavItem[] = [
     requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
     children: [
       {
-        href: "/dashboard/payments/member",
-        label: "Member payments",
+        href: "/dashboard/payments/invoices",
+        label: "Invoices",
+        icon: <Receipt className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
+      },
+      {
+        href: "/dashboard/payments/membership-invoices",
+        label: "Membership invoices",
         icon: <Banknote className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
       },
       {
-        href: "/dashboard/payments/visit",
-        label: "Visit payments",
+        href: "/dashboard/payments/visit-invoices",
+        label: "Visit invoices",
         icon: <CalendarCheck2 className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
       },
