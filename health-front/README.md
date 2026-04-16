@@ -65,6 +65,14 @@ From `health-front/`:
 
 - **`POST /api/logout`** clears the `health_front_auth_token` cookie.
 
+### Forgot / reset password
+
+1. **`/forgot-password`** posts to **`POST /api/forgot-password`**, which proxies to **`health-back`** **`POST /api/auth/forgot-password`**. The UI always shows the same generic confirmation (no account enumeration).
+2. Emails are sent from **`health-back`** when SMTP is configured (`EMAIL_ENABLED`, etc.). Configure **`PASSWORD_RESET_APP_URL`** on the backend so reset links point at this app’s origin (e.g. `http://localhost:3000` in dev).
+3. **`/reset-password?token=...`** posts the token and new password to **`POST /api/reset-password`** → **`POST /api/auth/reset-password`**.
+
+Resetting a password does not revoke existing JWT sessions until they expire.
+
 ## API proxy routes (frontend → backend)
 
 To avoid exposing backend URLs to the browser and to automatically attach the JWT from the httpOnly cookie, the frontend provides proxy endpoints:

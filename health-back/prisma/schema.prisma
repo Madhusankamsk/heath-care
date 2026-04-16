@@ -57,6 +57,18 @@ model User {
   paymentsCollected         Payment[]             @relation("PaymentCollectedBy")
   collectorSettlements      PaymentCollectorSettlement[] @relation("CollectorSettlementCollector")
   settlementsRecorded       PaymentCollectorSettlement[] @relation("CollectorSettlementRecordedBy")
+  passwordResetTokens       PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // 3. DYNAMIC TEAM & FLEET

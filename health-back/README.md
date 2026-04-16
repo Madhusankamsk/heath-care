@@ -45,6 +45,12 @@ Copy `.env.example` → `.env` and configure:
 
 - **`AUTH_JWT_SECRET`**: secret used to sign and verify JWTs
   - Required for `/api/auth/login` and any protected routes
+- **`PASSWORD_RESET_APP_URL`**: origin of the web app used in password-reset emails (no trailing slash), e.g. `https://app.example.com`. In production this should be set; in development the server defaults to `http://localhost:3000` when unset.
+
+Password reset endpoints:
+
+- **`POST /api/auth/forgot-password`**: body `{ "email": "..." }` — always returns a generic success message (whether or not the email exists).
+- **`POST /api/auth/reset-password`**: body `{ "token": "...", "newPassword": "..." }` — sets a new password when the token is valid and not expired.
 
 ### Transactional email (optional)
 
@@ -82,7 +88,7 @@ From `health-back/`:
 - `src/server.ts`: server entrypoint (creates HTTP server and listens)
 - `src/app.ts`: Express app setup (JSON, CORS, routes)
 - `src/middleware/auth.ts`: JWT auth middleware (`requireAuth`)
-- `src/routes/authRoutes.ts`: login endpoint
+- `src/routes/authRoutes.ts`: login, forgot-password, reset-password
 - `src/routes/rbacRoutes.ts`: roles/permissions/profiles routes (protected)
 - `src/routes/fileRoutes.ts`: R2 upload/delete routes (protected)
 - `src/services/*`: domain services (RBAC, R2 storage, etc.)

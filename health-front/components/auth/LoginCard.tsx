@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -135,6 +136,15 @@ export function LoginCard() {
           hint="Minimum 4 characters."
           autoComplete="current-password"
         />
+
+        <div className="flex justify-end">
+          <Link
+            href="/forgot-password"
+            className="text-sm font-medium text-[var(--text-secondary)] underline underline-offset-2 hover:text-[var(--text-primary)]"
+          >
+            Forgot password?
+          </Link>
+        </div>
 
         {submitError ? (
           <div className="rounded-xl border border-[var(--danger)]/30 bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] px-3 py-2 text-sm text-[var(--danger)]">
