@@ -114,34 +114,57 @@ const bookingWithDispatchInclude = {
 
 export async function listBookingsForPatient(
   patientId: string,
-  params: { userId: string | undefined; scope: BookingListScope },
+  params: {
+    userId: string | undefined;
+    scope: BookingListScope;
+    skip: number;
+    take: number;
+  },
 ) {
   const scopeWhere =
     params.scope === "own" && params.userId
       ? { requestedDoctorId: params.userId }
       : {};
 
-  return prisma.booking.findMany({
-    where: { patientId, ...scopeWhere },
-    orderBy: { scheduledDate: { sort: "desc", nulls: "last" } },
-    include: bookingWithDispatchInclude,
-  });
+  const where = { patientId, ...scopeWhere };
+
+  const [total, items] = await prisma.$transaction([
+    prisma.booking.count({ where }),
+    prisma.booking.findMany({
+      where,
+      skip: params.skip,
+      take: params.take,
+      orderBy: { scheduledDate: { sort: "desc", nulls: "last" } },
+      include: bookingWithDispatchInclude,
+    }),
+  ]);
+
+  return { items, total };
 }
 
 export async function listBookings(params: {
   userId: string | undefined;
   scope: BookingListScope;
+  skip: number;
+  take: number;
 }) {
   const where =
     params.scope === "own" && params.userId
       ? { requestedDoctorId: params.userId }
       : undefined;
 
-  return prisma.booking.findMany({
-    where,
-    orderBy: { scheduledDate: "desc" },
-    include: bookingInclude,
-  });
+  const [total, items] = await prisma.$transaction([
+    prisma.booking.count({ where }),
+    prisma.booking.findMany({
+      where,
+      skip: params.skip,
+      take: params.take,
+      orderBy: { scheduledDate: "desc" },
+      include: bookingInclude,
+    }),
+  ]);
+
+  return { items, total };
 }
 
 export async function getBookingById(id: string) {

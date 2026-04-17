@@ -7,10 +7,12 @@ import {
   listPatients,
   updatePatient,
 } from "../services/patientService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listPatientsHandler(_req: Request, res: Response) {
-  const patients = await listPatients();
-  return res.json(patients);
+export async function listPatientsHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await listPatients({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function getPatientHandler(req: Request, res: Response) {

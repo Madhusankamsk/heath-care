@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { backendJson, type BackendMeResponse } from "@/lib/backend";
 import { getIsAuthenticated } from "@/lib/auth";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 import {
@@ -12,13 +13,25 @@ import {
 
 const VIEW_PERMS = ["invoices:read", "patients:read", "profiles:read"] as const;
 
-type CollectorDailyResponse = { date: string; rows: CollectorDailySummaryRow[] };
+type CollectorDailyResponse = {
+  date: string;
+  items: CollectorDailySummaryRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  grandTotalCollected: number;
+  grandPendingSettlement: number;
+};
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default async function PaymentsCollectorPage() {
+export default async function PaymentsCollectorPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string; date?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -28,9 +41,15 @@ export default async function PaymentsCollectorPage() {
   const canView = hasAnyPermission(me.permissions, [...VIEW_PERMS]);
   if (!canView) redirect("/dashboard");
 
-  const selectedDate = todayIsoDate();
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const selectedDate =
+    typeof params.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(params.date)
+      ? params.date
+      : todayIsoDate();
+
   const summary = await backendJson<CollectorDailyResponse>(
-    `/api/payments/collectors/daily?date=${encodeURIComponent(selectedDate)}`,
+    `/api/payments/collectors/daily?date=${encodeURIComponent(selectedDate)}&${pageQueryString(pageNum)}`,
   );
 
   return (
@@ -43,7 +62,12 @@ export default async function PaymentsCollectorPage() {
         ) : (
           <CollectorDailySettlementSection
             initialDate={summary.date || selectedDate}
-            initialRows={summary.rows ?? []}
+            initialRows={summary.items ?? []}
+            total={summary.total ?? 0}
+            initialPage={summary.page ?? pageNum}
+            pageSize={summary.pageSize ?? DEFAULT_PAGE_SIZE}
+            grandTotalCollected={summary.grandTotalCollected ?? 0}
+            grandPendingSettlement={summary.grandPendingSettlement ?? 0}
           />
         )}
       </Card>

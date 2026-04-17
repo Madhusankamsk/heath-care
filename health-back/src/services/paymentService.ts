@@ -20,15 +20,21 @@ export type PaymentListRow = {
   invoiceType: "MEMBERSHIP" | "VISIT";
 };
 
-const LIST_LIMIT = 200;
-
 const COLLECTOR_METHOD_KEYS = new Set(["CASH", "CHEQUE"]);
 
-export async function listPayments(): Promise<PaymentListRow[]> {
-  const rows = await prisma.payment.findMany({
-    orderBy: { paidAt: "desc" },
-    take: LIST_LIMIT,
-    include: {
+export async function listPayments(params: {
+  skip: number;
+  take: number;
+}): Promise<{ items: PaymentListRow[]; total: number }> {
+  const where = {};
+  const [total, rows] = await prisma.$transaction([
+    prisma.payment.count({ where }),
+    prisma.payment.findMany({
+      where,
+      orderBy: { paidAt: "desc" },
+      skip: params.skip,
+      take: params.take,
+      include: {
       paymentMethodLookup: { select: { lookupValue: true } },
       paymentPurposeLookup: { select: { lookupValue: true } },
       collectedBy: { select: { id: true, fullName: true, email: true } },
@@ -56,9 +62,10 @@ export async function listPayments(): Promise<PaymentListRow[]> {
         },
       },
     },
-  });
+  }),
+  ]);
 
-  return rows.map((p) => {
+  const items = rows.map((p) => {
     const member = p.invoice.membershipInvoice;
     const visit = p.invoice.visitInvoice;
     const patient = member?.patient ?? visit?.patient ?? null;
@@ -79,9 +86,11 @@ export async function listPayments(): Promise<PaymentListRow[]> {
       planName: member?.subscriptionAccount?.plan?.planName ?? null,
       collectedById: p.collectedBy.id,
       collectedByName: p.collectedBy.fullName || p.collectedBy.email,
-      invoiceType: p.invoice.invoiceTypeLookup.lookupKey === "MEMBERSHIP" ? "MEMBERSHIP" : "VISIT",
+      invoiceType: (p.invoice.invoiceTypeLookup.lookupKey === "MEMBERSHIP" ? "MEMBERSHIP" : "VISIT") as PaymentListRow["invoiceType"],
     };
   });
+
+  return { items, total };
 }
 
 export type CollectorDailySummaryRow = {
@@ -197,6 +206,18 @@ export async function listCollectorDailySummary(dateInput?: string) {
   rows.sort((a, b) => a.collectorName.localeCompare(b.collectorName) || a.paymentMethodKey.localeCompare(b.paymentMethodKey));
 
   return { date: isoDate, rows };
+}
+
+export async function listCollectorDailySummaryPaginated(
+  dateInput: string | undefined,
+  params: { skip: number; take: number },
+) {
+  const { date: isoDate, rows } = await listCollectorDailySummary(dateInput);
+  const total = rows.length;
+  const grandTotalCollected = rows.reduce((sum, r) => sum + (Number(r.totalAmount) || 0), 0);
+  const grandPendingSettlement = rows.reduce((sum, r) => sum + (Number(r.pendingAmount) || 0), 0);
+  const items = rows.slice(params.skip, params.skip + params.take);
+  return { date: isoDate, items, total, grandTotalCollected, grandPendingSettlement };
 }
 
 export async function settleCollectorDaily({

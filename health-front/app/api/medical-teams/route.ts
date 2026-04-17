@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 import { backendFetch } from "@/lib/backend";
 
-export async function GET() {
-  const res = await backendFetch("/api/medical-teams").catch((error) => {
+export async function GET(request: Request) {
+  const q = new URL(request.url).search;
+  const res = await backendFetch(`/api/medical-teams${q}`).catch((error) => {
     return new Response(
       JSON.stringify({
         message:

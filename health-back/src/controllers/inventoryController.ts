@@ -10,11 +10,12 @@ import {
   getMedicine,
   listBatches,
   listMedicines,
-  listMobileSubstores,
+  listMobileSubstoresPaginated,
   listStockMovements,
   updateBatch,
   updateMedicine,
 } from "../services/inventoryService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
 function parseNumber(value: unknown, field: string) {
   const n = Number(value);
@@ -34,8 +35,9 @@ function asKind(path: string) {
 
 export async function listInventoryMedicinesHandler(req: Request, res: Response) {
   const kind = asKind(req.path);
-  const rows = await listMedicines(kind);
-  return res.json(rows);
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await listMedicines(kind, { skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function createInventoryMedicineHandler(req: Request, res: Response) {
@@ -93,9 +95,10 @@ export async function deleteInventoryMedicineHandler(req: Request, res: Response
   return res.status(204).send();
 }
 
-export async function listInventoryBatchesHandler(_req: Request, res: Response) {
-  const rows = await listBatches();
-  return res.json(rows);
+export async function listInventoryBatchesHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await listBatches({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function createInventoryBatchHandler(req: Request, res: Response) {
@@ -138,9 +141,10 @@ export async function deleteInventoryBatchHandler(req: Request, res: Response) {
   return res.status(204).send();
 }
 
-export async function listMobileSubstoresHandler(_req: Request, res: Response) {
-  const rows = await listMobileSubstores();
-  return res.json(rows);
+export async function listMobileSubstoresHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await listMobileSubstoresPaginated({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function assignMobileSubstoreHandler(req: Request, res: Response) {
@@ -160,9 +164,10 @@ export async function assignMobileSubstoreHandler(req: Request, res: Response) {
   }
 }
 
-export async function listStockMovementsHandler(_req: Request, res: Response) {
-  const rows = await listStockMovements();
-  return res.json(rows);
+export async function listStockMovementsHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await listStockMovements({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function createStockMovementHandler(req: Request, res: Response) {

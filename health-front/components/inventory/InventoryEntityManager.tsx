@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/Input";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
+import type { PaginatedResult } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 
 export type InventoryEntity = {
   id: string;
@@ -24,6 +27,9 @@ type Props = {
   title: string;
   endpoint: "/api/inventory/medicines" | "/api/inventory/medical-items";
   initialRows: InventoryEntity[];
+  total: number;
+  initialPage: number;
+  pageSize?: number;
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -33,11 +39,16 @@ export function InventoryEntityManager({
   title,
   endpoint,
   initialRows,
+  total: initialTotal,
+  initialPage,
+  pageSize = DEFAULT_PAGE_SIZE,
   canCreate,
   canEdit,
   canDelete,
 }: Props) {
   const [rows, setRows] = useState(initialRows);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
   const [mode, setMode] = useState<"none" | "create" | "edit">("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,11 +59,33 @@ export function InventoryEntityManager({
     [rows, selectedId],
   );
 
-  async function refresh() {
-    const res = await fetch(endpoint, { cache: "no-store" });
+  async function loadPage(nextPage: number) {
+    const res = await fetch(`${endpoint}?page=${nextPage}&pageSize=${pageSize}`, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to refresh");
-    const data = (await res.json()) as InventoryEntity[];
-    setRows(data);
+    const data = (await res.json()) as PaginatedResult<InventoryEntity>;
+    setRows(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
+
+  async function goToPage(next: number) {
+    try {
+      await loadPage(next);
+    } catch {
+      toast.error("Failed to load page");
+    }
+  }
+
+  async function refresh() {
+    const res = await fetch(`${endpoint}?page=${page}&pageSize=${pageSize}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to refresh");
+    const data = (await res.json()) as PaginatedResult<InventoryEntity>;
+    setRows(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
   }
 
   return (
@@ -213,6 +246,8 @@ export function InventoryEntityManager({
           </TableBody>
         </Table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }

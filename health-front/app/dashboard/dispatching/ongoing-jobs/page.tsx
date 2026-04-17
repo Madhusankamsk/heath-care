@@ -6,20 +6,17 @@ import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import { Card } from "@/components/ui/Card";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { getIsAuthenticated } from "@/lib/auth";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
+import { DEFAULT_PAGE_SIZE, pageQueryString, withPaginationQuery } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 const VIEW_PERMS = ["dispatch:list", "dispatch:read", "dispatch:update"] as const;
 
-async function getOngoing() {
-  return backendJson<UpcomingBookingRow[]>("/api/dispatch/ongoing");
-}
-
-async function getTeams() {
-  return backendJson<MedicalTeam[]>("/api/medical-teams");
-}
-
-export default async function OngoingJobsPage() {
+export default async function OngoingJobsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -33,9 +30,14 @@ export default async function OngoingJobsPage() {
   const canListTeams = hasAnyPermission(me.permissions, ["medical_teams:list"]);
   const canFullView = hasAnyPermission(me.permissions, ["patients:read"]);
 
-  const [rows, teams] = await Promise.all([
-    getOngoing(),
-    canListTeams ? getTeams() : Promise.resolve(null),
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const [ongoingResult, teamsResult] = await Promise.all([
+    backendJsonPaginated<UpcomingBookingRow>(`/api/dispatch/ongoing?${pageQueryString(pageNum)}`),
+    canListTeams
+      ? backendJsonPaginated<MedicalTeam>(withPaginationQuery("/api/medical-teams", 1, 100))
+      : Promise.resolve(null),
   ]);
 
   return (
@@ -46,14 +48,17 @@ export default async function OngoingJobsPage() {
           note="Actions are controlled by permissions."
           description="Dispatched bookings (in transit or arrived on site)."
         />
-        {!rows ? (
+        {!ongoingResult ? (
           <div className="rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-4 py-3 text-sm text-[var(--danger)]">
             Failed to load ongoing jobs.
           </div>
         ) : (
           <OngoingJobsTable
-            initialRows={rows}
-            teams={teams}
+            initialRows={ongoingResult.items}
+            total={ongoingResult.total}
+            initialPage={ongoingResult.page}
+            pageSize={ongoingResult.pageSize ?? DEFAULT_PAGE_SIZE}
+            teams={teamsResult?.items ?? null}
             canPreview={canPreview}
             canFullView={canFullView}
           />

@@ -4,8 +4,28 @@ export async function createRole(data: { roleName: string; description?: string 
   return prisma.role.create({ data });
 }
 
-export async function getRoles() {
-  return prisma.role.findMany();
+export async function listRoles(params: { skip: number; take: number }) {
+  const where = {};
+  const [total, items] = await prisma.$transaction([
+    prisma.role.count({ where }),
+    prisma.role.findMany({
+      where,
+      orderBy: { roleName: "asc" },
+      skip: params.skip,
+      take: params.take,
+      include: {
+        permissions: {
+          include: {
+            permission: true,
+          },
+        },
+        users: {
+          select: { id: true },
+        },
+      },
+    }),
+  ]);
+  return { items, total };
 }
 
 export async function getRolesWithPermissions() {

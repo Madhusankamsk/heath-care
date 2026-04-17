@@ -7,7 +7,8 @@ import {
 import { Card } from "@/components/ui/Card";
 import { canAccessAdmin } from "@/lib/adminAccess";
 import { getIsAuthenticated } from "@/lib/auth";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 type PlanTypeOption = { id: string; lookupKey: string; lookupValue: string };
@@ -19,15 +20,15 @@ const PERMS = {
   delete: ["profiles:delete"],
 } as const;
 
-async function getSubscriptionPlans() {
-  return backendJson<SubscriptionPlan[]>("/api/subscription-plans");
-}
-
 async function getSubscriptionPlanTypes() {
   return backendJson<PlanTypeOption[]>("/api/subscription-plan-types");
 }
 
-export default async function AdminPlanSetupPage() {
+export default async function AdminPlanSetupPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -42,15 +43,18 @@ export default async function AdminPlanSetupPage() {
   const canEdit = hasAnyPermission(me.permissions, [...PERMS.edit]);
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
 
-  const [plans, planTypes] = await Promise.all([
-    getSubscriptionPlans(),
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const [plansResult, planTypes] = await Promise.all([
+    backendJsonPaginated<SubscriptionPlan>(`/api/subscription-plans?${pageQueryString(pageNum)}`),
     getSubscriptionPlanTypes(),
   ]);
 
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        {!plans ? (
+        {!plansResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">
             Failed to load subscription plans.
           </div>
@@ -60,7 +64,10 @@ export default async function AdminPlanSetupPage() {
           </div>
         ) : (
           <SubscriptionPlanManager
-            initialPlans={plans}
+            initialPlans={plansResult.items}
+            total={plansResult.total}
+            initialPage={plansResult.page}
+            pageSize={plansResult.pageSize ?? DEFAULT_PAGE_SIZE}
             planTypes={planTypes}
             canCreate={canCreate}
             canEdit={canEdit}

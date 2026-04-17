@@ -50,6 +50,10 @@ export function RolePermissionMatrix({ roles, permissions }: RolePermissionMatri
   );
 
   useEffect(() => {
+    setLocalPermissions(permissions);
+  }, [permissions]);
+
+  useEffect(() => {
     let cancelled = false;
     async function load() {
       setIsLoading(true);

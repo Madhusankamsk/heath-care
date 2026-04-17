@@ -5,6 +5,8 @@ import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { DEFAULT_PAGE_SIZE, pageQueryString, type PaginatedResult } from "@/lib/pagination";
 import { toast } from "@/lib/toast";
 
 import { RecordVisitPaymentModal } from "./RecordVisitPaymentModal";
@@ -16,6 +18,9 @@ type LookupOption = { id: string; lookupKey: string; lookupValue: string };
 
 type Props = {
   initialInvoices: OutstandingVisitInvoiceRow[];
+  total?: number;
+  initialPage?: number;
+  pageSize?: number;
   paymentMethods: LookupOption[];
 };
 
@@ -34,26 +39,58 @@ function formatBookingWhen(iso: string | null) {
 
 export function RecordVisitPaymentSection({
   initialInvoices,
+  total: initialTotal,
+  initialPage = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
   paymentMethods,
 }: Props) {
   const router = useRouter();
   const [invoices, setInvoices] = useState(initialInvoices);
+  const [total, setTotal] = useState(initialTotal ?? initialInvoices.length);
+  const [page, setPage] = useState(initialPage);
   const [payInvoiceId, setPayInvoiceId] = useState<string | null>(null);
 
   const payRow = payInvoiceId ? (invoices.find((r) => r.id === payInvoiceId) ?? null) : null;
 
   const refreshInvoices = useCallback(async () => {
-    const res = await fetch("/api/visit-invoices/outstanding", { cache: "no-store" });
+    const res = await fetch(`/api/visit-invoices/outstanding?${pageQueryString(page, pageSize)}`, {
+      cache: "no-store",
+    });
     if (!res.ok) {
       toast.error("Could not refresh invoice list");
       return;
     }
-    const next = (await res.json()) as OutstandingVisitInvoiceRow[];
-    setInvoices(next);
-    if (payInvoiceId && !next.some((r) => r.id === payInvoiceId)) {
+    let data = (await res.json()) as PaginatedResult<OutstandingVisitInvoiceRow>;
+    if (data.items.length === 0 && data.page > 1) {
+      const res2 = await fetch(
+        `/api/visit-invoices/outstanding?${pageQueryString(data.page - 1, pageSize)}`,
+        { cache: "no-store" },
+      );
+      if (res2.ok) {
+        data = (await res2.json()) as PaginatedResult<OutstandingVisitInvoiceRow>;
+      }
+    }
+    setInvoices(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (payInvoiceId && !data.items.some((r) => r.id === payInvoiceId)) {
       setPayInvoiceId(null);
     }
-  }, [payInvoiceId]);
+  }, [payInvoiceId, page, pageSize]);
+
+  async function goToPage(nextPage: number) {
+    const res = await fetch(`/api/visit-invoices/outstanding?${pageQueryString(nextPage, pageSize)}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      toast.error("Could not load page");
+      return;
+    }
+    const data = (await res.json()) as PaginatedResult<OutstandingVisitInvoiceRow>;
+    setInvoices(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
 
   function openPayModal(row: OutstandingVisitInvoiceRow) {
     setPayInvoiceId(row.id);
@@ -95,6 +132,7 @@ export function RecordVisitPaymentSection({
             </tbody>
           </table>
         </div>
+        <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
       </div>
     );
   }
@@ -152,6 +190,8 @@ export function RecordVisitPaymentSection({
           </tbody>
         </table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
 
       <RecordVisitPaymentModal
         key={payInvoiceId ?? "closed"}

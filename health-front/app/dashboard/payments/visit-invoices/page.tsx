@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 
 import { Card } from "@/components/ui/Card";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
 import { getIsAuthenticated } from "@/lib/auth";
+import { pageQueryString } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 import type { OutstandingVisitInvoiceRow } from "../visit/visitInvoiceTypes";
@@ -17,7 +19,11 @@ function formatDate(iso: string | null) {
   return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
-export default async function VisitInvoicesPage() {
+export default async function VisitInvoicesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -27,7 +33,13 @@ export default async function VisitInvoicesPage() {
   const canView = hasAnyPermission(me.permissions, [...VIEW_PERMS]);
   if (!canView) redirect("/dashboard");
 
-  const invoices = await backendJson<OutstandingVisitInvoiceRow[]>("/api/visit-invoices/outstanding");
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const result = await backendJsonPaginated<OutstandingVisitInvoiceRow>(
+    `/api/visit-invoices/outstanding?${pageQueryString(pageNum)}`,
+  );
+  const invoices = result?.items ?? [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,52 +48,62 @@ export default async function VisitInvoicesPage() {
           title="Visit invoices"
           description="Outstanding visit invoices generated from completed dispatch visits."
         />
-        {!invoices ? (
+        {!result ? (
           <div className="rounded-xl border border-(--danger)/30 bg-(--danger)/10 px-4 py-3 text-sm text-(--danger)">
             Unable to load invoices. Check permissions or try again.
           </div>
         ) : invoices.length === 0 ? (
           <p className="text-sm text-(--text-secondary)">No outstanding visit invoices.</p>
         ) : (
-          <div className="tbl-shell overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-                <tr>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3">Invoice</th>
-                  <th className="px-4 py-3">Patient</th>
-                  <th className="px-4 py-3">Booking date</th>
-                  <th className="px-4 py-3">Total</th>
-                  <th className="px-4 py-3">Paid</th>
-                  <th className="px-4 py-3">Balance</th>
-                  <th className="px-4 py-3 text-right">Bill</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((row) => (
-                  <tr key={row.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                    <td className="px-4 py-3 align-top">{formatDate(row.createdAt)}</td>
-                    <td className="px-4 py-3 align-top font-mono text-xs">{row.id}</td>
-                    <td className="px-4 py-3 align-top">{row.patientName ?? "—"}</td>
-                    <td className="px-4 py-3 align-top">{formatDate(row.bookingScheduledDate)}</td>
-                    <td className="px-4 py-3 align-top tabular-nums">{row.totalAmount}</td>
-                    <td className="px-4 py-3 align-top tabular-nums">{row.paidAmount}</td>
-                    <td className="px-4 py-3 align-top tabular-nums">{row.balanceDue}</td>
-                    <td className="px-4 py-3 text-right align-top">
-                      <a
-                        className="text-(--brand-primary) underline-offset-2 hover:underline"
-                        href={`/api/invoices/${encodeURIComponent(row.id)}/pdf`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        PDF
-                      </a>
-                    </td>
+          <>
+            <div className="tbl-shell overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
+                  <tr>
+                    <th className="px-4 py-3">Created</th>
+                    <th className="px-4 py-3">Invoice</th>
+                    <th className="px-4 py-3">Patient</th>
+                    <th className="px-4 py-3">Booking date</th>
+                    <th className="px-4 py-3">Total</th>
+                    <th className="px-4 py-3">Paid</th>
+                    <th className="px-4 py-3">Balance</th>
+                    <th className="px-4 py-3 text-right">Bill</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {invoices.map((row) => (
+                    <tr key={row.id} className="border-t border-zinc-200 dark:border-zinc-800">
+                      <td className="px-4 py-3 align-top">{formatDate(row.createdAt)}</td>
+                      <td className="px-4 py-3 align-top font-mono text-xs">{row.id}</td>
+                      <td className="px-4 py-3 align-top">{row.patientName ?? "—"}</td>
+                      <td className="px-4 py-3 align-top">{formatDate(row.bookingScheduledDate)}</td>
+                      <td className="px-4 py-3 align-top tabular-nums">{row.totalAmount}</td>
+                      <td className="px-4 py-3 align-top tabular-nums">{row.paidAmount}</td>
+                      <td className="px-4 py-3 align-top tabular-nums">{row.balanceDue}</td>
+                      <td className="px-4 py-3 text-right align-top">
+                        <a
+                          className="text-(--brand-primary) underline-offset-2 hover:underline"
+                          href={`/api/invoices/${encodeURIComponent(row.id)}/pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          PDF
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <TablePaginationBar
+              page={result.page}
+              pageSize={result.pageSize}
+              total={result.total}
+              hrefForPage={(p) =>
+                `/dashboard/payments/visit-invoices?${pageQueryString(p, result.pageSize)}`
+              }
+            />
+          </>
         )}
       </Card>
     </div>

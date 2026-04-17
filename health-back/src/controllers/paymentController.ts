@@ -1,21 +1,33 @@
 import type { Request, Response } from "express";
 
 import {
-  listCollectorDailySummary,
-  listPayments,
+  listCollectorDailySummaryPaginated,
+  listPayments as fetchPaymentsPage,
   settleCollectorDaily,
 } from "../services/paymentService";
+import { parsePaginationQuery } from "../lib/pagination";
 
-export async function listPaymentsHandler(_req: Request, res: Response) {
-  const rows = await listPayments();
-  return res.json(rows);
+export async function listPaymentsHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchPaymentsPage({ skip, take });
+  return res.json({ items, total, page, pageSize });
 }
 
 export async function listCollectorDailySummaryHandler(req: Request, res: Response) {
   try {
     const date = typeof req.query.date === "string" ? req.query.date : undefined;
-    const result = await listCollectorDailySummary(date);
-    return res.json(result);
+    const { page, pageSize, skip, take } = parsePaginationQuery(req);
+    const { date: isoDate, items, total, grandTotalCollected, grandPendingSettlement } =
+      await listCollectorDailySummaryPaginated(date, { skip, take });
+    return res.json({
+      date: isoDate,
+      items,
+      total,
+      page,
+      pageSize,
+      grandTotalCollected,
+      grandPendingSettlement,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load collector summary";
     if (message === "Invalid date") {

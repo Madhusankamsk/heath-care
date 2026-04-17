@@ -49,16 +49,24 @@ export type OutstandingVisitInvoiceRow = {
   patientName: string | null;
 };
 
-export async function listOutstandingVisitInvoices(): Promise<OutstandingVisitInvoiceRow[]> {
-  const rows = await prisma.invoice.findMany({
-    where: {
-      invoiceTypeLookup: { is: { lookupKey: "VISIT" } },
-      visitInvoice: { isNot: null },
-      balanceDue: { gt: 0 },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
+export async function listOutstandingVisitInvoices(params: {
+  skip: number;
+  take: number;
+}): Promise<{ items: OutstandingVisitInvoiceRow[]; total: number }> {
+  const where = {
+    invoiceTypeLookup: { is: { lookupKey: "VISIT" } },
+    visitInvoice: { isNot: null },
+    balanceDue: { gt: 0 },
+  };
+
+  const [total, rows] = await prisma.$transaction([
+    prisma.invoice.count({ where }),
+    prisma.invoice.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: params.skip,
+      take: params.take,
+      select: {
       id: true,
       createdAt: true,
       balanceDue: true,
@@ -73,9 +81,10 @@ export async function listOutstandingVisitInvoices(): Promise<OutstandingVisitIn
         },
       },
     },
-  });
+  }),
+  ]);
 
-  return rows.map((r) => ({
+  const items = rows.map((r) => ({
     id: r.id,
     createdAt: r.createdAt.toISOString(),
     balanceDue: r.balanceDue.toString(),
@@ -86,6 +95,8 @@ export async function listOutstandingVisitInvoices(): Promise<OutstandingVisitIn
     patientId: r.visitInvoice?.patientId ?? null,
     patientName: r.visitInvoice?.patient?.fullName ?? null,
   }));
+
+  return { items, total };
 }
 
 export async function recordVisitInvoicePayment(params: {

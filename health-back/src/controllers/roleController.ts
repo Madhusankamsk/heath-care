@@ -2,15 +2,17 @@ import { Request, Response } from "express";
 import {
   createRole,
   getRoleById,
-  getRoles,
+  listRoles as fetchRolesPage,
   getRolesWithPermissions,
   deleteRoleIfSafe,
   updateRole,
 } from "../services/roleService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listRoles(_req: Request, res: Response) {
-  const roles = await getRoles();
-  res.json(roles);
+export async function listRoles(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchRolesPage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function listRolesWithPermissions(_req: Request, res: Response) {

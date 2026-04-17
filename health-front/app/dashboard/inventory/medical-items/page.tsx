@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 
 import { InventoryEntityManager, type InventoryEntity } from "@/components/inventory/InventoryEntityManager";
 import { Card } from "@/components/ui/Card";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
 import { getIsAuthenticated } from "@/lib/auth";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 const PERMS = {
@@ -13,14 +14,25 @@ const PERMS = {
   delete: ["inventory:delete"],
 } as const;
 
-export default async function InventoryMedicalItemsPage() {
+export default async function InventoryMedicalItemsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
   const me = await backendJson<BackendMeResponse>("/api/me");
   if (!me) redirect("/dashboard");
 
   if (!hasAnyPermission(me.permissions, [...PERMS.view])) redirect("/dashboard");
-  const rows = (await backendJson<InventoryEntity[]>("/api/inventory/medical-items")) ?? [];
+
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const result = await backendJsonPaginated<InventoryEntity>(
+    `/api/inventory/medical-items?${pageQueryString(pageNum)}`,
+  );
+  const rows = result?.items ?? [];
 
   return (
     <Card>
@@ -28,6 +40,9 @@ export default async function InventoryMedicalItemsPage() {
         title="Medical Items"
         endpoint="/api/inventory/medical-items"
         initialRows={rows}
+        total={result?.total ?? 0}
+        initialPage={result?.page ?? pageNum}
+        pageSize={result?.pageSize ?? DEFAULT_PAGE_SIZE}
         canCreate={hasAnyPermission(me.permissions, [...PERMS.create])}
         canEdit={hasAnyPermission(me.permissions, [...PERMS.edit])}
         canDelete={hasAnyPermission(me.permissions, [...PERMS.delete])}

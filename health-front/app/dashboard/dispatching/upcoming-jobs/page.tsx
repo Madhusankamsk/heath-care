@@ -10,28 +10,17 @@ import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import { Card } from "@/components/ui/Card";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { getIsAuthenticated } from "@/lib/auth";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
+import { DEFAULT_PAGE_SIZE, pageQueryString, withPaginationQuery } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 const VIEW_PERMS = ["dispatch:list", "dispatch:read", "dispatch:update"] as const;
 
-async function getUpcoming() {
-  return backendJson<UpcomingBookingRow[]>("/api/dispatch/upcoming");
-}
-
-async function getTeams() {
-  return backendJson<MedicalTeam[]>("/api/medical-teams");
-}
-
-async function getDispatchMemberCandidates() {
-  return backendJson<DispatchMemberCandidate[]>("/api/dispatch/member-candidates");
-}
-
-async function getVehicles() {
-  return backendJson<DispatchVehicleOption[]>("/api/vehicles");
-}
-
-export default async function UpcomingJobsPage() {
+export default async function UpcomingJobsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -48,11 +37,20 @@ export default async function UpcomingJobsPage() {
   const canListVehicles = hasAnyPermission(me.permissions, ["vehicles:list", "vehicles:read"]);
   const canFullViewBooking = hasAnyPermission(me.permissions, ["patients:read"]);
 
-  const [rows, teams, crewCandidates, vehicles] = await Promise.all([
-    getUpcoming(),
-    canAssignTeam ? getTeams() : Promise.resolve(null),
-    canAssignTeam ? getDispatchMemberCandidates() : Promise.resolve(null),
-    canAssignTeam && canListVehicles ? getVehicles() : Promise.resolve(null),
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const [upcomingResult, teamsResult, crewCandidates, vehiclesResult] = await Promise.all([
+    backendJsonPaginated<UpcomingBookingRow>(`/api/dispatch/upcoming?${pageQueryString(pageNum)}`),
+    canAssignTeam
+      ? backendJsonPaginated<MedicalTeam>(withPaginationQuery("/api/medical-teams", 1, 100))
+      : Promise.resolve(null),
+    canAssignTeam
+      ? backendJson<DispatchMemberCandidate[]>("/api/dispatch/member-candidates")
+      : Promise.resolve(null),
+    canAssignTeam && canListVehicles
+      ? backendJsonPaginated<DispatchVehicleOption>(withPaginationQuery("/api/vehicles", 1, 100))
+      : Promise.resolve(null),
   ]);
 
   return (
@@ -63,15 +61,18 @@ export default async function UpcomingJobsPage() {
           note="Actions are controlled by permissions."
           description="Accepted bookings not yet dispatched. After you dispatch a team, the job moves to Ongoing jobs."
         />
-        {!rows ? (
+        {!upcomingResult ? (
           <div className="rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-4 py-3 text-sm text-[var(--danger)]">
             Failed to load upcoming jobs.
           </div>
         ) : (
           <UpcomingJobsTable
-            initialRows={rows}
-            teams={teams}
-            vehicles={vehicles}
+            initialRows={upcomingResult.items}
+            total={upcomingResult.total}
+            initialPage={upcomingResult.page}
+            pageSize={upcomingResult.pageSize ?? DEFAULT_PAGE_SIZE}
+            teams={teamsResult?.items ?? null}
+            vehicles={vehiclesResult?.items ?? null}
             crewCandidates={crewCandidates}
             canPreview={canPreview}
             canAssignTeam={canAssignTeam}

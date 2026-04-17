@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { pageQueryString } from "@/lib/pagination";
 import { toast } from "@/lib/toast";
 
 export type CollectorDailySummaryRow = {
@@ -21,43 +23,83 @@ export type CollectorDailySummaryRow = {
   settledByName: string | null;
 };
 
+type CollectorDailyPayload = {
+  date: string;
+  items: CollectorDailySummaryRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  grandTotalCollected: number;
+  grandPendingSettlement: number;
+  message?: string;
+};
+
 type Props = {
   initialDate: string;
   initialRows: CollectorDailySummaryRow[];
+  total: number;
+  initialPage: number;
+  pageSize: number;
+  grandTotalCollected: number;
+  grandPendingSettlement: number;
 };
 
-export function CollectorDailySettlementSection({ initialDate, initialRows }: Props) {
+export function CollectorDailySettlementSection({
+  initialDate,
+  initialRows,
+  total: initialTotal,
+  initialPage,
+  pageSize: initialPageSize,
+  grandTotalCollected: initialGrandCollected,
+  grandPendingSettlement: initialGrandPending,
+}: Props) {
   const [date, setDate] = useState(initialDate);
   const [rows, setRows] = useState(initialRows);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
+  const pageSize = initialPageSize;
+  const [grandTotalCollected, setGrandTotalCollected] = useState(initialGrandCollected);
+  const [grandPendingSettlement, setGrandPendingSettlement] = useState(initialGrandPending);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [settleTarget, setSettleTarget] = useState<CollectorDailySummaryRow | null>(null);
 
-  const totals = useMemo(() => {
-    return rows.reduce(
-      (acc, row) => {
-        acc.total += Number(row.totalAmount) || 0;
-        acc.pending += Number(row.pendingAmount) || 0;
-        return acc;
-      },
-      { total: 0, pending: 0 },
-    );
-  }, [rows]);
+  const loadPage = useCallback(
+    async (nextPage: number, forDate?: string) => {
+      const d = forDate ?? date;
+      const res = await fetch(
+        `/api/payments/collectors/daily?date=${encodeURIComponent(d)}&${pageQueryString(nextPage, pageSize)}`,
+        { cache: "no-store" },
+      );
+      const payload = (await res.json().catch(() => ({}))) as CollectorDailyPayload;
+      if (!res.ok) throw new Error(payload.message || "Failed to load collector totals");
+      setRows(payload.items ?? []);
+      setTotal(payload.total ?? 0);
+      setPage(payload.page ?? nextPage);
+      setGrandTotalCollected(payload.grandTotalCollected ?? 0);
+      setGrandPendingSettlement(payload.grandPendingSettlement ?? 0);
+    },
+    [date, pageSize],
+  );
 
   async function refresh() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/payments/collectors/daily?date=${encodeURIComponent(date)}`, {
-        cache: "no-store",
-      });
-      const payload = (await res.json().catch(() => ({}))) as {
-        rows?: CollectorDailySummaryRow[];
-        message?: string;
-      };
-      if (!res.ok) throw new Error(payload.message || "Failed to load collector totals");
-      setRows(payload.rows ?? []);
+      await loadPage(page);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to load collector totals");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function goToPage(nextPage: number) {
+    if (nextPage < 1) return;
+    setLoading(true);
+    try {
+      await loadPage(nextPage);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load page");
     } finally {
       setLoading(false);
     }
@@ -79,7 +121,7 @@ export function CollectorDailySettlementSection({ initialDate, initialRows }: Pr
       const payload = (await res.json().catch(() => ({}))) as { message?: string };
       if (!res.ok) throw new Error(payload.message || "Failed to settle");
       toast.success(`${row.paymentMethodLabel} settled for ${row.collectorName}`);
-      await refresh();
+      await loadPage(page);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to settle");
     } finally {
@@ -120,7 +162,18 @@ export function CollectorDailySettlementSection({ initialDate, initialRows }: Pr
             type="date"
             value={date}
             className="h-9 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-sm text-[var(--text-primary)]"
-            onChange={(e) => setDate(e.target.value)}
+            onChange={async (e) => {
+              const next = e.target.value;
+              setDate(next);
+              setLoading(true);
+              try {
+                await loadPage(1, next);
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Failed to load");
+              } finally {
+                setLoading(false);
+              }
+            }}
           />
         </label>
         <Button type="button" variant="secondary" className="h-9 px-3" onClick={() => void refresh()}>
@@ -131,11 +184,11 @@ export function CollectorDailySettlementSection({ initialDate, initialRows }: Pr
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
           <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Total collected</p>
-          <p className="text-lg font-semibold text-[var(--text-primary)]">{totals.total.toFixed(2)}</p>
+          <p className="text-lg font-semibold text-[var(--text-primary)]">{grandTotalCollected.toFixed(2)}</p>
         </div>
         <div className="rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/10 p-3">
           <p className="text-xs uppercase tracking-wide text-[var(--warning)]">Pending settlement</p>
-          <p className="text-lg font-semibold text-[var(--warning)]">{totals.pending.toFixed(2)}</p>
+          <p className="text-lg font-semibold text-[var(--warning)]">{grandPendingSettlement.toFixed(2)}</p>
         </div>
       </div>
 
@@ -201,6 +254,8 @@ export function CollectorDailySettlementSection({ initialDate, initialRows }: Pr
           </tbody>
         </table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }

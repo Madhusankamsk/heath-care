@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 import { backendFetch } from "@/lib/backend";
 
-export async function GET() {
-  const res = await backendFetch("/api/permissions").catch((error) => {
+export async function GET(request: Request) {
+  const q = new URL(request.url).search;
+  const res = await backendFetch(`/api/permissions${q}`).catch((error) => {
     return new Response(
       JSON.stringify({
         message:

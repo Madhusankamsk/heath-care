@@ -7,11 +7,12 @@ import {
   deleteBooking,
   deleteBookingCascade,
   getBookingById,
-  listBookings,
-  listBookingsForPatient,
+  listBookings as fetchBookingsPage,
+  listBookingsForPatient as fetchBookingsForPatientPage,
   resolveBookingListScope,
   updateBooking,
 } from "../services/bookingService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 import {
   createDiagnosticReportForBooking,
   createLabSampleForBooking,
@@ -27,8 +28,9 @@ async function getScope(req: Request) {
 export async function listBookingsHandler(req: Request, res: Response) {
   const scope = await getScope(req);
   const userId = req.authUser?.sub;
-  const bookings = await listBookings({ userId, scope });
-  return res.json(bookings);
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchBookingsPage({ userId, scope, skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 /** Bookings + dispatch history for a patient (requires patients:read and bookings list/read). */
@@ -54,8 +56,9 @@ export async function listBookingsForPatientHandler(req: Request, res: Response)
 
   const scope = await getScope(req);
   const userId = req.authUser?.sub;
-  const bookings = await listBookingsForPatient(cleaned, { userId, scope });
-  return res.json(bookings);
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchBookingsForPatientPage(cleaned, { userId, scope, skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function getBookingHandler(req: Request, res: Response) {

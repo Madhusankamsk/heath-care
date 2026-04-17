@@ -1,7 +1,13 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { totalPages } from "@/lib/pagination";
+
+const BILL_PAGE_SIZE = 2;
 
 const DUMMY_BILL_LINES: { label: string; amount: number }[] = [
   { label: "Consultation / visit fee", amount: 1200 },
@@ -36,6 +42,13 @@ export function VisitBillModal({
   onComplete,
 }: VisitBillModalProps) {
   const billTotal = DUMMY_BILL_LINES.reduce((sum, row) => sum + row.amount, 0);
+  const [page, setPage] = useState(1);
+  const linePages = totalPages(DUMMY_BILL_LINES.length, BILL_PAGE_SIZE);
+  const lineSlice = useMemo(() => {
+    const safe = Math.min(Math.max(1, page), linePages);
+    const start = (safe - 1) * BILL_PAGE_SIZE;
+    return DUMMY_BILL_LINES.slice(start, start + BILL_PAGE_SIZE);
+  }, [page, linePages]);
 
   return (
     <ModalShell
@@ -62,7 +75,7 @@ export function VisitBillModal({
             </tr>
           </thead>
           <tbody>
-            {DUMMY_BILL_LINES.map((row) => (
+            {lineSlice.map((row) => (
               <tr key={row.label} className="border-b border-[var(--border)]/80">
                 <td className="py-2 pr-2 text-[var(--text-secondary)]">{row.label}</td>
                 <td className="py-2 text-right tabular-nums">{formatInr(row.amount)}</td>
@@ -76,6 +89,14 @@ export function VisitBillModal({
             </tr>
           </tfoot>
         </table>
+        {DUMMY_BILL_LINES.length > BILL_PAGE_SIZE ? (
+          <TablePaginationBar
+            page={page}
+            pageSize={BILL_PAGE_SIZE}
+            total={DUMMY_BILL_LINES.length}
+            onPageChange={setPage}
+          />
+        ) : null}
         <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">
           This is a placeholder bill for workflow preview. Final invoicing may differ.
         </p>

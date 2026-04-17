@@ -5,13 +5,15 @@ import {
   deleteMedicalTeam,
   getMedicalTeamById,
   listMedicalTeamMemberCandidates,
-  listMedicalTeams,
+  listMedicalTeams as fetchMedicalTeamsPage,
   updateMedicalTeam,
 } from "../services/medicalTeamService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listMedicalTeamsHandler(_req: Request, res: Response) {
-  const teams = await listMedicalTeams();
-  return res.json(teams);
+export async function listMedicalTeamsHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchMedicalTeamsPage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function getMedicalTeamHandler(req: Request, res: Response) {

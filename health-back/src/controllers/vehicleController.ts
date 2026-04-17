@@ -4,13 +4,15 @@ import {
   createVehicle,
   deleteVehicle,
   getVehicleById,
-  listVehicles,
+  listVehicles as fetchVehiclesPage,
   updateVehicle,
 } from "../services/vehicleService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listVehiclesHandler(_req: Request, res: Response) {
-  const vehicles = await listVehicles();
-  return res.json(vehicles);
+export async function listVehiclesHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchVehiclesPage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function getVehicleHandler(req: Request, res: Response) {

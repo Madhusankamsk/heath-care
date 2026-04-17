@@ -4,7 +4,8 @@ import { VehicleManager, type Vehicle } from "@/components/admin/VehicleManager"
 import { Card } from "@/components/ui/Card";
 import { getIsAuthenticated } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/adminAccess";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
+import { DEFAULT_PAGE_SIZE, pageQueryString, withPaginationQuery } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 const PERMS = {
@@ -15,16 +16,16 @@ const PERMS = {
   delete: ["vehicles:delete"],
 } as const;
 
-async function getVehicles() {
-  return backendJson<Vehicle[]>("/api/vehicles");
-}
-
 type DriverOption = { id: string; fullName: string; isActive: boolean };
 async function getDrivers() {
-  return backendJson<DriverOption[]>("/api/profiles");
+  return backendJsonPaginated<DriverOption>(withPaginationQuery("/api/profiles", 1, 100));
 }
 
-export default async function AdminVehiclesPage() {
+export default async function AdminVehiclesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -40,19 +41,30 @@ export default async function AdminVehiclesPage() {
   const canEdit = hasAnyPermission(me.permissions, [...PERMS.edit]);
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
 
-  const [vehicles, drivers] = await Promise.all([getVehicles(), getDrivers()]);
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const [vehiclesResult, driversResult] = await Promise.all([
+    backendJsonPaginated<Vehicle>(`/api/vehicles?${pageQueryString(pageNum)}`),
+    getDrivers(),
+  ]);
+
+  const drivers = (driversResult?.items ?? []).filter((d) => d.isActive);
 
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        {!vehicles ? (
+        {!vehiclesResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">
             Failed to load vehicles.
           </div>
         ) : (
           <VehicleManager
-            initialVehicles={vehicles}
-            drivers={(drivers ?? []).filter((d) => d.isActive)}
+            initialVehicles={vehiclesResult.items}
+            total={vehiclesResult.total}
+            initialPage={vehiclesResult.page}
+            pageSize={vehiclesResult.pageSize ?? DEFAULT_PAGE_SIZE}
+            drivers={drivers}
             canPreview={canPreview}
             canCreate={canCreate}
             canEdit={canEdit}
@@ -63,4 +75,3 @@ export default async function AdminVehiclesPage() {
     </div>
   );
 }
-

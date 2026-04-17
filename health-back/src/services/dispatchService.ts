@@ -83,6 +83,27 @@ export async function listUpcomingAcceptedForDispatch(params: {
   });
 }
 
+export async function listUpcomingAcceptedForDispatchPaginated(params: {
+  userId: string | undefined;
+  scope: BookingListScope;
+  skip: number;
+  take: number;
+}) {
+  const base = { userId: params.userId, scope: params.scope };
+  const where = upcomingAcceptedForDispatchWhere(base);
+  const [total, items] = await prisma.$transaction([
+    prisma.booking.count({ where }),
+    prisma.booking.findMany({
+      where,
+      skip: params.skip,
+      take: params.take,
+      orderBy: { scheduledDate: { sort: "asc", nulls: "last" } },
+      include: upcomingInclude,
+    }),
+  ]);
+  return { items, total };
+}
+
 const activeDispatchStatusKeys = ["IN_TRANSIT", "ARRIVED", "DIAGNOSTIC"] as const;
 
 function ongoingForDispatchWhere(params: { userId: string | undefined; scope: BookingListScope }) {
@@ -141,6 +162,27 @@ export async function listOngoingForDispatch(params: {
     include: upcomingInclude,
     ...(params.limit != null ? { take: params.limit } : {}),
   });
+}
+
+export async function listOngoingForDispatchPaginated(params: {
+  userId: string | undefined;
+  scope: BookingListScope;
+  skip: number;
+  take: number;
+}) {
+  const base = { userId: params.userId, scope: params.scope };
+  const where = ongoingForDispatchWhere(base);
+  const [total, items] = await prisma.$transaction([
+    prisma.booking.count({ where }),
+    prisma.booking.findMany({
+      where,
+      skip: params.skip,
+      take: params.take,
+      orderBy: { scheduledDate: { sort: "asc", nulls: "last" } },
+      include: upcomingInclude,
+    }),
+  ]);
+  return { items, total };
 }
 
 function buildAssignmentsWithLead(orderedUserIds: string[], leadUserId: string) {

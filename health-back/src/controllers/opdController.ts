@@ -3,13 +3,15 @@ import type { Request, Response } from "express";
 import {
   createOpdQueueEntry,
   deleteOpdQueueEntry,
-  listTodayOpdQueue,
+  listTodayOpdQueue as fetchTodayOpdQueuePage,
   updateOpdQueueEntryStatus,
 } from "../services/opdService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listOpdQueueHandler(_req: Request, res: Response) {
-  const rows = await listTodayOpdQueue();
-  return res.json(rows);
+export async function listOpdQueueHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchTodayOpdQueuePage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function createOpdQueueHandler(req: Request, res: Response) {

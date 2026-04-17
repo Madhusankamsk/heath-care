@@ -7,7 +7,8 @@ import {
 import { Card } from "@/components/ui/Card";
 import { canAccessAdmin } from "@/lib/adminAccess";
 import { getIsAuthenticated } from "@/lib/auth";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
+import { DEFAULT_PAGE_SIZE, pageQueryString, withPaginationQuery } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 const PERMS = {
@@ -32,19 +33,15 @@ type TeamMemberCandidate = {
   role?: { id: string; roleName: string } | null;
 };
 
-async function getMedicalTeams() {
-  return backendJson<MedicalTeam[]>("/api/medical-teams");
-}
-
-async function getVehicles() {
-  return backendJson<Vehicle[]>("/api/vehicles");
-}
-
 async function getMedicalTeamMemberCandidates() {
   return backendJson<TeamMemberCandidate[]>("/api/medical-team-members");
 }
 
-export default async function AdminMedicalTeamsPage() {
+export default async function AdminMedicalTeamsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -60,35 +57,37 @@ export default async function AdminMedicalTeamsPage() {
   const canEdit = hasAnyPermission(me.permissions, [...PERMS.edit]);
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
 
-  const [teams, vehicles, members] = await Promise.all([
-    getMedicalTeams(),
-    getVehicles(),
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const [teamsResult, vehiclesResult, members] = await Promise.all([
+    backendJsonPaginated<MedicalTeam>(`/api/medical-teams?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<Vehicle>(withPaginationQuery("/api/vehicles", 1, 100)),
     getMedicalTeamMemberCandidates(),
   ]);
 
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        {!teams ? (
+        {!teamsResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">
             Failed to load medical teams.
           </div>
-        ) : !vehicles ? (
+        ) : !vehiclesResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">
-            Failed to load vehicles (required for team assignment).
+            Failed to load vehicles.
           </div>
         ) : !members ? (
           <div className="text-sm text-red-700 dark:text-red-300">
-            Failed to load staff members (required for team assignment).
-          </div>
-        ) : vehicles.length === 0 ? (
-          <div className="text-sm text-zinc-700 dark:text-zinc-300">
-            No vehicles found. Create vehicles first, then create medical teams.
+            Failed to load member candidates.
           </div>
         ) : (
           <MedicalTeamManager
-            initialTeams={teams}
-            vehicles={vehicles}
+            initialTeams={teamsResult.items}
+            total={teamsResult.total}
+            initialPage={teamsResult.page}
+            pageSize={teamsResult.pageSize ?? DEFAULT_PAGE_SIZE}
+            vehicles={vehiclesResult.items}
             members={members}
             canPreview={canPreview}
             canCreate={canCreate}

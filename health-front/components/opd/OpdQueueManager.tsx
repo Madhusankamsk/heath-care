@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
 import { SelectBase } from "@/components/ui/select-base";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { pageQueryString } from "@/lib/pagination";
 import { toast } from "@/lib/toast";
 
 type OpdStatusOption = {
@@ -32,6 +34,9 @@ type OpdQueueRow = {
 
 type OpdQueueManagerProps = {
   rows: OpdQueueRow[];
+  total: number;
+  page: number;
+  pageSize: number;
   patients: PatientOption[];
   statuses: OpdStatusOption[];
   canCreate: boolean;
@@ -47,6 +52,9 @@ function formatWhen(value: string) {
 
 export function OpdQueueManager({
   rows,
+  total,
+  page,
+  pageSize,
   patients,
   statuses,
   canCreate,
@@ -109,6 +117,10 @@ export function OpdQueueManager({
     } finally {
       setUpdatingId(null);
     }
+  }
+
+  function goToPage(nextPage: number) {
+    router.push(`/dashboard/opd?${pageQueryString(nextPage, pageSize)}`);
   }
 
   async function removeFromQueue(id: string) {
@@ -214,6 +226,9 @@ export function OpdQueueManager({
             ))}
           </ul>
         )}
+        <div className="border-t border-[var(--border)] px-4 py-3">
+          <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
+        </div>
       </section>
     </div>
   );

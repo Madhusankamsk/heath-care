@@ -9,6 +9,9 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
+import type { PaginatedResult } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 
 import { DispatchPreviewPanel } from "./DispatchPreviewPanel";
 import { formatScheduled } from "./dispatchDisplay";
@@ -22,6 +25,9 @@ export type { DispatchMemberCandidate, DispatchVehicleOption, UpcomingBookingRow
 
 type UpcomingJobsTableProps = {
   initialRows: UpcomingBookingRow[];
+  total: number;
+  initialPage: number;
+  pageSize?: number;
   teams: MedicalTeam[] | null;
   vehicles: DispatchVehicleOption[] | null;
   /** Active staff for “add to crew” (does not change saved teams). */
@@ -35,6 +41,9 @@ type UpcomingJobsTableProps = {
 
 export function UpcomingJobsTable({
   initialRows,
+  total: initialTotal,
+  initialPage,
+  pageSize = DEFAULT_PAGE_SIZE,
   teams,
   vehicles,
   crewCandidates,
@@ -43,6 +52,8 @@ export function UpcomingJobsTable({
   canFullViewBooking = false,
 }: UpcomingJobsTableProps) {
   const [rows, setRows] = useState<UpcomingBookingRow[]>(initialRows);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
   const [dispatchBookingId, setDispatchBookingId] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<"edit" | "preview" | null>(null);
   const [teamId, setTeamId] = useState("");
@@ -146,11 +157,37 @@ export function UpcomingJobsTable({
     return m;
   }, [crewCandidates, teamsWithMembers, dispatchTarget?.requestedDoctor]);
 
-  async function refresh() {
-    const res = await fetch("/api/dispatch/upcoming", { cache: "no-store" });
+  async function loadPage(nextPage: number) {
+    const res = await fetch(`/api/dispatch/upcoming?page=${nextPage}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh");
-    const next = (await res.json()) as UpcomingBookingRow[];
-    setRows(next);
+    const data = (await res.json()) as PaginatedResult<UpcomingBookingRow>;
+    setRows(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
+
+  async function goToPage(next: number) {
+    try {
+      await loadPage(next);
+    } catch {
+      toast.error("Failed to load page");
+    }
+  }
+
+  async function refresh() {
+    const res = await fetch(`/api/dispatch/upcoming?page=${page}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to refresh");
+    const data = (await res.json()) as PaginatedResult<UpcomingBookingRow>;
+    setRows(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
   }
 
   const isPreview = modalMode === "preview";
@@ -339,6 +376,8 @@ export function UpcomingJobsTable({
           </TableBody>
         </Table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
 
       <ModalShell
         open={modalOpen}

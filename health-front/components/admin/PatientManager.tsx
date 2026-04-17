@@ -16,6 +16,9 @@ import { emailInvoicePdf } from "@/lib/emailInvoicePdf";
 import { openInvoicePdf } from "@/lib/openInvoicePdf";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
+import type { PaginatedResult } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 
 export type Patient = {
   id: string;
@@ -50,6 +53,11 @@ export type Patient = {
 
 type PatientManagerProps = {
   initialPatients: Patient[];
+  /** Total row count from the server (all pages). */
+  total: number;
+  /** Current 1-based page (must match initialPatients fetch). */
+  initialPage: number;
+  pageSize?: number;
   genders: LookupOption[];
   billingRecipients: LookupOption[];
   subscriptionPlans: SubscriptionPlanOption[];
@@ -69,6 +77,9 @@ type ActionConfirm = null | { type: "edit" | "delete"; id: string };
 
 export function PatientManager({
   initialPatients,
+  total: initialTotal,
+  initialPage,
+  pageSize = DEFAULT_PAGE_SIZE,
   genders,
   billingRecipients,
   subscriptionPlans,
@@ -80,6 +91,8 @@ export function PatientManager({
   openCreateOnMount = false,
 }: PatientManagerProps) {
   const [patients, setPatients] = useState<Patient[]>(initialPatients);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
   const [mode, setMode] = useState<Mode>("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -112,11 +125,37 @@ export function PatientManager({
 
   useEscapeKey(() => setInvoiceReadyId(null), Boolean(invoiceReadyId));
 
-  async function refresh() {
-    const res = await fetch("/api/patients", { cache: "no-store" });
+  async function loadPage(nextPage: number) {
+    const res = await fetch(`/api/patients?page=${nextPage}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh patient list");
-    const next = (await res.json()) as Patient[];
-    setPatients(next);
+    const data = (await res.json()) as PaginatedResult<Patient>;
+    setPatients(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
+
+  async function goToPage(next: number) {
+    try {
+      await loadPage(next);
+    } catch {
+      toast.error("Failed to load page");
+    }
+  }
+
+  async function refresh() {
+    const res = await fetch(`/api/patients?page=${page}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to refresh patient list");
+    const data = (await res.json()) as PaginatedResult<Patient>;
+    setPatients(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
   }
 
   async function performDelete(id: string) {
@@ -464,6 +503,8 @@ export function PatientManager({
           </TableBody>
         </Table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }

@@ -4,8 +4,18 @@ export async function createPermission(data: { permissionKey: string }) {
   return prisma.permission.create({ data });
 }
 
-export async function getPermissions() {
-  return prisma.permission.findMany();
+export async function listPermissions(params: { skip: number; take: number }) {
+  const where = {};
+  const [total, items] = await prisma.$transaction([
+    prisma.permission.count({ where }),
+    prisma.permission.findMany({
+      where,
+      orderBy: { permissionKey: "asc" },
+      skip: params.skip,
+      take: params.take,
+    }),
+  ]);
+  return { items, total };
 }
 
 export async function attachPermissionToRole(roleId: string, permissionId: string) {

@@ -114,15 +114,23 @@ const includePayload = {
   },
 } as const;
 
-export async function listSubscriptionAccounts() {
-  const accounts = await prisma.subscriptionAccount.findMany({
-    orderBy: [{ startDate: "desc" }, { accountName: "asc" }],
-    include: includePayload,
-  });
+export async function listSubscriptionAccounts(params: { skip: number; take: number }) {
+  const where = {
+    plan: { maxMembers: { gt: 1 } },
+  };
 
-  // Family/Corporate table should be based on allocated member capacity (plan),
-  // not current assigned member count.
-  return accounts.filter((a) => (a.plan?.maxMembers ?? 0) > 1);
+  const [total, accounts] = await prisma.$transaction([
+    prisma.subscriptionAccount.count({ where }),
+    prisma.subscriptionAccount.findMany({
+      where,
+      skip: params.skip,
+      take: params.take,
+      orderBy: [{ startDate: "desc" }, { accountName: "asc" }],
+      include: includePayload,
+    }),
+  ]);
+
+  return { items: accounts, total };
 }
 
 export async function getSubscriptionAccountById(id: string) {

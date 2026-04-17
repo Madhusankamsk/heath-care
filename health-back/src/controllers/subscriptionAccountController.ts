@@ -8,13 +8,15 @@ import {
   createSubscriptionAccount,
   deleteSubscriptionAccount,
   getSubscriptionAccountById,
-  listSubscriptionAccounts,
+  listSubscriptionAccounts as fetchSubscriptionAccountsPage,
   updateSubscriptionAccount,
 } from "../services/subscriptionAccountService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listSubscriptionAccountsHandler(_req: Request, res: Response) {
-  const rows = await listSubscriptionAccounts();
-  return res.json(rows);
+export async function listSubscriptionAccountsHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchSubscriptionAccountsPage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function getSubscriptionAccountHandler(req: Request, res: Response) {

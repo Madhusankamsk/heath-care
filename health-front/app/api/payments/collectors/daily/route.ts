@@ -3,11 +3,8 @@ import { NextResponse } from "next/server";
 import { backendFetch } from "@/lib/backend";
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const date = url.searchParams.get("date")?.trim() ?? "";
-  const query = date ? `?date=${encodeURIComponent(date)}` : "";
-
-  const res = await backendFetch(`/api/payments/collectors/daily${query}`).catch((error) => {
+  const q = new URL(request.url).search;
+  const res = await backendFetch(`/api/payments/collectors/daily${q}`).catch((error) => {
     return new Response(
       JSON.stringify({
         message: error instanceof Error ? error.message : "Failed to reach backend service",

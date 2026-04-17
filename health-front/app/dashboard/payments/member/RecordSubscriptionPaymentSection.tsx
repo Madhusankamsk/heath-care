@@ -5,6 +5,8 @@ import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { DEFAULT_PAGE_SIZE, pageQueryString, type PaginatedResult } from "@/lib/pagination";
 import { toast } from "@/lib/toast";
 
 import { RecordSubscriptionPaymentModal } from "./RecordSubscriptionPaymentModal";
@@ -28,6 +30,10 @@ type LookupOption = { id: string; lookupKey: string; lookupValue: string };
 
 type Props = {
   initialInvoices: OutstandingSubscriptionInvoiceRow[];
+  /** When omitted, derived from a single-page list (length + page 1). */
+  total?: number;
+  initialPage?: number;
+  pageSize?: number;
   paymentMethods: LookupOption[];
 };
 
@@ -39,26 +45,58 @@ function formatDate(iso: string) {
 
 export function RecordSubscriptionPaymentSection({
   initialInvoices,
+  total: initialTotal,
+  initialPage = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
   paymentMethods,
 }: Props) {
   const router = useRouter();
   const [invoices, setInvoices] = useState(initialInvoices);
+  const [total, setTotal] = useState(initialTotal ?? initialInvoices.length);
+  const [page, setPage] = useState(initialPage);
   const [payInvoiceId, setPayInvoiceId] = useState<string | null>(null);
 
   const payRow = payInvoiceId ? (invoices.find((r) => r.id === payInvoiceId) ?? null) : null;
 
   const refreshInvoices = useCallback(async () => {
-    const res = await fetch("/api/subscription-invoices/outstanding", { cache: "no-store" });
+    const res = await fetch(`/api/subscription-invoices/outstanding?${pageQueryString(page, pageSize)}`, {
+      cache: "no-store",
+    });
     if (!res.ok) {
       toast.error("Could not refresh invoice list");
       return;
     }
-    const next = (await res.json()) as OutstandingSubscriptionInvoiceRow[];
-    setInvoices(next);
-    if (payInvoiceId && !next.some((r) => r.id === payInvoiceId)) {
+    let data = (await res.json()) as PaginatedResult<OutstandingSubscriptionInvoiceRow>;
+    if (data.items.length === 0 && data.page > 1) {
+      const res2 = await fetch(
+        `/api/subscription-invoices/outstanding?${pageQueryString(data.page - 1, pageSize)}`,
+        { cache: "no-store" },
+      );
+      if (res2.ok) {
+        data = (await res2.json()) as PaginatedResult<OutstandingSubscriptionInvoiceRow>;
+      }
+    }
+    setInvoices(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (payInvoiceId && !data.items.some((r) => r.id === payInvoiceId)) {
       setPayInvoiceId(null);
     }
-  }, [payInvoiceId]);
+  }, [payInvoiceId, page, pageSize]);
+
+  async function goToPage(nextPage: number) {
+    const res = await fetch(`/api/subscription-invoices/outstanding?${pageQueryString(nextPage, pageSize)}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      toast.error("Could not load page");
+      return;
+    }
+    const data = (await res.json()) as PaginatedResult<OutstandingSubscriptionInvoiceRow>;
+    setInvoices(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
 
   function openPayModal(row: OutstandingSubscriptionInvoiceRow) {
     setPayInvoiceId(row.id);
@@ -100,6 +138,7 @@ export function RecordSubscriptionPaymentSection({
             </tbody>
           </table>
         </div>
+        <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
       </div>
     );
   }
@@ -159,6 +198,8 @@ export function RecordSubscriptionPaymentSection({
           </tbody>
         </table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
 
       <RecordSubscriptionPaymentModal
         key={payInvoiceId ?? "closed"}

@@ -4,9 +4,10 @@ import { backendFetch } from "@/lib/backend";
 
 type Params = { id: string };
 
-export async function GET(_request: Request, context: { params: Promise<Params> }) {
+export async function GET(request: Request, context: { params: Promise<Params> }) {
   const { id } = await context.params;
-  const res = await backendFetch(`/api/patients/${id}/bookings`).catch((error) => {
+  const q = new URL(request.url).search;
+  const res = await backendFetch(`/api/patients/${id}/bookings${q}`).catch((error) => {
     return new Response(
       JSON.stringify({
         message:

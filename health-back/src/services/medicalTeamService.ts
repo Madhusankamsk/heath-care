@@ -12,27 +12,35 @@ function normalizeMemberIds(memberIds: string[] | undefined) {
   return [...new Set(cleaned)];
 }
 
-export async function listMedicalTeams() {
-  return prisma.medicalTeam.findMany({
-    orderBy: [{ teamName: "asc" }, { id: "asc" }],
-    include: {
-      vehicle: true,
-      members: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-              isActive: true,
-              role: { select: { id: true, roleName: true } },
+export async function listMedicalTeams(params: { skip: number; take: number }) {
+  const where = {};
+  const [total, items] = await prisma.$transaction([
+    prisma.medicalTeam.count({ where }),
+    prisma.medicalTeam.findMany({
+      where,
+      skip: params.skip,
+      take: params.take,
+      orderBy: [{ teamName: "asc" }, { id: "asc" }],
+      include: {
+        vehicle: true,
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                isActive: true,
+                role: { select: { id: true, roleName: true } },
+              },
             },
           },
         },
+        _count: { select: { members: true } },
       },
-      _count: { select: { members: true } },
-    },
-  });
+    }),
+  ]);
+  return { items, total };
 }
 
 export async function getMedicalTeamById(id: string) {

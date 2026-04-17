@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { OpdQueueManager } from "@/components/opd/OpdQueueManager";
 import { Card } from "@/components/ui/Card";
 import { getIsAuthenticated } from "@/lib/auth";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
+import { DEFAULT_PAGE_SIZE, pageQueryString, withPaginationQuery } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 type OpdStatusOption = {
@@ -36,21 +37,17 @@ const OPD_PERMS = {
   delete: ["opd:delete"],
 } as const;
 
-async function getQueue() {
-  return backendJson<OpdQueueRow[]>("/api/opd");
-}
-
-async function getPatients() {
-  return backendJson<PatientOption[]>("/api/patients");
-}
-
 async function getOpdStatuses() {
   return backendJson<OpdStatusOption[]>(
     `/api/lookups?category=${encodeURIComponent("OPD_STATUS")}`,
   );
 }
 
-export default async function OpdPage() {
+export default async function OpdPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -64,18 +61,24 @@ export default async function OpdPage() {
   const canEdit = hasAnyPermission(me.permissions, [...OPD_PERMS.edit]);
   const canDelete = hasAnyPermission(me.permissions, [...OPD_PERMS.delete]);
 
-  const [rows, patients, statuses] = await Promise.all([
-    getQueue(),
-    getPatients(),
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const [queueResult, patientsResult, statuses] = await Promise.all([
+    backendJsonPaginated<OpdQueueRow>(`/api/opd?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<PatientOption>(withPaginationQuery("/api/patients", 1, 100)),
     getOpdStatuses(),
   ]);
+
+  const rows = queueResult?.items ?? [];
+  const patients = patientsResult?.items ?? [];
 
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        {!rows ? (
+        {!queueResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">Failed to load OPD queue.</div>
-        ) : !patients ? (
+        ) : !patientsResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">Failed to load patients.</div>
         ) : !statuses ? (
           <div className="text-sm text-red-700 dark:text-red-300">
@@ -84,6 +87,9 @@ export default async function OpdPage() {
         ) : (
           <OpdQueueManager
             rows={rows}
+            total={queueResult.total}
+            page={queueResult.page}
+            pageSize={queueResult.pageSize ?? DEFAULT_PAGE_SIZE}
             patients={patients}
             statuses={statuses}
             canCreate={canCreate}

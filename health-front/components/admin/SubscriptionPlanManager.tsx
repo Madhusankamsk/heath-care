@@ -12,6 +12,9 @@ import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
+import type { PaginatedResult } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 
 export type SubscriptionPlan = {
   id: string;
@@ -28,6 +31,9 @@ type PlanTypeOption = { id: string; lookupKey: string; lookupValue: string };
 
 type SubscriptionPlanManagerProps = {
   initialPlans: SubscriptionPlan[];
+  total: number;
+  initialPage: number;
+  pageSize?: number;
   planTypes: PlanTypeOption[];
   canCreate: boolean;
   canEdit: boolean;
@@ -40,12 +46,17 @@ type ActionConfirm = null | { type: "edit" | "delete"; id: string };
 
 export function SubscriptionPlanManager({
   initialPlans,
+  total: initialTotal,
+  initialPage,
+  pageSize = DEFAULT_PAGE_SIZE,
   planTypes,
   canCreate,
   canEdit,
   canDelete,
 }: SubscriptionPlanManagerProps) {
   const [plans, setPlans] = useState<SubscriptionPlan[]>(initialPlans);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
   const [mode, setMode] = useState<Mode>("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -65,11 +76,37 @@ export function SubscriptionPlanManager({
     (mode === "create" && canCreate) || (mode === "edit" && canEdit) || mode === "preview",
   );
 
-  async function refresh() {
-    const res = await fetch("/api/subscription-plans", { cache: "no-store" });
+  async function loadPage(nextPage: number) {
+    const res = await fetch(`/api/subscription-plans?page=${nextPage}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh subscription plans");
-    const next = (await res.json()) as SubscriptionPlan[];
-    setPlans(next);
+    const data = (await res.json()) as PaginatedResult<SubscriptionPlan>;
+    setPlans(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
+
+  async function goToPage(next: number) {
+    try {
+      await loadPage(next);
+    } catch {
+      toast.error("Failed to load page");
+    }
+  }
+
+  async function refresh() {
+    const res = await fetch(`/api/subscription-plans?page=${page}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to refresh subscription plans");
+    const data = (await res.json()) as PaginatedResult<SubscriptionPlan>;
+    setPlans(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
   }
 
   async function performDelete(id: string) {
@@ -380,6 +417,8 @@ export function SubscriptionPlanManager({
           </TableBody>
         </Table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }

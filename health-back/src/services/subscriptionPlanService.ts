@@ -1,12 +1,20 @@
 import prisma from "../prisma/client";
 
-export async function listSubscriptionPlans() {
-  return prisma.subscriptionPlan.findMany({
-    orderBy: { planName: "asc" },
-    include: {
-      planTypeLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
-    },
-  });
+export async function listSubscriptionPlans(params: { skip: number; take: number }) {
+  const where = {};
+  const [total, items] = await prisma.$transaction([
+    prisma.subscriptionPlan.count({ where }),
+    prisma.subscriptionPlan.findMany({
+      where,
+      skip: params.skip,
+      take: params.take,
+      orderBy: { planName: "asc" },
+      include: {
+        planTypeLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
+      },
+    }),
+  ]);
+  return { items, total };
 }
 
 export async function getSubscriptionPlanById(id: string) {

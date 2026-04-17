@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/Input";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { pageQueryString, type PaginatedResult } from "@/lib/pagination";
 import { toast } from "@/lib/toast";
 
 type MedicineOption = { id: string; name: string };
@@ -25,20 +27,58 @@ type Batch = {
 
 export function InventoryBatchManager({
   initialRows,
+  total: initialTotal,
+  initialPage,
+  pageSize: initialPageSize,
   medicines,
 }: {
   initialRows: Batch[];
+  total: number;
+  initialPage: number;
+  pageSize: number;
   medicines: MedicineOption[];
 }) {
   const [rows, setRows] = useState(initialRows);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
+  const pageSize = initialPageSize;
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editing = useMemo(() => rows.find((r) => r.id === editingId) ?? null, [rows, editingId]);
 
+  const loadPage = useCallback(
+    async (nextPage: number) => {
+      const res = await fetch(`/api/inventory/batches?${pageQueryString(nextPage, pageSize)}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to load");
+      const data = (await res.json()) as PaginatedResult<Batch>;
+      setRows(data.items);
+      setTotal(data.total);
+      setPage(data.page);
+    },
+    [pageSize],
+  );
+
   async function refresh() {
-    const res = await fetch("/api/inventory/batches", { cache: "no-store" });
+    const res = await fetch(`/api/inventory/batches?${pageQueryString(page, pageSize)}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh");
-    setRows((await res.json()) as Batch[]);
+    const data = (await res.json()) as PaginatedResult<Batch>;
+    setRows(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
+  }
+
+  async function goToPage(nextPage: number) {
+    if (nextPage < 1) return;
+    const maxPage = Math.max(1, Math.ceil(total / pageSize) || 1);
+    const clamped = Math.min(nextPage, maxPage);
+    await loadPage(clamped);
   }
 
   return (
@@ -124,6 +164,7 @@ export function InventoryBatchManager({
           </TableBody>
         </Table>
       </div>
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }

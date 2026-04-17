@@ -52,17 +52,24 @@ const opdQueueInclude = {
   },
 } as const;
 
-export async function listTodayOpdQueue() {
-  return prisma.opdQueue.findMany({
-    where: {
-      visitDate: {
-        gte: startOfToday(),
-        lt: startOfTomorrow(),
-      },
+export async function listTodayOpdQueue(params: { skip: number; take: number }) {
+  const where = {
+    visitDate: {
+      gte: startOfToday(),
+      lt: startOfTomorrow(),
     },
-    orderBy: [{ tokenNo: "asc" }, { visitDate: "asc" }],
-    include: opdQueueInclude,
-  });
+  };
+  const [total, items] = await prisma.$transaction([
+    prisma.opdQueue.count({ where }),
+    prisma.opdQueue.findMany({
+      where,
+      orderBy: [{ tokenNo: "asc" }, { visitDate: "asc" }],
+      skip: params.skip,
+      take: params.take,
+      include: opdQueueInclude,
+    }),
+  ]);
+  return { items, total };
 }
 
 export async function createOpdQueueEntry(payload: {

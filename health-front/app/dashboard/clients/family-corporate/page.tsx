@@ -6,8 +6,9 @@ import {
 } from "@/components/admin/SubscriptionAccountManager";
 import { type Patient } from "@/components/admin/PatientManager";
 import { Card } from "@/components/ui/Card";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
 import { getIsAuthenticated } from "@/lib/auth";
+import { DEFAULT_PAGE_SIZE, pageQueryString, withPaginationQuery } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 const PERMS = {
@@ -21,23 +22,15 @@ type LookupOption = { id: string; lookupKey: string; lookupValue: string };
 type SubscriptionPlanOption = { id: string; planName: string; isActive: boolean };
 type PatientOption = Patient;
 
-async function getSubscriptionAccounts() {
-  return backendJson<SubscriptionAccount[]>("/api/subscription-accounts");
-}
-
-async function getSubscriptionPlans() {
-  return backendJson<SubscriptionPlanOption[]>("/api/subscription-plans");
-}
-
-async function getPatients() {
-  return backendJson<PatientOption[]>("/api/patients");
-}
-
 async function getLookups(category: string) {
   return backendJson<LookupOption[]>(`/api/lookups?category=${encodeURIComponent(category)}`);
 }
 
-export default async function FamilyCorporatePage() {
+export default async function FamilyCorporatePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -51,10 +44,13 @@ export default async function FamilyCorporatePage() {
   const canEdit = hasAnyPermission(me.permissions, [...PERMS.edit]);
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
 
-  const [accounts, plans, patients, statuses] = await Promise.all([
-    getSubscriptionAccounts(),
-    getSubscriptionPlans(),
-    getPatients(),
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const [accountsResult, plansResult, patientsResult, statuses] = await Promise.all([
+    backendJsonPaginated<SubscriptionAccount>(`/api/subscription-accounts?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<SubscriptionPlanOption>(withPaginationQuery("/api/subscription-plans", 1, 100)),
+    backendJsonPaginated<PatientOption>(withPaginationQuery("/api/patients", 1, 100)),
     getLookups("SUBSCRIPTION_ACCOUNT_STATUS"),
   ]);
 
@@ -63,18 +59,24 @@ export default async function FamilyCorporatePage() {
     getLookups("BILLING_RECIPIENT"),
   ]);
 
+  const plans = (plansResult?.items ?? []).filter((p) => p.isActive);
+  const patients = patientsResult?.items ?? [];
+
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        {!accounts ? (
+        {!accountsResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">
             Failed to load subscription accounts.
           </div>
         ) : (
           <SubscriptionAccountManager
-            initialAccounts={accounts}
-            plans={(plans ?? []).filter((p) => p.isActive)}
-            patients={patients ?? []}
+            initialAccounts={accountsResult.items}
+            total={accountsResult.total}
+            initialPage={accountsResult.page}
+            pageSize={accountsResult.pageSize ?? DEFAULT_PAGE_SIZE}
+            plans={plans}
+            patients={patients}
             genders={genders ?? []}
             billingRecipients={billingRecipients ?? []}
             statuses={statuses ?? []}
@@ -87,4 +89,3 @@ export default async function FamilyCorporatePage() {
     </div>
   );
 }
-

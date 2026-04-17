@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import type { SubscriptionAccount } from "@/components/admin/SubscriptionAccountManager";
-import { MemberDetachButton } from "@/components/admin/MemberDetachButton";
+import { FamilyCorporateMembersTable } from "@/components/clients/FamilyCorporateMembersTable";
 import { Card } from "@/components/ui/Card";
 import { backendJson, type BackendMeResponse } from "@/lib/backend";
 import { getIsAuthenticated } from "@/lib/auth";
@@ -113,66 +113,11 @@ export default async function FamilyCorporateFullPreviewPage({
       </Card>
 
       <Card title="Members" description="Assigned members for this account.">
-        <div className="tbl-shell overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">NIC/Passport</th>
-                <th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3">Joined At</th>
-                <th className="px-4 py-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(account.members ?? []).length === 0 ? (
-                <tr className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-4 text-[var(--text-secondary)]" colSpan={5}>
-                    No members assigned yet.
-                  </td>
-                </tr>
-              ) : (
-                (account.members ?? []).map((m) => (
-                  <tr key={m.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                    <td className="px-4 py-3 font-medium">{m.patient?.fullName ?? "—"}</td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {m.patient?.nicOrPassport ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {m.patient?.contactNo ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                      {m.joinedAt ? new Date(m.joinedAt).toISOString().slice(0, 10) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {m.patient?.id ? (
-                          <>
-                            <Link
-                              href={`/dashboard/clients/patient/${m.patient.id}`}
-                              className="inline-flex h-8 items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-2)]"
-                            >
-                              Full View
-                            </Link>
-                            {canDetach ? (
-                              <MemberDetachButton
-                                subscriptionAccountId={account.id}
-                                patientId={m.patient.id}
-                                patientName={m.patient.fullName}
-                              />
-                            ) : null}
-                          </>
-                        ) : (
-                          <span className="text-xs text-[var(--text-secondary)]">—</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <FamilyCorporateMembersTable
+          subscriptionAccountId={account.id}
+          members={account.members ?? []}
+          canDetach={canDetach}
+        />
       </Card>
     </div>
   );

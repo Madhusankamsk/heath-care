@@ -1,13 +1,21 @@
 import prisma from "../prisma/client";
 
-export async function listVehicles() {
-  return prisma.vehicle.findMany({
-    orderBy: { vehicleNo: "asc" },
-    include: {
-      currentDriver: { select: { id: true, fullName: true, email: true } },
-      statusLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
-    },
-  });
+export async function listVehicles(params: { skip: number; take: number }) {
+  const where = {};
+  const [total, items] = await prisma.$transaction([
+    prisma.vehicle.count({ where }),
+    prisma.vehicle.findMany({
+      where,
+      skip: params.skip,
+      take: params.take,
+      orderBy: { vehicleNo: "asc" },
+      include: {
+        currentDriver: { select: { id: true, fullName: true, email: true } },
+        statusLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
+      },
+    }),
+  ]);
+  return { items, total };
 }
 
 export async function getVehicleById(id: string) {

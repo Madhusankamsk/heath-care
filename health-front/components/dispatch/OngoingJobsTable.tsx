@@ -7,6 +7,10 @@ import type { MedicalTeam } from "@/components/admin/MedicalTeamManager";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { PaginatedResult } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { toast } from "@/lib/toast";
 
 import { DispatchPreviewPanel } from "./DispatchPreviewPanel";
 import {
@@ -20,6 +24,9 @@ export type { UpcomingBookingRow };
 
 type OngoingJobsTableProps = {
   initialRows: UpcomingBookingRow[];
+  total: number;
+  initialPage: number;
+  pageSize?: number;
   teams: MedicalTeam[] | null;
   canPreview: boolean;
   canFullView: boolean;
@@ -27,16 +34,41 @@ type OngoingJobsTableProps = {
 
 export function OngoingJobsTable({
   initialRows,
+  total: initialTotal,
+  initialPage,
+  pageSize = DEFAULT_PAGE_SIZE,
   teams,
   canPreview,
   canFullView,
 }: OngoingJobsTableProps) {
+  const [rows, setRows] = useState<UpcomingBookingRow[]>(initialRows);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
   const [previewBookingId, setPreviewBookingId] = useState<string | null>(null);
+
+  async function loadPage(nextPage: number) {
+    const res = await fetch(`/api/dispatch/ongoing?page=${nextPage}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to load");
+    const data = (await res.json()) as PaginatedResult<UpcomingBookingRow>;
+    setRows(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
+
+  async function goToPage(next: number) {
+    try {
+      await loadPage(next);
+    } catch {
+      toast.error("Failed to load page");
+    }
+  }
 
   const previewTarget = useMemo(() => {
     if (!previewBookingId) return null;
-    return initialRows.find((r) => r.id === previewBookingId) ?? null;
-  }, [previewBookingId, initialRows]);
+    return rows.find((r) => r.id === previewBookingId) ?? null;
+  }, [previewBookingId, rows]);
 
   const previewFullViewHref =
     previewTarget?.patient?.id != null
@@ -62,7 +94,7 @@ export function OngoingJobsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {initialRows.length === 0 ? (
+            {rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-8 text-center text-[var(--text-muted)]">
                   No ongoing jobs. Dispatched bookings appear here while in transit or arrived on site
@@ -70,7 +102,7 @@ export function OngoingJobsTable({
                 </TableCell>
               </TableRow>
             ) : (
-              initialRows.map((row) => {
+              rows.map((row) => {
                 const latest = row.dispatchRecords[0];
                 const statusKey = latest?.statusLookup?.lookupKey;
                 const assignedTeamName =
@@ -132,6 +164,8 @@ export function OngoingJobsTable({
           </TableBody>
         </Table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
 
       <ModalShell
         open={previewBookingId !== null}

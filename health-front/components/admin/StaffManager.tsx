@@ -12,6 +12,9 @@ import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
+import type { PaginatedResult } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 
 type Role = { id: string; roleName: string; description?: string | null };
 
@@ -28,6 +31,9 @@ export type StaffProfile = {
 
 type StaffManagerProps = {
   initialProfiles: StaffProfile[];
+  total: number;
+  initialPage: number;
+  pageSize?: number;
   roles: Role[];
   canPreview: boolean;
   canCreate: boolean;
@@ -42,6 +48,9 @@ type ActionConfirm = null | { type: "edit" | "delete"; id: string };
 
 export function StaffManager({
   initialProfiles,
+  total: initialTotal,
+  initialPage,
+  pageSize = DEFAULT_PAGE_SIZE,
   roles,
   canPreview,
   canCreate,
@@ -50,6 +59,8 @@ export function StaffManager({
   canDelete,
 }: StaffManagerProps) {
   const [profiles, setProfiles] = useState<StaffProfile[]>(initialProfiles);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
   const [mode, setMode] = useState<Mode>("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -71,11 +82,37 @@ export function StaffManager({
       (mode === "preview" && canPreview),
   );
 
-  async function refresh() {
-    const res = await fetch("/api/profiles", { cache: "no-store" });
+  async function loadPage(nextPage: number) {
+    const res = await fetch(`/api/profiles?page=${nextPage}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh staff list");
-    const next = (await res.json()) as StaffProfile[];
-    setProfiles(next);
+    const data = (await res.json()) as PaginatedResult<StaffProfile>;
+    setProfiles(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
+
+  async function goToPage(next: number) {
+    try {
+      await loadPage(next);
+    } catch {
+      toast.error("Failed to load page");
+    }
+  }
+
+  async function refresh() {
+    const res = await fetch(`/api/profiles?page=${page}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to refresh staff list");
+    const data = (await res.json()) as PaginatedResult<StaffProfile>;
+    setProfiles(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
   }
 
   async function handleDeactivate(id: string) {
@@ -428,6 +465,8 @@ export function StaffManager({
           </TableBody>
         </Table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }

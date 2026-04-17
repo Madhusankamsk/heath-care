@@ -3,10 +3,11 @@ import {
   createSubscriptionPlan,
   deleteSubscriptionPlan,
   getSubscriptionPlanById,
-  listSubscriptionPlans,
+  listSubscriptionPlans as fetchSubscriptionPlansPage,
   listSubscriptionPlanTypes,
   updateSubscriptionPlan,
 } from "../services/subscriptionPlanService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
 function parseNumber(value: unknown): number | undefined {
   if (value === undefined || value === null || value === "") return undefined;
@@ -15,9 +16,10 @@ function parseNumber(value: unknown): number | undefined {
   return n;
 }
 
-export async function listSubscriptionPlansHandler(_req: Request, res: Response) {
-  const plans = await listSubscriptionPlans();
-  return res.json(plans);
+export async function listSubscriptionPlansHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchSubscriptionPlansPage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function getSubscriptionPlanHandler(req: Request, res: Response) {

@@ -2,12 +2,14 @@ import type { Request, Response } from "express";
 
 import prisma from "../prisma/client";
 import { sendEmail } from "../services/email/sendEmail";
-import { listOutstandingInvoices } from "../services/invoiceService";
+import { listOutstandingInvoices as fetchOutstandingInvoicesPage } from "../services/invoiceService";
 import { buildSubscriptionInvoicePdfBuffer, buildVisitInvoicePdfBuffer } from "../services/invoicePdfService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listOutstandingInvoicesHandler(_req: Request, res: Response) {
-  const rows = await listOutstandingInvoices();
-  return res.json(rows);
+export async function listOutstandingInvoicesHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchOutstandingInvoicesPage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function getInvoicePdfHandler(req: Request, res: Response) {

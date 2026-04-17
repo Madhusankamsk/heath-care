@@ -15,6 +15,9 @@ import { emailInvoicePdf } from "@/lib/emailInvoicePdf";
 import { openInvoicePdf } from "@/lib/openInvoicePdf";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
+import type { PaginatedResult } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 
 import type { Patient } from "@/components/admin/PatientManager";
 
@@ -49,6 +52,9 @@ export type SubscriptionAccount = {
 
 type SubscriptionAccountManagerProps = {
   initialAccounts: SubscriptionAccount[];
+  total: number;
+  initialPage: number;
+  pageSize?: number;
   plans: PlanOption[];
   patients: Patient[];
   genders: LookupOption[];
@@ -89,6 +95,9 @@ function toDateInputValue(value?: string | Date | null) {
 
 export function SubscriptionAccountManager({
   initialAccounts,
+  total: initialTotal,
+  initialPage,
+  pageSize = DEFAULT_PAGE_SIZE,
   plans,
   patients,
   genders,
@@ -99,6 +108,8 @@ export function SubscriptionAccountManager({
   canDelete,
 }: SubscriptionAccountManagerProps) {
   const [accounts, setAccounts] = useState<SubscriptionAccount[]>(initialAccounts);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
   const [mode, setMode] = useState<Mode>("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -156,11 +167,37 @@ export function SubscriptionAccountManager({
 
   useEscapeKey(() => setInvoiceReadyId(null), Boolean(invoiceReadyId));
 
-  async function refresh() {
-    const res = await fetch("/api/subscription-accounts", { cache: "no-store" });
+  async function loadPage(nextPage: number) {
+    const res = await fetch(`/api/subscription-accounts?page=${nextPage}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh subscription accounts");
-    const next = (await res.json()) as SubscriptionAccount[];
-    setAccounts(next);
+    const data = (await res.json()) as PaginatedResult<SubscriptionAccount>;
+    setAccounts(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
+
+  async function goToPage(next: number) {
+    try {
+      await loadPage(next);
+    } catch {
+      toast.error("Failed to load page");
+    }
+  }
+
+  async function refresh() {
+    const res = await fetch(`/api/subscription-accounts?page=${page}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to refresh subscription accounts");
+    const data = (await res.json()) as PaginatedResult<SubscriptionAccount>;
+    setAccounts(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
   }
 
   async function performDelete(id: string) {
@@ -1015,6 +1052,8 @@ export function SubscriptionAccountManager({
           </TableBody>
         </Table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }

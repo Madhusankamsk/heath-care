@@ -29,17 +29,27 @@ async function getLookupId(categoryName: string, lookupKey: string) {
   return row?.id ?? null;
 }
 
-export async function listMedicines(kind: "medicine" | "item") {
-  const rows = await prisma.medicine.findMany({
-    where: medicineKindWhere(kind),
-    include: { uomLookup: true, inventoryBatches: true },
-    orderBy: { name: "asc" },
-  });
-  return rows.map((row) => ({
+export async function listMedicines(
+  kind: "medicine" | "item",
+  params: { skip: number; take: number },
+) {
+  const where = medicineKindWhere(kind);
+  const [total, rows] = await prisma.$transaction([
+    prisma.medicine.count({ where }),
+    prisma.medicine.findMany({
+      where,
+      include: { uomLookup: true, inventoryBatches: true },
+      orderBy: { name: "asc" },
+      skip: params.skip,
+      take: params.take,
+    }),
+  ]);
+  const items = rows.map((row) => ({
     ...row,
     genericName: decodeGenericName(row.genericName),
     totalQuantity: row.inventoryBatches.reduce((sum, b) => sum + b.quantity, 0),
   }));
+  return { items, total };
 }
 
 export async function createMedicine(
@@ -112,18 +122,26 @@ export async function deleteMedicine(kind: "medicine" | "item", id: string) {
   return true;
 }
 
-export async function listBatches() {
-  const rows = await prisma.inventoryBatch.findMany({
-    include: {
-      medicine: true,
-      locationTypeLookup: true,
-    },
-    orderBy: [{ expiryDate: "asc" }, { batchNo: "asc" }],
-  });
-  return rows.map((row) => ({
+export async function listBatches(params: { skip: number; take: number }) {
+  const where = {};
+  const [total, rows] = await prisma.$transaction([
+    prisma.inventoryBatch.count({ where }),
+    prisma.inventoryBatch.findMany({
+      where,
+      include: {
+        medicine: true,
+        locationTypeLookup: true,
+      },
+      orderBy: [{ expiryDate: "asc" }, { batchNo: "asc" }],
+      skip: params.skip,
+      take: params.take,
+    }),
+  ]);
+  const items = rows.map((row) => ({
     ...row,
     medicine: { ...row.medicine, genericName: decodeGenericName(row.medicine.genericName) },
   }));
+  return { items, total };
 }
 
 export async function createBatch(input: {
@@ -212,6 +230,13 @@ export async function listMobileSubstores() {
   return grouped.filter((g) => g.totalQuantity > 0 || g.batches.length > 0);
 }
 
+export async function listMobileSubstoresPaginated(params: { skip: number; take: number }) {
+  const full = await listMobileSubstores();
+  const total = full.length;
+  const items = full.slice(params.skip, params.skip + params.take);
+  return { items, total };
+}
+
 async function moveBatchQuantity(
   tx: Prisma.TransactionClient,
   fromBatchId: string,
@@ -291,20 +316,28 @@ export async function assignBatchToUserSubstore(input: {
   });
 }
 
-export async function listStockMovements() {
-  const rows = await prisma.stockTransfer.findMany({
-    include: {
-      medicine: true,
-      batch: true,
-      transferredBy: { select: { id: true, fullName: true, email: true } },
-      statusLookup: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  return rows.map((row) => ({
+export async function listStockMovements(params: { skip: number; take: number }) {
+  const where = {};
+  const [total, rows] = await prisma.$transaction([
+    prisma.stockTransfer.count({ where }),
+    prisma.stockTransfer.findMany({
+      where,
+      include: {
+        medicine: true,
+        batch: true,
+        transferredBy: { select: { id: true, fullName: true, email: true } },
+        statusLookup: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip: params.skip,
+      take: params.take,
+    }),
+  ]);
+  const items = rows.map((row) => ({
     ...row,
     medicine: { ...row.medicine, genericName: decodeGenericName(row.medicine.genericName) },
   }));
+  return { items, total };
 }
 
 export async function createStockMovement(input: {

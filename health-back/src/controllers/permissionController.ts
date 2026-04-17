@@ -4,12 +4,14 @@ import {
   createPermission,
   deletePermission,
   detachPermissionFromRole,
-  getPermissions,
+  listPermissions as fetchPermissionsPage,
 } from "../services/permissionService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listPermissions(_req: Request, res: Response) {
-  const permissions = await getPermissions();
-  res.json(permissions);
+export async function listPermissions(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchPermissionsPage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function createPermissionHandler(req: Request, res: Response) {

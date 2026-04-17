@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { Input } from "@/components/ui/Input";
 import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { pageQueryString, type PaginatedResult } from "@/lib/pagination";
 import { toast } from "@/lib/toast";
 
 type SubstoreRow = {
@@ -20,24 +22,66 @@ type UserOption = { id: string; fullName: string };
 
 export function MobileSubstoreManager({
   initialRows,
+  total: initialTotal,
+  initialPage,
+  pageSize: initialPageSize,
   users,
   batches,
 }: {
   initialRows: SubstoreRow[];
+  total: number;
+  initialPage: number;
+  pageSize: number;
   users: UserOption[];
   batches: BatchOption[];
 }) {
   const [rows, setRows] = useState(initialRows);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
+  const pageSize = initialPageSize;
   const [values, setValues] = useState({
     userId: users[0]?.id ?? "",
     batchId: batches[0]?.id ?? "",
     quantity: "1",
   });
 
+  const loadPage = useCallback(
+    async (nextPage: number) => {
+      const res = await fetch(`/api/inventory/mobile-substores?${pageQueryString(nextPage, pageSize)}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to load");
+      const data = (await res.json()) as PaginatedResult<SubstoreRow>;
+      setRows(data.items);
+      setTotal(data.total);
+      setPage(data.page);
+    },
+    [pageSize],
+  );
+
   async function refresh() {
-    const res = await fetch("/api/inventory/mobile-substores", { cache: "no-store" });
+    const res = await fetch(`/api/inventory/mobile-substores?${pageQueryString(page, pageSize)}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh");
-    setRows((await res.json()) as SubstoreRow[]);
+    const data = (await res.json()) as PaginatedResult<SubstoreRow>;
+    setRows(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
+  }
+
+  async function goToPage(nextPage: number) {
+    if (nextPage < 1) return;
+    const maxPage = Math.max(1, Math.ceil(total / pageSize) || 1);
+    const clamped = Math.min(nextPage, maxPage);
+    try {
+      await loadPage(clamped);
+    } catch {
+      toast.error("Failed to load page");
+    }
   }
 
   return (
@@ -103,6 +147,7 @@ export function MobileSubstoreManager({
           </TableBody>
         </Table>
       </div>
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }

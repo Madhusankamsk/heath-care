@@ -1,5 +1,7 @@
 import { getAuthToken } from "@/lib/auth";
 
+import type { PaginatedResult } from "@/lib/pagination";
+
 export type BackendMeResponse = {
   user: {
     id: string;
@@ -35,5 +37,19 @@ export async function backendJson<T>(path: string, init?: RequestInit): Promise<
   const res = await backendFetch(path, init).catch(() => null);
   if (!res?.ok) return null;
   return (await res.json().catch(() => null)) as T | null;
+}
+
+/** For list endpoints that return `{ items, total, page, pageSize }`. */
+export async function backendJsonPaginated<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<PaginatedResult<T> | null> {
+  const res = await backendFetch(path, init).catch(() => null);
+  if (!res?.ok) return null;
+  const raw = (await res.json().catch(() => null)) as unknown;
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  if (!Array.isArray(o.items)) return null;
+  return raw as PaginatedResult<T>;
 }
 

@@ -1,13 +1,15 @@
 import type { Request, Response } from "express";
 
 import {
-  listOutstandingVisitInvoices,
+  listOutstandingVisitInvoices as fetchOutstandingVisitInvoicesPage,
   recordVisitInvoicePayment,
 } from "../services/visitInvoicePaymentService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listOutstandingVisitInvoicesHandler(_req: Request, res: Response) {
-  const rows = await listOutstandingVisitInvoices();
-  return res.json(rows);
+export async function listOutstandingVisitInvoicesHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchOutstandingVisitInvoicesPage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function recordVisitInvoicePaymentHandler(req: Request, res: Response) {

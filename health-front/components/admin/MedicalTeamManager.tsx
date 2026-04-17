@@ -12,6 +12,9 @@ import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
+import type { PaginatedResult } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 
 export type MedicalTeam = {
   id: string;
@@ -55,6 +58,9 @@ type MemberOption = {
 
 type MedicalTeamManagerProps = {
   initialTeams: MedicalTeam[];
+  total: number;
+  initialPage: number;
+  pageSize?: number;
   vehicles: VehicleOption[];
   members: MemberOption[];
   canPreview: boolean;
@@ -69,6 +75,9 @@ type ActionConfirm = null | { type: "edit" | "delete"; id: string };
 
 export function MedicalTeamManager({
   initialTeams,
+  total: initialTotal,
+  initialPage,
+  pageSize = DEFAULT_PAGE_SIZE,
   vehicles,
   members,
   canPreview,
@@ -77,6 +86,8 @@ export function MedicalTeamManager({
   canDelete,
 }: MedicalTeamManagerProps) {
   const [teams, setTeams] = useState<MedicalTeam[]>(initialTeams);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
   const [mode, setMode] = useState<Mode>("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -98,11 +109,37 @@ export function MedicalTeamManager({
       (mode === "preview" && canPreview),
   );
 
-  async function refresh() {
-    const res = await fetch("/api/medical-teams", { cache: "no-store" });
+  async function loadPage(nextPage: number) {
+    const res = await fetch(`/api/medical-teams?page=${nextPage}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh medical teams");
-    const next = (await res.json()) as MedicalTeam[];
-    setTeams(next);
+    const data = (await res.json()) as PaginatedResult<MedicalTeam>;
+    setTeams(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
+
+  async function goToPage(next: number) {
+    try {
+      await loadPage(next);
+    } catch {
+      toast.error("Failed to load page");
+    }
+  }
+
+  async function refresh() {
+    const res = await fetch(`/api/medical-teams?page=${page}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to refresh medical teams");
+    const data = (await res.json()) as PaginatedResult<MedicalTeam>;
+    setTeams(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
   }
 
   async function performDelete(id: string) {
@@ -417,6 +454,8 @@ export function MedicalTeamManager({
           </TableBody>
         </Table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }

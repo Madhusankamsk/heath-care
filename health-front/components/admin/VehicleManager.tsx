@@ -11,6 +11,9 @@ import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
+import type { PaginatedResult } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 
 export type Vehicle = {
   id: string;
@@ -26,6 +29,9 @@ type DriverOption = { id: string; fullName: string };
 
 type VehicleManagerProps = {
   initialVehicles: Vehicle[];
+  total: number;
+  initialPage: number;
+  pageSize?: number;
   drivers: DriverOption[];
   canPreview: boolean;
   canCreate: boolean;
@@ -39,6 +45,9 @@ type ActionConfirm = null | { type: "edit" | "delete"; id: string };
 
 export function VehicleManager({
   initialVehicles,
+  total: initialTotal,
+  initialPage,
+  pageSize = DEFAULT_PAGE_SIZE,
   drivers,
   canPreview,
   canCreate,
@@ -46,6 +55,8 @@ export function VehicleManager({
   canDelete,
 }: VehicleManagerProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
   const [mode, setMode] = useState<Mode>("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -67,11 +78,37 @@ export function VehicleManager({
       (mode === "preview" && canPreview),
   );
 
-  async function refresh() {
-    const res = await fetch("/api/vehicles", { cache: "no-store" });
+  async function loadPage(nextPage: number) {
+    const res = await fetch(`/api/vehicles?page=${nextPage}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh vehicles list");
-    const next = (await res.json()) as Vehicle[];
-    setVehicles(next);
+    const data = (await res.json()) as PaginatedResult<Vehicle>;
+    setVehicles(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
+
+  async function goToPage(next: number) {
+    try {
+      await loadPage(next);
+    } catch {
+      toast.error("Failed to load page");
+    }
+  }
+
+  async function refresh() {
+    const res = await fetch(`/api/vehicles?page=${page}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to refresh vehicles list");
+    const data = (await res.json()) as PaginatedResult<Vehicle>;
+    setVehicles(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
   }
 
   async function performDelete(id: string) {
@@ -364,6 +401,8 @@ export function VehicleManager({
           </TableBody>
         </Table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }

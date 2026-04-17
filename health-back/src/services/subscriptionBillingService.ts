@@ -226,18 +226,27 @@ export type OutstandingSubscriptionInvoiceRow = {
   suggestedPaymentPurposeLabel: string;
 };
 
-export async function listOutstandingSubscriptionInvoices(): Promise<
-  OutstandingSubscriptionInvoiceRow[]
-> {
-  const rows = await prisma.invoice.findMany({
-    where: {
-      invoiceTypeLookup: { is: { lookupKey: "MEMBERSHIP" } },
-      membershipInvoice: { isNot: null },
-      balanceDue: { gt: 0 },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
+export async function listOutstandingSubscriptionInvoices(params: {
+  skip: number;
+  take: number;
+}): Promise<{
+  items: OutstandingSubscriptionInvoiceRow[];
+  total: number;
+}> {
+  const where = {
+    invoiceTypeLookup: { is: { lookupKey: "MEMBERSHIP" } },
+    membershipInvoice: { isNot: null },
+    balanceDue: { gt: 0 },
+  };
+
+  const [total, rows] = await prisma.$transaction([
+    prisma.invoice.count({ where }),
+    prisma.invoice.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: params.skip,
+      take: params.take,
+      select: {
       id: true,
       createdAt: true,
       balanceDue: true,
@@ -261,7 +270,8 @@ export async function listOutstandingSubscriptionInvoices(): Promise<
         },
       },
     },
-  });
+  }),
+  ]);
 
   const out: OutstandingSubscriptionInvoiceRow[] = [];
   for (const r of rows) {
@@ -287,7 +297,7 @@ export async function listOutstandingSubscriptionInvoices(): Promise<
       suggestedPaymentPurposeLabel: purposeRow?.lookupValue ?? "—",
     });
   }
-  return out;
+  return { items: out, total };
 }
 
 export async function recordSubscriptionInvoicePayment(params: {

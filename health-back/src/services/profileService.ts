@@ -24,10 +24,19 @@ export async function createProfile(data: {
   });
 }
 
-export async function getProfiles() {
-  return prisma.user.findMany({
-    include: { role: true },
-  });
+export async function listProfiles(params: { skip: number; take: number }) {
+  const where = {};
+  const [total, items] = await prisma.$transaction([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      skip: params.skip,
+      take: params.take,
+      orderBy: { fullName: "asc" },
+      include: { role: true },
+    }),
+  ]);
+  return { items, total };
 }
 
 export async function getProfileById(id: string) {

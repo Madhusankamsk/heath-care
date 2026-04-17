@@ -44,12 +44,19 @@ async function resolveSubscriptionStatusId(
   return status.id;
 }
 
-export async function listPatients() {
+export async function listPatients(params: { skip: number; take: number }) {
   const now = new Date();
 
-  const patients = await prisma.patient.findMany({
-    orderBy: { fullName: "asc" },
-    include: {
+  const where = {};
+
+  const [total, patients] = await prisma.$transaction([
+    prisma.patient.count({ where }),
+    prisma.patient.findMany({
+      where,
+      skip: params.skip,
+      take: params.take,
+      orderBy: { fullName: "asc" },
+      include: {
       genderLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
       billingRecipientLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
       subscriptionMemberships: {
@@ -64,9 +71,10 @@ export async function listPatients() {
         },
       },
     },
-  });
+  }),
+  ]);
 
-  return patients.map((p) => {
+  const items = patients.map((p) => {
     const activeMembership = p.subscriptionMemberships.find((sm) => {
       const acc = sm.subscriptionAccount;
       if (!acc) return false;
@@ -97,6 +105,8 @@ export async function listPatients() {
       isSubscriptionAccountShared: subscriptionAccountMembersCount > 1,
     };
   });
+
+  return { items, total };
 }
 
 export async function getPatientById(id: string) {

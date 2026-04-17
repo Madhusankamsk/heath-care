@@ -1,13 +1,15 @@
 import type { Request, Response } from "express";
 
 import {
-  listOutstandingSubscriptionInvoices,
+  listOutstandingSubscriptionInvoices as fetchOutstandingSubscriptionInvoicesPage,
   recordSubscriptionInvoicePayment,
 } from "../services/subscriptionBillingService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listOutstandingSubscriptionInvoicesHandler(_req: Request, res: Response) {
-  const rows = await listOutstandingSubscriptionInvoices();
-  return res.json(rows);
+export async function listOutstandingSubscriptionInvoicesHandler(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchOutstandingSubscriptionInvoicesPage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function recordSubscriptionInvoicePaymentHandler(req: Request, res: Response) {

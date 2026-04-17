@@ -5,11 +5,16 @@ import { type StaffProfile } from "@/components/admin/StaffManager";
 import { Card } from "@/components/ui/Card";
 import { getIsAuthenticated } from "@/lib/auth";
 import { canAccessAdmin } from "@/lib/adminAccess";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
+import { DEFAULT_PAGE_SIZE, pageQueryString, withPaginationQuery } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
-export default function AdminStaffPage() {
-  return <AdminStaffPageServer />;
+export default function AdminStaffPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
+  return <AdminStaffPageServer searchParams={searchParams} />;
 }
 
 type Role = { id: string; roleName: string; description?: string | null };
@@ -23,15 +28,15 @@ const PERMS = {
   delete: ["profiles:delete"],
 } as const;
 
-async function getProfiles() {
-  return backendJson<StaffProfile[]>("/api/profiles");
+async function getRolesForPicker() {
+  return backendJsonPaginated<Role>(withPaginationQuery("/api/roles", 1, 100));
 }
 
-async function getRoles() {
-  return backendJson<Role[]>("/api/roles");
-}
-
-async function AdminStaffPageServer() {
+async function AdminStaffPageServer({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -48,22 +53,32 @@ async function AdminStaffPageServer() {
   const canDeactivate = hasAnyPermission(me.permissions, [...PERMS.deactivate]);
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
 
-  const [profiles, roles] = await Promise.all([getProfiles(), getRoles()]);
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const [profilesResult, rolesResult] = await Promise.all([
+    backendJsonPaginated<StaffProfile>(`/api/profiles?${pageQueryString(pageNum)}`),
+    getRolesForPicker(),
+  ]);
+  const roles = rolesResult?.items ?? [];
 
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        {!profiles ? (
+        {!profilesResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">
             Failed to load staff list.
           </div>
-        ) : !roles ? (
+        ) : !rolesResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">
             Failed to load roles.
           </div>
         ) : (
           <StaffSectionTabs
-            profiles={profiles}
+            profiles={profilesResult.items}
+            total={profilesResult.total}
+            initialPage={profilesResult.page}
+            pageSize={profilesResult.pageSize ?? DEFAULT_PAGE_SIZE}
             roles={roles}
             canPreview={canPreview}
             canCreate={canCreate}

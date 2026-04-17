@@ -4,13 +4,15 @@ import {
   deleteProfile,
   deactivateProfile,
   getProfileById,
-  getProfiles,
+  listProfiles as fetchProfilesPage,
   updateProfile,
 } from "../services/profileService";
+import { okPaginated, parsePaginationQuery } from "../lib/pagination";
 
-export async function listProfiles(_req: Request, res: Response) {
-  const profiles = await getProfiles();
-  res.json(profiles);
+export async function listProfiles(req: Request, res: Response) {
+  const { page, pageSize, skip, take } = parsePaginationQuery(req);
+  const { items, total } = await fetchProfilesPage({ skip, take });
+  return okPaginated(res, { items, total, page, pageSize });
 }
 
 export async function createProfileHandler(req: Request, res: Response) {

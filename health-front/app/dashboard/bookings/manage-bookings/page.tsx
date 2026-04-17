@@ -8,7 +8,8 @@ import {
 } from "@/components/admin/BookingManager";
 import { Card } from "@/components/ui/Card";
 import { getIsAuthenticated } from "@/lib/auth";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
+import { DEFAULT_PAGE_SIZE, pageQueryString, withPaginationQuery } from "@/lib/pagination";
 import { hasAnyPermission, hasBookingScopeAll } from "@/lib/rbac";
 
 const PERMS = {
@@ -28,25 +29,11 @@ type Patient = {
   whatsappNo?: string | null;
 };
 
-async function getBookings() {
-  return backendJson<Booking[]>("/api/bookings");
-}
-
-async function getPatients() {
-  return backendJson<Patient[]>("/api/patients");
-}
-
-async function getProfiles() {
-  return backendJson<DoctorProfileOption[]>("/api/profiles");
-}
-
-async function getDoctorStatuses() {
-  return backendJson<DoctorStatusOption[]>(
-    `/api/lookups?category=${encodeURIComponent("DOCTOR_BOOKING_STATUS")}`,
-  );
-}
-
-export default async function ManageBookingsPage() {
+export default async function ManageBookingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
 
@@ -62,21 +49,28 @@ export default async function ManageBookingsPage() {
   const canDelete = hasAnyPermission(me.permissions, [...PERMS.delete]);
   const scopeAll = hasBookingScopeAll(me.permissions);
 
-  const [bookings, patients, doctors, doctorStatuses] = await Promise.all([
-    getBookings(),
-    getPatients(),
-    getProfiles(),
-    getDoctorStatuses(),
+  const params = (await searchParams) ?? {};
+  const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+
+  const [bookingsResult, patientsResult, doctorsResult, doctorStatuses] = await Promise.all([
+    backendJsonPaginated<Booking>(`/api/bookings?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<Patient>(withPaginationQuery("/api/patients", 1, 100)),
+    backendJsonPaginated<DoctorProfileOption>(withPaginationQuery("/api/profiles", 1, 100)),
+    backendJson<DoctorStatusOption[]>(
+      `/api/lookups?category=${encodeURIComponent("DOCTOR_BOOKING_STATUS")}`,
+    ),
   ]);
+
+  const patients = patientsResult?.items ?? [];
 
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        {!bookings ? (
+        {!bookingsResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">
             Failed to load bookings.
           </div>
-        ) : !patients ? (
+        ) : !patientsResult ? (
           <div className="text-sm text-red-700 dark:text-red-300">
             Failed to load patients (required for booking assignment).
           </div>
@@ -86,9 +80,12 @@ export default async function ManageBookingsPage() {
           </div>
         ) : (
           <BookingManager
-            initialBookings={bookings}
+            initialBookings={bookingsResult.items}
+            total={bookingsResult.total}
+            initialPage={bookingsResult.page}
+            pageSize={bookingsResult.pageSize ?? DEFAULT_PAGE_SIZE}
             patients={patients}
-            doctors={doctors ?? []}
+            doctors={doctorsResult?.items ?? []}
             doctorStatuses={doctorStatuses ?? []}
             currentUserId={me.user.id}
             scopeAll={scopeAll}

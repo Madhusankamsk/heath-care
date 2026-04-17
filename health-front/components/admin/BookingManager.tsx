@@ -12,6 +12,9 @@ import { TextareaBase } from "@/components/ui/textarea-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
+import type { PaginatedResult } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 
 export type Booking = {
   id: string;
@@ -38,6 +41,9 @@ export type DoctorStatusOption = { id: string; lookupKey: string; lookupValue: s
 
 type BookingManagerProps = {
   initialBookings: Booking[];
+  total: number;
+  initialPage: number;
+  pageSize?: number;
   patients: PatientOption[];
   doctors: DoctorProfileOption[];
   doctorStatuses: DoctorStatusOption[];
@@ -55,6 +61,9 @@ type ActionConfirm = null | { type: "edit" | "delete"; id: string };
 
 export function BookingManager({
   initialBookings,
+  total: initialTotal,
+  initialPage,
+  pageSize = DEFAULT_PAGE_SIZE,
   patients,
   doctors,
   doctorStatuses,
@@ -66,6 +75,8 @@ export function BookingManager({
   canDelete,
 }: BookingManagerProps) {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
+  const [total, setTotal] = useState(initialTotal);
+  const [page, setPage] = useState(initialPage);
   const [mode, setMode] = useState<Mode>("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -89,11 +100,37 @@ export function BookingManager({
       (mode === "preview" && canPreview),
   );
 
-  async function refresh() {
-    const res = await fetch("/api/bookings", { cache: "no-store" });
+  async function loadPage(nextPage: number) {
+    const res = await fetch(`/api/bookings?page=${nextPage}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh bookings");
-    const next = (await res.json()) as Booking[];
-    setBookings(next);
+    const data = (await res.json()) as PaginatedResult<Booking>;
+    setBookings(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+  }
+
+  async function goToPage(next: number) {
+    try {
+      await loadPage(next);
+    } catch {
+      toast.error("Failed to load page");
+    }
+  }
+
+  async function refresh() {
+    const res = await fetch(`/api/bookings?page=${page}&pageSize=${pageSize}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error("Failed to refresh bookings");
+    const data = (await res.json()) as PaginatedResult<Booking>;
+    setBookings(data.items);
+    setTotal(data.total);
+    setPage(data.page);
+    if (data.items.length === 0 && data.page > 1) {
+      await loadPage(data.page - 1);
+    }
   }
 
   async function performDelete(id: string) {
@@ -493,6 +530,8 @@ export function BookingManager({
           </TableBody>
         </Table>
       </div>
+
+      <TablePaginationBar page={page} pageSize={pageSize} total={total} onPageChange={goToPage} />
     </div>
   );
 }
