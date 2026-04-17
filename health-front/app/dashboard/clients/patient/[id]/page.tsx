@@ -8,7 +8,8 @@ import {
 } from "@/components/clients/PatientBookingsHistory";
 import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import { Card } from "@/components/ui/Card";
-import { backendJson, type BackendMeResponse } from "@/lib/backend";
+import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
+import { withPaginationQuery } from "@/lib/pagination";
 import { getIsAuthenticated } from "@/lib/auth";
 import { hasAnyPermission } from "@/lib/rbac";
 
@@ -42,9 +43,13 @@ export default async function PatientFullPreviewPage({
   const canSeeBookings = hasAnyPermission(me.permissions, [...PERMS.bookingsHistory]);
   const canUpdateDispatch = hasAnyPermission(me.permissions, ["dispatch:update"]);
   const canSaveVisitDraft = hasAnyPermission(me.permissions, ["bookings:update"]);
-  const patientBookings = canSeeBookings
-    ? await backendJson<UpcomingBookingRow[]>(`/api/patients/${id}/bookings`)
+  /** List endpoint returns `{ items, total, page, pageSize }`; request a large first page for preview. */
+  const patientBookingsResult = canSeeBookings
+    ? await backendJsonPaginated<UpcomingBookingRow>(
+        withPaginationQuery(`/api/patients/${id}/bookings`, 1, 100),
+      )
     : null;
+  const patientBookings = patientBookingsResult?.items ?? null;
   const labSampleTypeLookups =
     canSaveVisitDraft && canSeeBookings
       ? (await backendJson<LabSampleTypeLookup[]>(

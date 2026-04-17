@@ -31,6 +31,7 @@ export function PatientBookingsHistory({
   canSaveVisitDraft = false,
   labSampleTypeLookups = [],
 }: PatientBookingsHistoryProps) {
+  const list = Array.isArray(bookings) ? bookings : [];
   const router = useRouter();
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
   const [detailBookingId, setDetailBookingId] = useState<string | null>(null);
@@ -46,10 +47,10 @@ export function PatientBookingsHistory({
   const inventory = useInventoryIssue();
 
   const detailBooking = detailBookingId
-    ? bookings.find((x) => x.id === detailBookingId)
+    ? list.find((x) => x.id === detailBookingId)
     : null;
 
-  if (bookings.length === 0) {
+  if (list.length === 0) {
     return (
       <p className="text-sm text-[var(--text-secondary)]">
         No bookings recorded for this patient yet.
@@ -59,7 +60,7 @@ export function PatientBookingsHistory({
 
   return (
     <div className="space-y-6">
-      {bookings.map((b) => {
+      {list.map((b) => {
         const activeDiagnosticTab = diagnosticTabByBookingId[b.id] ?? "remark";
         const sampleForm = bookingActions.sampleFormForBooking(b);
         const issuedMedicineSamples = issuedMedicineRowsFromVisit(b);
@@ -156,7 +157,7 @@ export function PatientBookingsHistory({
         onCancel={() => setPendingConfirm(null)}
         onConfirm={() => {
           if (pendingConfirm?.type === "complete") {
-            const activeBooking = bookings.find((row) =>
+            const activeBooking = list.find((row) =>
               row.dispatchRecords.some((dr) => dr.id === pendingConfirm.dispatchId),
             );
             const remarkText = activeBooking
