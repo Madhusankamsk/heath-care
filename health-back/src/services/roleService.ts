@@ -1,11 +1,13 @@
 import prisma from "../prisma/client";
 
+import { roleTextSearchWhere } from "../lib/searchWhere";
+
 export async function createRole(data: { roleName: string; description?: string }) {
   return prisma.role.create({ data });
 }
 
-export async function listRoles(params: { skip: number; take: number }) {
-  const where = {};
+export async function listRoles(params: { skip: number; take: number; q?: string }) {
+  const where = params.q?.trim() ? roleTextSearchWhere(params.q) : {};
   const [total, items] = await prisma.$transaction([
     prisma.role.count({ where }),
     prisma.role.findMany({

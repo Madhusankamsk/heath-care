@@ -1,5 +1,12 @@
 import type { Request, Response } from "express";
 
+/** Trimmed non-empty search string from `req.query[name]` (default `q`), or undefined. */
+export function parseOptionalQueryString(req: Request, name = "q"): string | undefined {
+  const raw = req.query[name];
+  const s = typeof raw === "string" ? raw.trim() : "";
+  return s.length > 0 ? s : undefined;
+}
+
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 10;
 export const MAX_PAGE_SIZE = 100;

@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBarUrlSync } from "@/components/ui/TableSearchBarUrlSync";
 import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
 import { getIsAuthenticated } from "@/lib/auth";
-import { pageQueryString } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 const VIEW_PERMS = ["invoices:read", "patients:read", "profiles:read"] as const;
@@ -40,7 +41,7 @@ function formatPaidAt(iso: string) {
 export default async function PaymentsAccountsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -53,9 +54,10 @@ export default async function PaymentsAccountsPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const q = typeof params.q === "string" ? params.q : "";
 
   const result = await backendJsonPaginated<PaymentListRow>(
-    `/api/payments?${pageQueryString(pageNum)}`,
+    `/api/payments?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, q)}`,
   );
   const payments = result?.items ?? [];
 
@@ -65,6 +67,11 @@ export default async function PaymentsAccountsPage({
         <CrudToolbar
           title="Accounts"
           description="Recorded invoice payments (including subscription billing)."
+        />
+        <TableSearchBarUrlSync
+          initialQuery={q}
+          id="payments-accounts-search"
+          placeholder="Patient, account, reference…"
         />
         {!result ? (
           <div className="rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-4 py-3 text-sm text-[var(--danger)]">
@@ -148,7 +155,7 @@ export default async function PaymentsAccountsPage({
               pageSize={result.pageSize}
               total={result.total}
               hrefForPage={(p) =>
-                `/dashboard/payments/accounts?${pageQueryString(p, result.pageSize)}`
+                `/dashboard/payments/accounts?${pageQueryString(p, result.pageSize, q)}`
               }
             />
           </>

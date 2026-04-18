@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import prisma from "../prisma/client";
 
+import { subscriptionOutstandingInvoiceTextSearchWhere } from "../lib/searchWhere";
 import { notifySubscriptionPaymentRecorded } from "./email/notifications";
 
 export type SubscriptionPaymentInput = {
@@ -229,15 +230,19 @@ export type OutstandingSubscriptionInvoiceRow = {
 export async function listOutstandingSubscriptionInvoices(params: {
   skip: number;
   take: number;
+  q?: string;
 }): Promise<{
   items: OutstandingSubscriptionInvoiceRow[];
   total: number;
 }> {
-  const where = {
+  const base = {
     invoiceTypeLookup: { is: { lookupKey: "MEMBERSHIP" } },
     membershipInvoice: { isNot: null },
     balanceDue: { gt: 0 },
   };
+  const where = params.q?.trim()
+    ? { AND: [base, subscriptionOutstandingInvoiceTextSearchWhere(params.q)] }
+    : base;
 
   const [total, rows] = await prisma.$transaction([
     prisma.invoice.count({ where }),

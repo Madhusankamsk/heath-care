@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBarUrlSync } from "@/components/ui/TableSearchBarUrlSync";
 import { RolePermissionMatrix } from "@/components/admin/RolePermissionMatrix";
 import { CreatePermissionModal } from "@/components/forms/CreatePermissionModal";
 import { getIsAuthenticated } from "@/lib/auth";
@@ -35,7 +36,7 @@ const PERMS = {
 export default async function SuperAdminPermissionsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -50,9 +51,10 @@ export default async function SuperAdminPermissionsPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const q = typeof params.q === "string" ? params.q : "";
 
   const [permResult, roles] = await Promise.all([
-    backendJsonPaginated<Permission>(`/api/permissions?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<Permission>(`/api/permissions?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, q)}`),
     backendJson<Role[]>("/api/roles-with-permissions"),
   ]);
 
@@ -90,13 +92,18 @@ export default async function SuperAdminPermissionsPage({
           >
             {canCreatePermissions ? <CreatePermissionModal /> : null}
           </CrudToolbar>
+          <TableSearchBarUrlSync
+            initialQuery={q}
+            id="permissions-search"
+            placeholder="Permission key…"
+          />
           <RolePermissionMatrix roles={matrixRoles} permissions={permResult.items} />
           <TablePaginationBar
             page={permResult.page}
             pageSize={permResult.pageSize ?? DEFAULT_PAGE_SIZE}
             total={permResult.total}
             hrefForPage={(p) =>
-              `/dashboard/super-admin/permissions?${pageQueryString(p, permResult.pageSize ?? DEFAULT_PAGE_SIZE)}`
+              `/dashboard/super-admin/permissions?${pageQueryString(p, permResult.pageSize ?? DEFAULT_PAGE_SIZE, q)}`
             }
           />
         </Card>

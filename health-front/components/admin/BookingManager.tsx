@@ -13,8 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import type { PaginatedResult } from "@/lib/pagination";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 
 export type Booking = {
   id: string;
@@ -53,6 +55,7 @@ type BookingManagerProps = {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  initialQuery?: string;
 };
 
 type Mode = "none" | "create" | "edit" | "preview";
@@ -73,10 +76,12 @@ export function BookingManager({
   canCreate,
   canEdit,
   canDelete,
+  initialQuery = "",
 }: BookingManagerProps) {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [mode, setMode] = useState<Mode>("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -100,8 +105,14 @@ export function BookingManager({
       (mode === "preview" && canPreview),
   );
 
+  useEffect(() => {
+    setBookings(initialBookings);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialBookings, initialTotal, initialPage]);
+
   async function loadPage(nextPage: number) {
-    const res = await fetch(`/api/bookings?page=${nextPage}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/bookings?${pageQueryString(nextPage, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh bookings");
@@ -120,7 +131,7 @@ export function BookingManager({
   }
 
   async function refresh() {
-    const res = await fetch(`/api/bookings?page=${page}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/bookings?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh bookings");
@@ -255,6 +266,13 @@ export function BookingManager({
             Refresh
           </Button>
       </CrudToolbar>
+
+      <TableSearchBar
+        id="bookings-table-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Patient, remark, booking id…"
+      />
 
       {mode === "create" && canCreate ? (
         <ModalShell

@@ -15,8 +15,8 @@ const PERMS = {
   delete: ["patients:delete"],
 } as const;
 
-async function getPatientsPage(pageNum: number) {
-  return backendJsonPaginated<Patient>(`/api/patients?${pageQueryString(pageNum)}`);
+async function getPatientsPage(pageNum: number, q?: string) {
+  return backendJsonPaginated<Patient>(`/api/patients?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, q)}`);
 }
 
 type LookupOption = { id: string; lookupKey: string; lookupValue: string };
@@ -33,7 +33,7 @@ async function getSubscriptionPlans() {
 export default async function PatientPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ open?: string; page?: string }>;
+  searchParams?: Promise<{ open?: string; page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -51,9 +51,10 @@ export default async function PatientPage({
   const params = (await searchParams) ?? {};
   const openCreateOnMount = params.open === "create";
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [patientsResult, genders, billingRecipients, subscriptionPlansResult] = await Promise.all([
-    getPatientsPage(pageNum),
+    getPatientsPage(pageNum, listQuery),
     getLookups("GENDER"),
     getLookups("BILLING_RECIPIENT"),
     getSubscriptionPlans(),
@@ -83,6 +84,7 @@ export default async function PatientPage({
             canEdit={canEdit}
             canDelete={canDelete}
             openCreateOnMount={openCreateOnMount}
+            initialQuery={listQuery ?? ""}
           />
         )}
       </Card>

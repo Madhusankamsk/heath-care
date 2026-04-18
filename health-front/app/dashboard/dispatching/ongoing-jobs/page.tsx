@@ -15,7 +15,7 @@ const VIEW_PERMS = ["dispatch:list", "dispatch:read", "dispatch:update"] as cons
 export default async function OngoingJobsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -32,9 +32,12 @@ export default async function OngoingJobsPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [ongoingResult, teamsResult] = await Promise.all([
-    backendJsonPaginated<UpcomingBookingRow>(`/api/dispatch/ongoing?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<UpcomingBookingRow>(
+      `/api/dispatch/ongoing?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`,
+    ),
     canListTeams
       ? backendJsonPaginated<MedicalTeam>(withPaginationQuery("/api/medical-teams", 1, 100))
       : Promise.resolve(null),
@@ -61,6 +64,7 @@ export default async function OngoingJobsPage({
             teams={teamsResult?.items ?? null}
             canPreview={canPreview}
             canFullView={canFullView}
+            initialQuery={listQuery ?? ""}
           />
         )}
       </Card>

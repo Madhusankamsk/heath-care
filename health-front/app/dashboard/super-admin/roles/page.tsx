@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBarUrlSync } from "@/components/ui/TableSearchBarUrlSync";
 import { CreateRoleModal } from "@/components/forms/CreateRoleModal";
 import { RolesTable } from "@/components/admin/RolesTable";
 import { getIsAuthenticated } from "@/lib/auth";
@@ -27,7 +28,7 @@ const PERMS = {
 export default async function SuperAdminRolesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -44,8 +45,11 @@ export default async function SuperAdminRolesPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const q = typeof params.q === "string" ? params.q : "";
 
-  const result = await backendJsonPaginated<Role>(`/api/roles?${pageQueryString(pageNum)}`);
+  const result = await backendJsonPaginated<Role>(
+    `/api/roles?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, q)}`,
+  );
   const roles = result?.items ?? [];
 
   return (
@@ -58,6 +62,7 @@ export default async function SuperAdminRolesPage({
         >
           {canCreateRoles ? <CreateRoleModal /> : null}
         </CrudToolbar>
+        <TableSearchBarUrlSync initialQuery={q} id="roles-search" placeholder="Role name…" />
         {!result ? (
           <div className="text-sm text-[var(--danger)]">Failed to load roles.</div>
         ) : roles.length === 0 ? (
@@ -72,7 +77,7 @@ export default async function SuperAdminRolesPage({
               pageSize={result.pageSize ?? DEFAULT_PAGE_SIZE}
               total={result.total}
               hrefForPage={(p) =>
-                `/dashboard/super-admin/roles?${pageQueryString(p, result.pageSize ?? DEFAULT_PAGE_SIZE)}`
+                `/dashboard/super-admin/roles?${pageQueryString(p, result.pageSize ?? DEFAULT_PAGE_SIZE, q)}`
               }
             />
           </>

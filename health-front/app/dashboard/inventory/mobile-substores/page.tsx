@@ -26,7 +26,7 @@ const VIEW_PERMS = ["inventory:list", "inventory:substores:manage"] as const;
 export default async function InventoryMobileSubstoresPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -36,9 +36,12 @@ export default async function InventoryMobileSubstoresPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [substoreResult, usersResult, batchesResult] = await Promise.all([
-    backendJsonPaginated<SubstoreRow>(`/api/inventory/mobile-substores?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<SubstoreRow>(
+      `/api/inventory/mobile-substores?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`,
+    ),
     backendJsonPaginated<UserOption>(withPaginationQuery("/api/profiles", 1, 100)),
     backendJsonPaginated<BatchOption>(withPaginationQuery("/api/inventory/batches", 1, 100)),
   ]);
@@ -52,6 +55,7 @@ export default async function InventoryMobileSubstoresPage({
         pageSize={substoreResult?.pageSize ?? DEFAULT_PAGE_SIZE}
         users={(usersResult?.items ?? []).filter((u) => u.isActive).map((u) => ({ id: u.id, fullName: u.fullName }))}
         batches={batchesResult?.items ?? []}
+        initialQuery={listQuery ?? ""}
       />
     </Card>
   );

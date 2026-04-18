@@ -30,7 +30,7 @@ function todayIsoDate() {
 export default async function PaymentsCollectorPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; date?: string }>;
+  searchParams?: Promise<{ page?: string; date?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -43,13 +43,14 @@ export default async function PaymentsCollectorPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const q = typeof params.q === "string" ? params.q : "";
   const selectedDate =
     typeof params.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(params.date)
       ? params.date
       : todayIsoDate();
 
   const summary = await backendJson<CollectorDailyResponse>(
-    `/api/payments/collectors/daily?date=${encodeURIComponent(selectedDate)}&${pageQueryString(pageNum)}`,
+    `/api/payments/collectors/daily?date=${encodeURIComponent(selectedDate)}&${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, q)}`,
   );
 
   return (
@@ -68,6 +69,7 @@ export default async function PaymentsCollectorPage({
             pageSize={summary.pageSize ?? DEFAULT_PAGE_SIZE}
             grandTotalCollected={summary.grandTotalCollected ?? 0}
             grandPendingSettlement={summary.grandPendingSettlement ?? 0}
+            initialQuery={q}
           />
         )}
       </Card>

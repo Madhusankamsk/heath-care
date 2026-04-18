@@ -33,7 +33,7 @@ const VIEW_PERMS = ["inventory:list", "inventory:movements:manage"] as const;
 export default async function InventoryStockMovementsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -43,9 +43,12 @@ export default async function InventoryStockMovementsPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [movementsResult, batchesResult] = await Promise.all([
-    backendJsonPaginated<Movement>(`/api/inventory/stock-movements?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<Movement>(
+      `/api/inventory/stock-movements?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`,
+    ),
     backendJsonPaginated<BatchWithLocation>(withPaginationQuery("/api/inventory/batches", 1, 100)),
   ]);
 
@@ -57,6 +60,7 @@ export default async function InventoryStockMovementsPage({
         initialPage={movementsResult?.page ?? pageNum}
         pageSize={movementsResult?.pageSize ?? DEFAULT_PAGE_SIZE}
         batches={batchesResult?.items ?? []}
+        initialQuery={listQuery ?? ""}
       />
     </Card>
   );

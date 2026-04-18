@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/Input";
 import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 import { cn } from "@/lib/utils";
 import { pageQueryString, type PaginatedResult } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { toast } from "@/lib/toast";
 
 type SubstoreBatchLine = {
@@ -58,6 +60,7 @@ export function MobileSubstoreManager({
   pageSize: initialPageSize,
   users,
   batches,
+  initialQuery = "",
 }: {
   initialRows: SubstoreRow[];
   total: number;
@@ -65,7 +68,9 @@ export function MobileSubstoreManager({
   pageSize: number;
   users: UserOption[];
   batches: BatchOption[];
+  initialQuery?: string;
 }) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [rows, setRows] = useState(initialRows);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
@@ -76,6 +81,12 @@ export function MobileSubstoreManager({
     quantity: "1",
   });
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setRows(initialRows);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialRows, initialTotal, initialPage]);
 
   const toggleExpand = useCallback((userId: string) => {
     setExpanded((prev) => {
@@ -88,22 +99,28 @@ export function MobileSubstoreManager({
 
   const loadPage = useCallback(
     async (nextPage: number) => {
-      const res = await fetch(`/api/inventory/mobile-substores?${pageQueryString(nextPage, pageSize)}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(
+        `/api/inventory/mobile-substores?${pageQueryString(nextPage, pageSize, searchInput)}`,
+        {
+          cache: "no-store",
+        },
+      );
       if (!res.ok) throw new Error("Failed to load");
       const data = (await res.json()) as PaginatedResult<SubstoreRow>;
       setRows(data.items);
       setTotal(data.total);
       setPage(data.page);
     },
-    [pageSize],
+    [pageSize, searchInput],
   );
 
   async function refresh() {
-    const res = await fetch(`/api/inventory/mobile-substores?${pageQueryString(page, pageSize)}`, {
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `/api/inventory/mobile-substores?${pageQueryString(page, pageSize, searchInput)}`,
+      {
+        cache: "no-store",
+      },
+    );
     if (!res.ok) throw new Error("Failed to refresh");
     const data = (await res.json()) as PaginatedResult<SubstoreRow>;
     setRows(data.items);
@@ -130,6 +147,12 @@ export function MobileSubstoreManager({
       <CrudToolbar
         title="Mobile Substores"
         description="Assign stock to mobile users. Expand a row to see items, quantities, and value at cost."
+      />
+      <TableSearchBar
+        id="mobile-substores-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Staff name or email…"
       />
       <form
         className="grid gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4 sm:grid-cols-4"

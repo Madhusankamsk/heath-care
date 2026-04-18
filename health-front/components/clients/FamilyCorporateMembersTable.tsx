@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { MemberDetachButton } from "@/components/admin/MemberDetachButton";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 import { DEFAULT_PAGE_SIZE, totalPages } from "@/lib/pagination";
 
 type MemberRow = {
@@ -29,20 +30,33 @@ export function FamilyCorporateMembersTable({
   canDetach: boolean;
   pageSize?: number;
 }) {
+  const [filter, setFilter] = useState("");
   const [page, setPage] = useState(1);
-  const total = members.length;
+
+  const filtered = useMemo(() => {
+    const t = filter.trim().toLowerCase();
+    if (!t) return members;
+    return members.filter((m) => {
+      const name = (m.patient?.fullName ?? "").toLowerCase();
+      const nic = (m.patient?.nicOrPassport ?? "").toLowerCase();
+      const contact = (m.patient?.contactNo ?? "").toLowerCase();
+      return name.includes(t) || nic.includes(t) || contact.includes(t);
+    });
+  }, [members, filter]);
+
+  const total = filtered.length;
   const pages = totalPages(total, pageSize);
 
   useEffect(() => {
-    const maxPage = totalPages(members.length, pageSize);
+    const maxPage = totalPages(filtered.length, pageSize);
     if (page > maxPage) setPage(Math.max(1, maxPage));
-  }, [members.length, page, pageSize]);
+  }, [filtered.length, page, pageSize]);
 
   const slice = useMemo(() => {
     const safePage = Math.min(Math.max(1, page), pages);
     const start = (safePage - 1) * pageSize;
-    return members.slice(start, start + pageSize);
-  }, [members, page, pageSize, pages]);
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize, pages]);
 
   function goToPage(next: number) {
     setPage(Math.min(Math.max(1, next), pages));
@@ -66,6 +80,15 @@ export function FamilyCorporateMembersTable({
 
   return (
     <div className="flex flex-col gap-3">
+      <TableSearchBar
+        id="family-corporate-members-search"
+        value={filter}
+        onChange={(v) => {
+          setFilter(v);
+          setPage(1);
+        }}
+        placeholder="Name, NIC, contact…"
+      />
       <div className="tbl-shell overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="text-xs uppercase text-zinc-500 dark:text-zinc-400">

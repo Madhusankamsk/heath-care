@@ -8,11 +8,12 @@ import {
   listMedicalTeams as fetchMedicalTeamsPage,
   updateMedicalTeam,
 } from "../services/medicalTeamService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listMedicalTeamsHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchMedicalTeamsPage({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchMedicalTeamsPage({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

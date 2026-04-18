@@ -1,6 +1,8 @@
 import prisma from "../prisma/client";
 import bcrypt from "bcryptjs";
 
+import { userProfileTextSearchWhere } from "../lib/searchWhere";
+
 export async function createProfile(data: {
   fullName: string;
   email: string;
@@ -24,8 +26,8 @@ export async function createProfile(data: {
   });
 }
 
-export async function listProfiles(params: { skip: number; take: number }) {
-  const where = {};
+export async function listProfiles(params: { skip: number; take: number; q?: string }) {
+  const where = params.q?.trim() ? userProfileTextSearchWhere(params.q) : {};
   const [total, items] = await prisma.$transaction([
     prisma.user.count({ where }),
     prisma.user.findMany({

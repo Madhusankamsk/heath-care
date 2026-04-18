@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBarUrlSync } from "@/components/ui/TableSearchBarUrlSync";
 import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib/backend";
 import { getIsAuthenticated } from "@/lib/auth";
-import { pageQueryString } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
 
 const VIEW_PERMS = ["invoices:read", "patients:read", "profiles:read"] as const;
@@ -40,7 +41,7 @@ function invoiceTypeLabel(invoiceType: OutstandingInvoiceRow["invoiceType"]) {
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -53,9 +54,10 @@ export default async function InvoicesPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const q = typeof params.q === "string" ? params.q : "";
 
   const result = await backendJsonPaginated<OutstandingInvoiceRow>(
-    `/api/invoices/outstanding?${pageQueryString(pageNum)}`,
+    `/api/invoices/outstanding?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, q)}`,
   );
   const invoices = result?.items ?? [];
 
@@ -65,6 +67,11 @@ export default async function InvoicesPage({
         <CrudToolbar
           title="Invoices"
           description="All outstanding invoices with invoice type."
+        />
+        <TableSearchBarUrlSync
+          initialQuery={q}
+          id="invoices-search"
+          placeholder="Invoice id, patient, account…"
         />
         {!result ? (
           <div className="rounded-xl border border-(--danger)/30 bg-(--danger)/10 px-4 py-3 text-sm text-(--danger)">
@@ -128,7 +135,9 @@ export default async function InvoicesPage({
               page={result.page}
               pageSize={result.pageSize}
               total={result.total}
-              hrefForPage={(p) => `/dashboard/payments/invoices?${pageQueryString(p, result.pageSize)}`}
+              hrefForPage={(p) =>
+                `/dashboard/payments/invoices?${pageQueryString(p, result.pageSize, q)}`
+              }
             />
           </>
         )}

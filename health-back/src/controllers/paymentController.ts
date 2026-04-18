@@ -5,11 +5,12 @@ import {
   listPayments as fetchPaymentsPage,
   settleCollectorDaily,
 } from "../services/paymentService";
-import { parsePaginationQuery } from "../lib/pagination";
+import { parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listPaymentsHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchPaymentsPage({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchPaymentsPage({ skip, take, q });
   return res.json({ items, total, page, pageSize });
 }
 
@@ -17,8 +18,9 @@ export async function listCollectorDailySummaryHandler(req: Request, res: Respon
   try {
     const date = typeof req.query.date === "string" ? req.query.date : undefined;
     const { page, pageSize, skip, take } = parsePaginationQuery(req);
+    const q = parseOptionalQueryString(req);
     const { date: isoDate, items, total, grandTotalCollected, grandPendingSettlement } =
-      await listCollectorDailySummaryPaginated(date, { skip, take });
+      await listCollectorDailySummaryPaginated(date, { skip, take, q });
     return res.json({
       date: isoDate,
       items,

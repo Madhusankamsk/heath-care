@@ -113,6 +113,8 @@ async function main() {
     "dashboard:tile_count_vehicles",
     "dashboard:tile_stat_revenue",
     "dashboard:tile_stat_outstanding",
+
+    "dashboard:global_search",
   ] as const;
 
   for (const permissionKey of permissionKeys) {
@@ -565,6 +567,7 @@ async function main() {
             "dashboard:tile_count_vehicles",
             "dashboard:tile_stat_revenue",
             "dashboard:tile_stat_outstanding",
+            "dashboard:global_search",
             "patients:list",
             "patients:read",
           ],

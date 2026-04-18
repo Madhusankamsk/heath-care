@@ -7,11 +7,12 @@ import {
   listProfiles as fetchProfilesPage,
   updateProfile,
 } from "../services/profileService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listProfiles(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchProfilesPage({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchProfilesPage({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

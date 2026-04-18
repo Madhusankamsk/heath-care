@@ -12,7 +12,7 @@ import { hasAnyPermission } from "@/lib/rbac";
 export default function AdminStaffPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   return <AdminStaffPageServer searchParams={searchParams} />;
 }
@@ -35,7 +35,7 @@ async function getRolesForPicker() {
 async function AdminStaffPageServer({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -55,9 +55,10 @@ async function AdminStaffPageServer({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [profilesResult, rolesResult] = await Promise.all([
-    backendJsonPaginated<StaffProfile>(`/api/profiles?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<StaffProfile>(`/api/profiles?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`),
     getRolesForPicker(),
   ]);
   const roles = rolesResult?.items ?? [];
@@ -85,6 +86,7 @@ async function AdminStaffPageServer({
             canEdit={canEdit}
             canDeactivate={canDeactivate}
             canDelete={canDelete}
+            initialQuery={listQuery ?? ""}
           />
         )}
       </Card>

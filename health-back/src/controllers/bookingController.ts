@@ -12,7 +12,7 @@ import {
   resolveBookingListScope,
   updateBooking,
 } from "../services/bookingService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 import {
   createDiagnosticReportForBooking,
   createLabSampleForBooking,
@@ -29,7 +29,8 @@ export async function listBookingsHandler(req: Request, res: Response) {
   const scope = await getScope(req);
   const userId = req.authUser?.sub;
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchBookingsPage({ userId, scope, skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchBookingsPage({ userId, scope, skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 
@@ -57,7 +58,14 @@ export async function listBookingsForPatientHandler(req: Request, res: Response)
   const scope = await getScope(req);
   const userId = req.authUser?.sub;
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchBookingsForPatientPage(cleaned, { userId, scope, skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchBookingsForPatientPage(cleaned, {
+    userId,
+    scope,
+    skip,
+    take,
+    q,
+  });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

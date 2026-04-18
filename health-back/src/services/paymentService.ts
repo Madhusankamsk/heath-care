@@ -1,5 +1,7 @@
 import prisma from "../prisma/client";
 
+import { paymentListTextSearchWhere } from "../lib/searchWhere";
+
 export type PaymentListRow = {
   id: string;
   paidAt: string;
@@ -25,8 +27,9 @@ const COLLECTOR_METHOD_KEYS = new Set(["CASH", "CHEQUE"]);
 export async function listPayments(params: {
   skip: number;
   take: number;
+  q?: string;
 }): Promise<{ items: PaymentListRow[]; total: number }> {
-  const where = {};
+  const where = params.q?.trim() ? paymentListTextSearchWhere(params.q) : {};
   const [total, rows] = await prisma.$transaction([
     prisma.payment.count({ where }),
     prisma.payment.findMany({
@@ -210,9 +213,18 @@ export async function listCollectorDailySummary(dateInput?: string) {
 
 export async function listCollectorDailySummaryPaginated(
   dateInput: string | undefined,
-  params: { skip: number; take: number },
+  params: { skip: number; take: number; q?: string },
 ) {
-  const { date: isoDate, rows } = await listCollectorDailySummary(dateInput);
+  const { date: isoDate, rows: allRows } = await listCollectorDailySummary(dateInput);
+  const qt = params.q?.trim().toLowerCase();
+  const rows = qt
+    ? allRows.filter(
+        (r) =>
+          r.collectorName.toLowerCase().includes(qt) ||
+          r.paymentMethodLabel.toLowerCase().includes(qt) ||
+          r.paymentMethodKey.toLowerCase().includes(qt),
+      )
+    : allRows;
   const total = rows.length;
   const grandTotalCollected = rows.reduce((sum, r) => sum + (Number(r.totalAmount) || 0), 0);
   const grandPendingSettlement = rows.reduce((sum, r) => sum + (Number(r.pendingAmount) || 0), 0);

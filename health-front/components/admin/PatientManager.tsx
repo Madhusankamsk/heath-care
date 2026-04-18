@@ -17,8 +17,10 @@ import { openInvoicePdf } from "@/lib/openInvoicePdf";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import type { PaginatedResult } from "@/lib/pagination";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 
 export type Patient = {
   id: string;
@@ -67,6 +69,8 @@ type PatientManagerProps = {
   canEdit: boolean;
   canDelete: boolean;
   openCreateOnMount?: boolean;
+  /** Server-provided search query (`q`), kept in sync with the URL. */
+  initialQuery?: string;
 };
 type LookupOption = { id: string; lookupKey: string; lookupValue: string };
 type SubscriptionPlanOption = { id: string; planName: string };
@@ -89,10 +93,12 @@ export function PatientManager({
   canEdit,
   canDelete,
   openCreateOnMount = false,
+  initialQuery = "",
 }: PatientManagerProps) {
   const [patients, setPatients] = useState<Patient[]>(initialPatients);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [mode, setMode] = useState<Mode>("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -113,6 +119,12 @@ export function PatientManager({
     setError(null);
   }, [openCreateOnMount, canCreate]);
 
+  useEffect(() => {
+    setPatients(initialPatients);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialPatients, initialTotal, initialPage]);
+
   useEscapeKey(
     () => {
       setMode("none");
@@ -126,7 +138,7 @@ export function PatientManager({
   useEscapeKey(() => setInvoiceReadyId(null), Boolean(invoiceReadyId));
 
   async function loadPage(nextPage: number) {
-    const res = await fetch(`/api/patients?page=${nextPage}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/patients?${pageQueryString(nextPage, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh patient list");
@@ -145,7 +157,7 @@ export function PatientManager({
   }
 
   async function refresh() {
-    const res = await fetch(`/api/patients?page=${page}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/patients?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh patient list");
@@ -251,6 +263,13 @@ export function PatientManager({
             Refresh
           </Button>
       </CrudToolbar>
+
+      <TableSearchBar
+        id="patients-table-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Name, NIC, phone, email…"
+      />
 
       {mode === "create" && canCreate ? (
         <ModalShell

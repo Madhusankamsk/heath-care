@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/Input";
 import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 import { pageQueryString, type PaginatedResult } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { toast } from "@/lib/toast";
 
 type Movement = {
@@ -36,13 +38,16 @@ export function StockMovementManager({
   initialPage,
   pageSize: initialPageSize,
   batches,
+  initialQuery = "",
 }: {
   initialRows: Movement[];
   total: number;
   initialPage: number;
   pageSize: number;
   batches: BatchWithLocation[];
+  initialQuery?: string;
 }) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [rows, setRows] = useState(initialRows);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
@@ -67,22 +72,31 @@ export function StockMovementManager({
         )
       : batches;
 
+  useEffect(() => {
+    setRows(initialRows);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialRows, initialTotal, initialPage]);
+
   const loadPage = useCallback(
     async (nextPage: number) => {
-      const res = await fetch(`/api/inventory/stock-movements?${pageQueryString(nextPage, pageSize)}`, {
+      const res = await fetch(
+        `/api/inventory/stock-movements?${pageQueryString(nextPage, pageSize, searchInput)}`,
+        {
         cache: "no-store",
-      });
+      },
+      );
       if (!res.ok) throw new Error("Failed to load");
       const data = (await res.json()) as PaginatedResult<Movement>;
       setRows(data.items);
       setTotal(data.total);
       setPage(data.page);
     },
-    [pageSize],
+    [pageSize, searchInput],
   );
 
   async function refresh() {
-    const res = await fetch(`/api/inventory/stock-movements?${pageQueryString(page, pageSize)}`, {
+    const res = await fetch(`/api/inventory/stock-movements?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh");
@@ -109,6 +123,12 @@ export function StockMovementManager({
   return (
     <div className="flex flex-col gap-4">
       <CrudToolbar title="Stock Movements" description="Transfer stock and monitor movement history." />
+      <TableSearchBar
+        id="stock-movements-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Medicine, batch, location, user…"
+      />
       <form
         className="grid gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4 sm:grid-cols-4"
         onSubmit={async (e) => {

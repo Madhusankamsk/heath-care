@@ -1,6 +1,11 @@
 import { Prisma } from "@prisma/client";
 
 import prisma from "../prisma/client";
+import {
+  inventoryBatchTextSearchWhere,
+  medicineTextSearchWhere,
+  stockTransferTextSearchWhere,
+} from "../lib/searchWhere";
 
 const ITEM_MARKER = "__ITEM__:";
 
@@ -31,9 +36,12 @@ async function getLookupId(categoryName: string, lookupKey: string) {
 
 export async function listMedicines(
   kind: "medicine" | "item",
-  params: { skip: number; take: number },
+  params: { skip: number; take: number; q?: string },
 ) {
-  const where = medicineKindWhere(kind);
+  const kindWhere = medicineKindWhere(kind);
+  const where: Prisma.MedicineWhereInput = params.q?.trim()
+    ? { AND: [kindWhere, medicineTextSearchWhere(params.q)] }
+    : kindWhere;
   const [total, rows] = await prisma.$transaction([
     prisma.medicine.count({ where }),
     prisma.medicine.findMany({
@@ -122,8 +130,8 @@ export async function deleteMedicine(kind: "medicine" | "item", id: string) {
   return true;
 }
 
-export async function listBatches(params: { skip: number; take: number }) {
-  const where = {};
+export async function listBatches(params: { skip: number; take: number; q?: string }) {
+  const where = params.q?.trim() ? inventoryBatchTextSearchWhere(params.q) : {};
   const [total, rows] = await prisma.$transaction([
     prisma.inventoryBatch.count({ where }),
     prisma.inventoryBatch.findMany({
@@ -230,8 +238,16 @@ export async function listMobileSubstores() {
   return grouped.filter((g) => g.totalQuantity > 0 || g.batches.length > 0);
 }
 
-export async function listMobileSubstoresPaginated(params: { skip: number; take: number }) {
-  const full = await listMobileSubstores();
+export async function listMobileSubstoresPaginated(params: { skip: number; take: number; q?: string }) {
+  let full = await listMobileSubstores();
+  const qt = params.q?.trim().toLowerCase();
+  if (qt) {
+    full = full.filter(
+      (g) =>
+        g.user.fullName.toLowerCase().includes(qt) ||
+        (g.user.email ?? "").toLowerCase().includes(qt),
+    );
+  }
   const total = full.length;
   const items = full.slice(params.skip, params.skip + params.take);
   return { items, total };
@@ -316,8 +332,8 @@ export async function assignBatchToUserSubstore(input: {
   });
 }
 
-export async function listStockMovements(params: { skip: number; take: number }) {
-  const where = {};
+export async function listStockMovements(params: { skip: number; take: number; q?: string }) {
+  const where = params.q?.trim() ? stockTransferTextSearchWhere(params.q) : {};
   const [total, rows] = await prisma.$transaction([
     prisma.stockTransfer.count({ where }),
     prisma.stockTransfer.findMany({

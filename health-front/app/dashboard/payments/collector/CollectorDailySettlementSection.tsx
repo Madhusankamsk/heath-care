@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 import { pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { toast } from "@/lib/toast";
 
 export type CollectorDailySummaryRow = {
@@ -42,6 +44,7 @@ type Props = {
   pageSize: number;
   grandTotalCollected: number;
   grandPendingSettlement: number;
+  initialQuery?: string;
 };
 
 export function CollectorDailySettlementSection({
@@ -52,7 +55,9 @@ export function CollectorDailySettlementSection({
   pageSize: initialPageSize,
   grandTotalCollected: initialGrandCollected,
   grandPendingSettlement: initialGrandPending,
+  initialQuery = "",
 }: Props) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [date, setDate] = useState(initialDate);
   const [rows, setRows] = useState(initialRows);
   const [total, setTotal] = useState(initialTotal);
@@ -64,11 +69,19 @@ export function CollectorDailySettlementSection({
   const [loading, setLoading] = useState(false);
   const [settleTarget, setSettleTarget] = useState<CollectorDailySummaryRow | null>(null);
 
+  useEffect(() => {
+    setRows(initialRows);
+    setTotal(initialTotal);
+    setPage(initialPage);
+    setGrandTotalCollected(initialGrandCollected);
+    setGrandPendingSettlement(initialGrandPending);
+  }, [initialRows, initialTotal, initialPage, initialGrandCollected, initialGrandPending]);
+
   const loadPage = useCallback(
     async (nextPage: number, forDate?: string) => {
       const d = forDate ?? date;
       const res = await fetch(
-        `/api/payments/collectors/daily?date=${encodeURIComponent(d)}&${pageQueryString(nextPage, pageSize)}`,
+        `/api/payments/collectors/daily?date=${encodeURIComponent(d)}&${pageQueryString(nextPage, pageSize, searchInput)}`,
         { cache: "no-store" },
       );
       const payload = (await res.json().catch(() => ({}))) as CollectorDailyPayload;
@@ -79,7 +92,7 @@ export function CollectorDailySettlementSection({
       setGrandTotalCollected(payload.grandTotalCollected ?? 0);
       setGrandPendingSettlement(payload.grandPendingSettlement ?? 0);
     },
-    [date, pageSize],
+    [date, pageSize, searchInput],
   );
 
   async function refresh() {
@@ -180,6 +193,13 @@ export function CollectorDailySettlementSection({
           {loading ? "Refreshing..." : "Refresh"}
         </Button>
       </CrudToolbar>
+
+      <TableSearchBar
+        id="collector-daily-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Collector name, payment method…"
+      />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">

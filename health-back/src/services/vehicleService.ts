@@ -1,7 +1,9 @@
 import prisma from "../prisma/client";
 
-export async function listVehicles(params: { skip: number; take: number }) {
-  const where = {};
+import { vehicleTextSearchWhere } from "../lib/searchWhere";
+
+export async function listVehicles(params: { skip: number; take: number; q?: string }) {
+  const where = params.q?.trim() ? vehicleTextSearchWhere(params.q) : {};
   const [total, items] = await prisma.$transaction([
     prisma.vehicle.count({ where }),
     prisma.vehicle.findMany({

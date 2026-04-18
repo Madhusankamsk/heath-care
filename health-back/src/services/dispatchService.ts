@@ -1,5 +1,6 @@
 import prisma from "../prisma/client";
 import type { BookingListScope } from "./bookingService";
+import { mergeBookingWhere } from "../lib/searchWhere";
 import { createVisitInvoiceIfAbsent } from "./visitInvoiceService";
 
 const dispatchAssignmentUserSelect = {
@@ -88,9 +89,10 @@ export async function listUpcomingAcceptedForDispatchPaginated(params: {
   scope: BookingListScope;
   skip: number;
   take: number;
+  q?: string;
 }) {
   const base = { userId: params.userId, scope: params.scope };
-  const where = upcomingAcceptedForDispatchWhere(base);
+  const where = mergeBookingWhere(upcomingAcceptedForDispatchWhere(base), params.q);
   const [total, items] = await prisma.$transaction([
     prisma.booking.count({ where }),
     prisma.booking.findMany({
@@ -169,9 +171,10 @@ export async function listOngoingForDispatchPaginated(params: {
   scope: BookingListScope;
   skip: number;
   take: number;
+  q?: string;
 }) {
   const base = { userId: params.userId, scope: params.scope };
-  const where = ongoingForDispatchWhere(base);
+  const where = mergeBookingWhere(ongoingForDispatchWhere(base), params.q);
   const [total, items] = await prisma.$transaction([
     prisma.booking.count({ where }),
     prisma.booking.findMany({

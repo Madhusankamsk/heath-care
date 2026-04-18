@@ -11,11 +11,12 @@ import {
   listSubscriptionAccounts as fetchSubscriptionAccountsPage,
   updateSubscriptionAccount,
 } from "../services/subscriptionAccountService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listSubscriptionAccountsHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchSubscriptionAccountsPage({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchSubscriptionAccountsPage({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

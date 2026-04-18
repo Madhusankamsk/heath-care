@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -13,8 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import type { PaginatedResult } from "@/lib/pagination";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 
 export type SubscriptionPlan = {
   id: string;
@@ -38,6 +40,7 @@ type SubscriptionPlanManagerProps = {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  initialQuery?: string;
 };
 
 type Mode = "none" | "create" | "edit" | "preview";
@@ -53,7 +56,9 @@ export function SubscriptionPlanManager({
   canCreate,
   canEdit,
   canDelete,
+  initialQuery = "",
 }: SubscriptionPlanManagerProps) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [plans, setPlans] = useState<SubscriptionPlan[]>(initialPlans);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
@@ -68,6 +73,12 @@ export function SubscriptionPlanManager({
     return plans.find((p) => p.id === selectedId) ?? null;
   }, [plans, selectedId]);
 
+  useEffect(() => {
+    setPlans(initialPlans);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialPlans, initialTotal, initialPage]);
+
   useEscapeKey(
     () => {
       setMode("none");
@@ -77,7 +88,7 @@ export function SubscriptionPlanManager({
   );
 
   async function loadPage(nextPage: number) {
-    const res = await fetch(`/api/subscription-plans?page=${nextPage}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/subscription-plans?${pageQueryString(nextPage, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh subscription plans");
@@ -96,7 +107,7 @@ export function SubscriptionPlanManager({
   }
 
   async function refresh() {
-    const res = await fetch(`/api/subscription-plans?page=${page}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/subscription-plans?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh subscription plans");
@@ -204,6 +215,13 @@ export function SubscriptionPlanManager({
             Refresh
           </Button>
       </CrudToolbar>
+
+      <TableSearchBar
+        id="subscription-plans-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Plan name…"
+      />
 
       {mode === "create" && canCreate ? (
         <ModalShell

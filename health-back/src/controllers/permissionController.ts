@@ -6,11 +6,12 @@ import {
   detachPermissionFromRole,
   listPermissions as fetchPermissionsPage,
 } from "../services/permissionService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listPermissions(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchPermissionsPage({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchPermissionsPage({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

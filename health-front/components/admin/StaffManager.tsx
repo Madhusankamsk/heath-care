@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -13,8 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import type { PaginatedResult } from "@/lib/pagination";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 
 type Role = { id: string; roleName: string; description?: string | null };
 
@@ -40,6 +42,7 @@ type StaffManagerProps = {
   canEdit: boolean;
   canDeactivate: boolean;
   canDelete: boolean;
+  initialQuery?: string;
 };
 
 type Mode = "none" | "create" | "edit" | "preview";
@@ -57,7 +60,9 @@ export function StaffManager({
   canEdit,
   canDeactivate,
   canDelete,
+  initialQuery = "",
 }: StaffManagerProps) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [profiles, setProfiles] = useState<StaffProfile[]>(initialProfiles);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
@@ -72,6 +77,12 @@ export function StaffManager({
     return profiles.find((p) => p.id === selectedId) ?? null;
   }, [profiles, selectedId]);
 
+  useEffect(() => {
+    setProfiles(initialProfiles);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialProfiles, initialTotal, initialPage]);
+
   useEscapeKey(
     () => {
       setMode("none");
@@ -83,7 +94,7 @@ export function StaffManager({
   );
 
   async function loadPage(nextPage: number) {
-    const res = await fetch(`/api/profiles?page=${nextPage}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/profiles?${pageQueryString(nextPage, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh staff list");
@@ -102,7 +113,7 @@ export function StaffManager({
   }
 
   async function refresh() {
-    const res = await fetch(`/api/profiles?page=${page}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/profiles?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh staff list");
@@ -222,6 +233,13 @@ export function StaffManager({
             Refresh
           </Button>
       </CrudToolbar>
+
+      <TableSearchBar
+        id="staff-table-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Name, email, phone…"
+      />
 
       {mode === "create" && canCreate ? (
         <ModalShell

@@ -17,7 +17,7 @@ const PERMS = {
 export default async function InventoryMedicinesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -28,9 +28,10 @@ export default async function InventoryMedicinesPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const result = await backendJsonPaginated<InventoryEntity>(
-    `/api/inventory/medicines?${pageQueryString(pageNum)}`,
+    `/api/inventory/medicines?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`,
   );
   const rows = result?.items ?? [];
 
@@ -46,6 +47,7 @@ export default async function InventoryMedicinesPage({
         canCreate={hasAnyPermission(me.permissions, [...PERMS.create])}
         canEdit={hasAnyPermission(me.permissions, [...PERMS.edit])}
         canDelete={hasAnyPermission(me.permissions, [...PERMS.delete])}
+        initialQuery={listQuery ?? ""}
       />
     </Card>
   );

@@ -46,7 +46,7 @@ async function getOpdStatuses() {
 export default async function OpdPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -63,9 +63,10 @@ export default async function OpdPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [queueResult, patientsResult, statuses] = await Promise.all([
-    backendJsonPaginated<OpdQueueRow>(`/api/opd?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<OpdQueueRow>(`/api/opd?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`),
     backendJsonPaginated<PatientOption>(withPaginationQuery("/api/patients", 1, 100)),
     getOpdStatuses(),
   ]);
@@ -95,6 +96,7 @@ export default async function OpdPage({
             canCreate={canCreate}
             canUpdate={canEdit}
             canDelete={canDelete}
+            initialQuery={listQuery ?? ""}
           />
         )}
       </Card>

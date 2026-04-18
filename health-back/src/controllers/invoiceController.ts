@@ -4,11 +4,12 @@ import prisma from "../prisma/client";
 import { sendEmail } from "../services/email/sendEmail";
 import { listOutstandingInvoices as fetchOutstandingInvoicesPage } from "../services/invoiceService";
 import { buildSubscriptionInvoicePdfBuffer, buildVisitInvoicePdfBuffer } from "../services/invoicePdfService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listOutstandingInvoicesHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchOutstandingInvoicesPage({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchOutstandingInvoicesPage({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -13,8 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import type { PaginatedResult } from "@/lib/pagination";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 
 export type MedicalTeam = {
   id: string;
@@ -67,6 +69,7 @@ type MedicalTeamManagerProps = {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  initialQuery?: string;
 };
 
 type Mode = "none" | "create" | "edit" | "preview";
@@ -84,7 +87,9 @@ export function MedicalTeamManager({
   canCreate,
   canEdit,
   canDelete,
+  initialQuery = "",
 }: MedicalTeamManagerProps) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [teams, setTeams] = useState<MedicalTeam[]>(initialTeams);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
@@ -99,6 +104,12 @@ export function MedicalTeamManager({
     return teams.find((t) => t.id === selectedId) ?? null;
   }, [teams, selectedId]);
 
+  useEffect(() => {
+    setTeams(initialTeams);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialTeams, initialTotal, initialPage]);
+
   useEscapeKey(
     () => {
       setMode("none");
@@ -110,7 +121,7 @@ export function MedicalTeamManager({
   );
 
   async function loadPage(nextPage: number) {
-    const res = await fetch(`/api/medical-teams?page=${nextPage}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/medical-teams?${pageQueryString(nextPage, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh medical teams");
@@ -129,7 +140,7 @@ export function MedicalTeamManager({
   }
 
   async function refresh() {
-    const res = await fetch(`/api/medical-teams?page=${page}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/medical-teams?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh medical teams");
@@ -237,6 +248,13 @@ export function MedicalTeamManager({
             Refresh
           </Button>
       </CrudToolbar>
+
+      <TableSearchBar
+        id="medical-teams-table-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Team name, vehicle…"
+      />
 
       {mode === "create" && canCreate ? (
         <ModalShell

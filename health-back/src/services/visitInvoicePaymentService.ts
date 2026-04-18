@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 
 import prisma from "../prisma/client";
 
+import { visitOutstandingInvoiceTextSearchWhere } from "../lib/searchWhere";
+
 import { notifyVisitPaymentRecorded } from "./email/notifications";
 
 async function requireLookupId(
@@ -52,12 +54,16 @@ export type OutstandingVisitInvoiceRow = {
 export async function listOutstandingVisitInvoices(params: {
   skip: number;
   take: number;
+  q?: string;
 }): Promise<{ items: OutstandingVisitInvoiceRow[]; total: number }> {
-  const where = {
+  const base = {
     invoiceTypeLookup: { is: { lookupKey: "VISIT" } },
     visitInvoice: { isNot: null },
     balanceDue: { gt: 0 },
   };
+  const where = params.q?.trim()
+    ? { AND: [base, visitOutstandingInvoiceTextSearchWhere(params.q)] }
+    : base;
 
   const [total, rows] = await prisma.$transaction([
     prisma.invoice.count({ where }),

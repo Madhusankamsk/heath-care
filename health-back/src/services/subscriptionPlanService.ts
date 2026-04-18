@@ -1,7 +1,9 @@
 import prisma from "../prisma/client";
 
-export async function listSubscriptionPlans(params: { skip: number; take: number }) {
-  const where = {};
+import { subscriptionPlanTextSearchWhere } from "../lib/searchWhere";
+
+export async function listSubscriptionPlans(params: { skip: number; take: number; q?: string }) {
+  const where = params.q?.trim() ? subscriptionPlanTextSearchWhere(params.q) : {};
   const [total, items] = await prisma.$transaction([
     prisma.subscriptionPlan.count({ where }),
     prisma.subscriptionPlan.findMany({

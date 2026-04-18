@@ -1,12 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 import { DEFAULT_PAGE_SIZE, pageQueryString, type PaginatedResult } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { toast } from "@/lib/toast";
 
 import { RecordVisitPaymentModal } from "./RecordVisitPaymentModal";
@@ -22,6 +24,7 @@ type Props = {
   initialPage?: number;
   pageSize?: number;
   paymentMethods: LookupOption[];
+  initialQuery?: string;
 };
 
 function formatDate(iso: string) {
@@ -43,7 +46,9 @@ export function RecordVisitPaymentSection({
   initialPage = 1,
   pageSize = DEFAULT_PAGE_SIZE,
   paymentMethods,
+  initialQuery = "",
 }: Props) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const router = useRouter();
   const [invoices, setInvoices] = useState(initialInvoices);
   const [total, setTotal] = useState(initialTotal ?? initialInvoices.length);
@@ -52,8 +57,14 @@ export function RecordVisitPaymentSection({
 
   const payRow = payInvoiceId ? (invoices.find((r) => r.id === payInvoiceId) ?? null) : null;
 
+  useEffect(() => {
+    setInvoices(initialInvoices);
+    setTotal(initialTotal ?? initialInvoices.length);
+    setPage(initialPage);
+  }, [initialInvoices, initialTotal, initialPage]);
+
   const refreshInvoices = useCallback(async () => {
-    const res = await fetch(`/api/visit-invoices/outstanding?${pageQueryString(page, pageSize)}`, {
+    const res = await fetch(`/api/visit-invoices/outstanding?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) {
@@ -63,7 +74,7 @@ export function RecordVisitPaymentSection({
     let data = (await res.json()) as PaginatedResult<OutstandingVisitInvoiceRow>;
     if (data.items.length === 0 && data.page > 1) {
       const res2 = await fetch(
-        `/api/visit-invoices/outstanding?${pageQueryString(data.page - 1, pageSize)}`,
+        `/api/visit-invoices/outstanding?${pageQueryString(data.page - 1, pageSize, searchInput)}`,
         { cache: "no-store" },
       );
       if (res2.ok) {
@@ -76,10 +87,10 @@ export function RecordVisitPaymentSection({
     if (payInvoiceId && !data.items.some((r) => r.id === payInvoiceId)) {
       setPayInvoiceId(null);
     }
-  }, [payInvoiceId, page, pageSize]);
+  }, [payInvoiceId, page, pageSize, searchInput]);
 
   async function goToPage(nextPage: number) {
-    const res = await fetch(`/api/visit-invoices/outstanding?${pageQueryString(nextPage, pageSize)}`, {
+    const res = await fetch(`/api/visit-invoices/outstanding?${pageQueryString(nextPage, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) {
@@ -148,6 +159,13 @@ export function RecordVisitPaymentSection({
           Refresh list
         </Button>
       </CrudToolbar>
+
+      <TableSearchBar
+        id="record-visit-payments-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Patient, booking…"
+      />
 
       <div className="tbl-shell overflow-x-auto">
         <table className="min-w-full text-left text-sm">

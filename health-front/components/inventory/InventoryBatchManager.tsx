@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { CrudToolbar } from "@/components/ui/CrudToolbar";
@@ -9,7 +9,9 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 import { pageQueryString, type PaginatedResult } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { toast } from "@/lib/toast";
 
 type MedicineOption = { id: string; name: string };
@@ -31,13 +33,16 @@ export function InventoryBatchManager({
   initialPage,
   pageSize: initialPageSize,
   medicines,
+  initialQuery = "",
 }: {
   initialRows: Batch[];
   total: number;
   initialPage: number;
   pageSize: number;
   medicines: MedicineOption[];
+  initialQuery?: string;
 }) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery ?? "");
   const [rows, setRows] = useState(initialRows);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
@@ -46,22 +51,31 @@ export function InventoryBatchManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const editing = useMemo(() => rows.find((r) => r.id === editingId) ?? null, [rows, editingId]);
 
+  useEffect(() => {
+    setRows(initialRows);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialRows, initialTotal, initialPage]);
+
   const loadPage = useCallback(
     async (nextPage: number) => {
-      const res = await fetch(`/api/inventory/batches?${pageQueryString(nextPage, pageSize)}`, {
+      const res = await fetch(
+        `/api/inventory/batches?${pageQueryString(nextPage, pageSize, searchInput)}`,
+        {
         cache: "no-store",
-      });
+      },
+      );
       if (!res.ok) throw new Error("Failed to load");
       const data = (await res.json()) as PaginatedResult<Batch>;
       setRows(data.items);
       setTotal(data.total);
       setPage(data.page);
     },
-    [pageSize],
+    [pageSize, searchInput],
   );
 
   async function refresh() {
-    const res = await fetch(`/api/inventory/batches?${pageQueryString(page, pageSize)}`, {
+    const res = await fetch(`/api/inventory/batches?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh");
@@ -89,6 +103,12 @@ export function InventoryBatchManager({
         </Button>
         <Button variant="secondary" onClick={() => void refresh()}>Refresh</Button>
       </CrudToolbar>
+      <TableSearchBar
+        id="inventory-batches-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Batch no., medicine name…"
+      />
       {open ? (
         <ModalShell
           open

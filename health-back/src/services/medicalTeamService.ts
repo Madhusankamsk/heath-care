@@ -1,5 +1,7 @@
 import prisma from "../prisma/client";
 
+import { medicalTeamTextSearchWhere } from "../lib/searchWhere";
+
 type MedicalTeamPayload = {
   teamName: string;
   vehicleId: string;
@@ -12,8 +14,8 @@ function normalizeMemberIds(memberIds: string[] | undefined) {
   return [...new Set(cleaned)];
 }
 
-export async function listMedicalTeams(params: { skip: number; take: number }) {
-  const where = {};
+export async function listMedicalTeams(params: { skip: number; take: number; q?: string }) {
+  const where = params.q?.trim() ? medicalTeamTextSearchWhere(params.q) : {};
   const [total, items] = await prisma.$transaction([
     prisma.medicalTeam.count({ where }),
     prisma.medicalTeam.findMany({

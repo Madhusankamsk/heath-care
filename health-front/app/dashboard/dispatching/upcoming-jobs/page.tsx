@@ -19,7 +19,7 @@ const VIEW_PERMS = ["dispatch:list", "dispatch:read", "dispatch:update"] as cons
 export default async function UpcomingJobsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -39,9 +39,12 @@ export default async function UpcomingJobsPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [upcomingResult, teamsResult, crewCandidates, vehiclesResult] = await Promise.all([
-    backendJsonPaginated<UpcomingBookingRow>(`/api/dispatch/upcoming?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<UpcomingBookingRow>(
+      `/api/dispatch/upcoming?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`,
+    ),
     canAssignTeam
       ? backendJsonPaginated<MedicalTeam>(withPaginationQuery("/api/medical-teams", 1, 100))
       : Promise.resolve(null),
@@ -77,6 +80,7 @@ export default async function UpcomingJobsPage({
             canPreview={canPreview}
             canAssignTeam={canAssignTeam}
             canFullViewBooking={canFullViewBooking}
+            initialQuery={listQuery ?? ""}
           />
         )}
       </Card>

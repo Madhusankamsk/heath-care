@@ -25,7 +25,7 @@ const VIEW_PERMS = ["inventory:list", "inventory:batches:manage"] as const;
 export default async function InventoryBatchesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -35,9 +35,10 @@ export default async function InventoryBatchesPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [batchResult, medResult, itemResult] = await Promise.all([
-    backendJsonPaginated<Batch>(`/api/inventory/batches?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<Batch>(`/api/inventory/batches?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`),
     backendJsonPaginated<MedicineOption>(withPaginationQuery("/api/inventory/medicines", 1, 100)),
     backendJsonPaginated<MedicineOption>(withPaginationQuery("/api/inventory/medical-items", 1, 100)),
   ]);
@@ -52,6 +53,7 @@ export default async function InventoryBatchesPage({
         initialPage={batchResult?.page ?? pageNum}
         pageSize={batchResult?.pageSize ?? DEFAULT_PAGE_SIZE}
         medicines={medicines}
+        initialQuery={listQuery ?? ""}
       />
     </Card>
   );

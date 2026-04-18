@@ -27,7 +27,7 @@ async function getSubscriptionPlanTypes() {
 export default async function AdminPlanSetupPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -45,9 +45,12 @@ export default async function AdminPlanSetupPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [plansResult, planTypes] = await Promise.all([
-    backendJsonPaginated<SubscriptionPlan>(`/api/subscription-plans?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<SubscriptionPlan>(
+      `/api/subscription-plans?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`,
+    ),
     getSubscriptionPlanTypes(),
   ]);
 
@@ -72,6 +75,7 @@ export default async function AdminPlanSetupPage({
             canCreate={canCreate}
             canEdit={canEdit}
             canDelete={canDelete}
+            initialQuery={listQuery ?? ""}
           />
         )}
       </Card>

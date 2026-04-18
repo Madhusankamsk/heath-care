@@ -1,5 +1,7 @@
 import prisma from "../prisma/client";
 
+import { invoiceOutstandingTextSearchWhere } from "../lib/searchWhere";
+
 export type OutstandingInvoiceRow = {
   id: string;
   invoiceType: "MEMBERSHIP" | "VISIT";
@@ -61,11 +63,18 @@ function mapOutstandingInvoiceRow(
   };
 }
 
-export async function listOutstandingInvoices(params: { skip: number; take: number }): Promise<{
+export async function listOutstandingInvoices(params: {
+  skip: number;
+  take: number;
+  q?: string;
+}): Promise<{
   items: OutstandingInvoiceRow[];
   total: number;
 }> {
-  const where = { balanceDue: { gt: 0 } };
+  const base = { balanceDue: { gt: 0 } };
+  const where = params.q?.trim()
+    ? { AND: [base, invoiceOutstandingTextSearchWhere(params.q)] }
+    : base;
 
   const [total, rows] = await prisma.$transaction([
     prisma.invoice.count({ where }),

@@ -10,8 +10,10 @@ import { SelectBase } from "@/components/ui/select-base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import type { PaginatedResult } from "@/lib/pagination";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 
 import { DispatchPreviewPanel } from "./DispatchPreviewPanel";
 import { formatScheduled } from "./dispatchDisplay";
@@ -37,6 +39,7 @@ type UpcomingJobsTableProps = {
   canAssignTeam: boolean;
   /** Show “Full view” in preview linking to Manage Bookings (`bookings:read`). */
   canFullViewBooking?: boolean;
+  initialQuery?: string;
 };
 
 export function UpcomingJobsTable({
@@ -50,7 +53,9 @@ export function UpcomingJobsTable({
   canPreview,
   canAssignTeam,
   canFullViewBooking = false,
+  initialQuery = "",
 }: UpcomingJobsTableProps) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [rows, setRows] = useState<UpcomingBookingRow[]>(initialRows);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
@@ -157,8 +162,16 @@ export function UpcomingJobsTable({
     return m;
   }, [crewCandidates, teamsWithMembers, dispatchTarget?.requestedDoctor]);
 
+  useEffect(() => {
+    setRows(initialRows);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialRows, initialTotal, initialPage]);
+
   async function loadPage(nextPage: number) {
-    const res = await fetch(`/api/dispatch/upcoming?page=${nextPage}&pageSize=${pageSize}`, {
+    const res = await fetch(
+      `/api/dispatch/upcoming?${pageQueryString(nextPage, pageSize, searchInput)}`,
+      {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh");
@@ -177,7 +190,7 @@ export function UpcomingJobsTable({
   }
 
   async function refresh() {
-    const res = await fetch(`/api/dispatch/upcoming?page=${page}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/dispatch/upcoming?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh");
@@ -291,6 +304,13 @@ export function UpcomingJobsTable({
           No medical teams with members. Add teams under Admin → Medical Teams.
         </p>
       ) : null}
+
+      <TableSearchBar
+        id="dispatch-upcoming-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Patient, remark, booking id…"
+      />
 
       <div className="tbl-shell overflow-x-auto">
         <Table>

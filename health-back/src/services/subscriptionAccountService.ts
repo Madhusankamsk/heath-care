@@ -1,4 +1,6 @@
 import prisma from "../prisma/client";
+
+import { subscriptionAccountListSearchWhere } from "../lib/searchWhere";
 import type { Prisma } from "@prisma/client";
 
 import { notifySubscriptionAccountCreated } from "./email/notifications";
@@ -114,10 +116,13 @@ const includePayload = {
   },
 } as const;
 
-export async function listSubscriptionAccounts(params: { skip: number; take: number }) {
-  const where = {
+export async function listSubscriptionAccounts(params: { skip: number; take: number; q?: string }) {
+  const base = {
     plan: { maxMembers: { gt: 1 } },
   };
+  const where = params.q?.trim()
+    ? { AND: [base, subscriptionAccountListSearchWhere(params.q)] }
+    : base;
 
   const [total, accounts] = await prisma.$transaction([
     prisma.subscriptionAccount.count({ where }),

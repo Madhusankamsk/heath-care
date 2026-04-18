@@ -29,7 +29,7 @@ async function getLookups(category: string) {
 export default async function FamilyCorporatePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -46,9 +46,12 @@ export default async function FamilyCorporatePage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const q = typeof params.q === "string" ? params.q : "";
 
   const [accountsResult, plansResult, patientsResult, statuses] = await Promise.all([
-    backendJsonPaginated<SubscriptionAccount>(`/api/subscription-accounts?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<SubscriptionAccount>(
+      `/api/subscription-accounts?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, q)}`,
+    ),
     backendJsonPaginated<SubscriptionPlanOption>(withPaginationQuery("/api/subscription-plans", 1, 100)),
     backendJsonPaginated<PatientOption>(withPaginationQuery("/api/patients", 1, 100)),
     getLookups("SUBSCRIPTION_ACCOUNT_STATUS"),
@@ -83,6 +86,7 @@ export default async function FamilyCorporatePage({
             canCreate={canCreate}
             canEdit={canEdit}
             canDelete={canDelete}
+            initialQuery={q}
           />
         )}
       </Card>

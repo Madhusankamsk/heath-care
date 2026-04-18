@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -12,8 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import type { PaginatedResult } from "@/lib/pagination";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 
 export type Vehicle = {
   id: string;
@@ -37,6 +39,7 @@ type VehicleManagerProps = {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  initialQuery?: string;
 };
 
 type Mode = "none" | "create" | "edit" | "preview";
@@ -53,7 +56,9 @@ export function VehicleManager({
   canCreate,
   canEdit,
   canDelete,
+  initialQuery = "",
 }: VehicleManagerProps) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
@@ -68,6 +73,12 @@ export function VehicleManager({
     return vehicles.find((v) => v.id === selectedId) ?? null;
   }, [vehicles, selectedId]);
 
+  useEffect(() => {
+    setVehicles(initialVehicles);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialVehicles, initialTotal, initialPage]);
+
   useEscapeKey(
     () => {
       setMode("none");
@@ -79,7 +90,7 @@ export function VehicleManager({
   );
 
   async function loadPage(nextPage: number) {
-    const res = await fetch(`/api/vehicles?page=${nextPage}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/vehicles?${pageQueryString(nextPage, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh vehicles list");
@@ -98,7 +109,7 @@ export function VehicleManager({
   }
 
   async function refresh() {
-    const res = await fetch(`/api/vehicles?page=${page}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/vehicles?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh vehicles list");
@@ -204,6 +215,13 @@ export function VehicleManager({
             Refresh
           </Button>
       </CrudToolbar>
+
+      <TableSearchBar
+        id="vehicles-table-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Vehicle no., model, driver…"
+      />
 
       {mode === "create" && canCreate ? (
         <ModalShell

@@ -1,6 +1,7 @@
 import prisma from "../prisma/client";
 import type { Prisma } from "@prisma/client";
 
+import { andPatientSearch } from "../lib/searchWhere";
 import { notifySubscriptionAccountCreated } from "./email/notifications";
 import { createSubscriptionInvoiceWithLedger } from "./subscriptionBillingService";
 
@@ -44,10 +45,10 @@ async function resolveSubscriptionStatusId(
   return status.id;
 }
 
-export async function listPatients(params: { skip: number; take: number }) {
+export async function listPatients(params: { skip: number; take: number; q?: string }) {
   const now = new Date();
 
-  const where = {};
+  const where = andPatientSearch({}, params.q);
 
   const [total, patients] = await prisma.$transaction([
     prisma.patient.count({ where }),

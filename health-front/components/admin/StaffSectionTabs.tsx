@@ -15,6 +15,7 @@ type Props = {
   canEdit: boolean;
   canDeactivate: boolean;
   canDelete: boolean;
+  initialQuery?: string;
 };
 
 export function StaffSectionTabs(props: Props) {
@@ -31,6 +32,7 @@ export function StaffSectionTabs(props: Props) {
         canEdit={props.canEdit}
         canDeactivate={props.canDeactivate}
         canDelete={props.canDelete}
+        initialQuery={props.initialQuery ?? ""}
       />
     </div>
   );

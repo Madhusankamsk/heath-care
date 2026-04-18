@@ -7,11 +7,12 @@ import {
   deleteRoleIfSafe,
   updateRole,
 } from "../services/roleService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listRoles(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchRolesPage({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchRolesPage({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

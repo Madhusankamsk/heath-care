@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -16,8 +16,10 @@ import { openInvoicePdf } from "@/lib/openInvoicePdf";
 import { toast } from "@/lib/toast";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import type { PaginatedResult } from "@/lib/pagination";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 
 import type { Patient } from "@/components/admin/PatientManager";
 
@@ -63,6 +65,7 @@ type SubscriptionAccountManagerProps = {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  initialQuery?: string;
 };
 
 type Mode = "none" | "create" | "edit" | "preview" | "addMember";
@@ -106,7 +109,9 @@ export function SubscriptionAccountManager({
   canCreate,
   canEdit,
   canDelete,
+  initialQuery = "",
 }: SubscriptionAccountManagerProps) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [accounts, setAccounts] = useState<SubscriptionAccount[]>(initialAccounts);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
@@ -167,8 +172,14 @@ export function SubscriptionAccountManager({
 
   useEscapeKey(() => setInvoiceReadyId(null), Boolean(invoiceReadyId));
 
+  useEffect(() => {
+    setAccounts(initialAccounts);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialAccounts, initialTotal, initialPage]);
+
   async function loadPage(nextPage: number) {
-    const res = await fetch(`/api/subscription-accounts?page=${nextPage}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/subscription-accounts?${pageQueryString(nextPage, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh subscription accounts");
@@ -187,7 +198,7 @@ export function SubscriptionAccountManager({
   }
 
   async function refresh() {
-    const res = await fetch(`/api/subscription-accounts?page=${page}&pageSize=${pageSize}`, {
+    const res = await fetch(`/api/subscription-accounts?${pageQueryString(page, pageSize, searchInput)}`, {
       cache: "no-store",
     });
     if (!res.ok) throw new Error("Failed to refresh subscription accounts");
@@ -326,6 +337,13 @@ export function SubscriptionAccountManager({
             Refresh
           </Button>
       </CrudToolbar>
+
+      <TableSearchBar
+        id="subscription-accounts-search"
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Account name, registration, contact, member…"
+      />
 
       {mode === "create" && canCreate ? (
         <ModalShell

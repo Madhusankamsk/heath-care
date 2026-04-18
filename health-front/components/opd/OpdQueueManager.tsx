@@ -3,10 +3,13 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
+
 import { Button } from "@/components/ui/Button";
 import { SelectBase } from "@/components/ui/select-base";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 import { pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { toast } from "@/lib/toast";
 
 type OpdStatusOption = {
@@ -42,6 +45,7 @@ type OpdQueueManagerProps = {
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
+  initialQuery?: string;
 };
 
 function formatWhen(value: string) {
@@ -60,8 +64,10 @@ export function OpdQueueManager({
   canCreate,
   canUpdate,
   canDelete,
+  initialQuery = "",
 }: OpdQueueManagerProps) {
   const router = useRouter();
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [patientId, setPatientId] = useState("");
   const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -120,7 +126,7 @@ export function OpdQueueManager({
   }
 
   function goToPage(nextPage: number) {
-    router.push(`/dashboard/opd?${pageQueryString(nextPage, pageSize)}`);
+    router.push(`/dashboard/opd?${pageQueryString(nextPage, pageSize, searchInput)}`);
   }
 
   async function removeFromQueue(id: string) {
@@ -178,6 +184,15 @@ export function OpdQueueManager({
       <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
         <div className="border-b border-[var(--border)] px-4 py-3">
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">Today OPD Queue</h2>
+          <div className="mt-3 max-w-md">
+            <TableSearchBar
+              id="opd-queue-search"
+              value={searchInput}
+              onChange={setSearchInput}
+              placeholder="Patient name, phone, NIC…"
+              label="Filter queue"
+            />
+          </div>
         </div>
         {rows.length === 0 ? (
           <div className="px-4 py-8 text-sm text-[var(--text-secondary)]">No OPD queue records today.</div>

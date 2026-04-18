@@ -18,9 +18,11 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { DashboardGlobalSearch } from "@/components/dashboard/DashboardGlobalSearch";
 import { Card } from "@/components/ui/Card";
 import { getIsAuthenticated } from "@/lib/auth";
 import { type BackendMeResponse, backendJson } from "@/lib/backend";
+import { hasAnyPermission } from "@/lib/rbac";
 
 type DashboardSummaryTileItem = {
   id: string;
@@ -292,9 +294,11 @@ export default async function DashboardPage() {
     .map((t) => t.key)
     .filter((k) => tiles[k] != null);
   const hasAnyTile = kpiKeys.length > 0 || listKeys.length > 0;
+  const canGlobalSearch = hasAnyPermission(me.permissions, ["dashboard:global_search"]);
 
   return (
     <div className="flex w-full flex-col gap-6">
+      <DashboardGlobalSearch canSearch={canGlobalSearch} />
       {!hasAnyTile ? (
         <Card title="Overview" description="No dashboard tiles are enabled for your role yet.">
           <p className="text-sm text-[var(--text-secondary)]">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -10,8 +10,10 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/lib/toast";
 import type { PaginatedResult } from "@/lib/pagination";
-import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
+import { useTableListSearch } from "@/lib/useTableListSearch";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import { TableSearchBar } from "@/components/ui/TableSearchBar";
 
 export type InventoryEntity = {
   id: string;
@@ -33,6 +35,7 @@ type Props = {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  initialQuery?: string;
 };
 
 export function InventoryEntityManager({
@@ -45,7 +48,9 @@ export function InventoryEntityManager({
   canCreate,
   canEdit,
   canDelete,
+  initialQuery = "",
 }: Props) {
+  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [rows, setRows] = useState(initialRows);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
@@ -59,8 +64,16 @@ export function InventoryEntityManager({
     [rows, selectedId],
   );
 
+  useEffect(() => {
+    setRows(initialRows);
+    setTotal(initialTotal);
+    setPage(initialPage);
+  }, [initialRows, initialTotal, initialPage]);
+
   async function loadPage(nextPage: number) {
-    const res = await fetch(`${endpoint}?page=${nextPage}&pageSize=${pageSize}`, { cache: "no-store" });
+    const res = await fetch(`${endpoint}?${pageQueryString(nextPage, pageSize, searchInput)}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh");
     const data = (await res.json()) as PaginatedResult<InventoryEntity>;
     setRows(data.items);
@@ -77,7 +90,9 @@ export function InventoryEntityManager({
   }
 
   async function refresh() {
-    const res = await fetch(`${endpoint}?page=${page}&pageSize=${pageSize}`, { cache: "no-store" });
+    const res = await fetch(`${endpoint}?${pageQueryString(page, pageSize, searchInput)}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to refresh");
     const data = (await res.json()) as PaginatedResult<InventoryEntity>;
     setRows(data.items);
@@ -142,6 +157,13 @@ export function InventoryEntityManager({
           Refresh
         </Button>
       </CrudToolbar>
+
+      <TableSearchBar
+        id={`${endpoint}-search`}
+        value={searchInput}
+        onChange={setSearchInput}
+        placeholder="Name, generic, UOM…"
+      />
 
       {mode === "create" ? (
         <ModalShell

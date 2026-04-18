@@ -40,7 +40,7 @@ async function getMedicalTeamMemberCandidates() {
 export default async function AdminMedicalTeamsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -59,9 +59,10 @@ export default async function AdminMedicalTeamsPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [teamsResult, vehiclesResult, members] = await Promise.all([
-    backendJsonPaginated<MedicalTeam>(`/api/medical-teams?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<MedicalTeam>(`/api/medical-teams?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`),
     backendJsonPaginated<Vehicle>(withPaginationQuery("/api/vehicles", 1, 100)),
     getMedicalTeamMemberCandidates(),
   ]);
@@ -93,6 +94,7 @@ export default async function AdminMedicalTeamsPage({
             canCreate={canCreate}
             canEdit={canEdit}
             canDelete={canDelete}
+            initialQuery={listQuery ?? ""}
           />
         )}
       </Card>

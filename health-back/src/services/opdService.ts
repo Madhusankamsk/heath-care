@@ -1,5 +1,7 @@
 import prisma from "../prisma/client";
 
+import { patientTextSearchWhere } from "../lib/searchWhere";
+
 const OPD_STATUS_CATEGORY = "OPD_STATUS";
 const DEFAULT_STATUS_KEY = "WAITING";
 
@@ -52,13 +54,21 @@ const opdQueueInclude = {
   },
 } as const;
 
-export async function listTodayOpdQueue(params: { skip: number; take: number }) {
-  const where = {
+export async function listTodayOpdQueue(params: { skip: number; take: number; q?: string }) {
+  const dateWhere = {
     visitDate: {
       gte: startOfToday(),
       lt: startOfTomorrow(),
     },
   };
+  const where = params.q?.trim()
+    ? {
+        AND: [
+          dateWhere,
+          { patient: { is: patientTextSearchWhere(params.q) } },
+        ],
+      }
+    : dateWhere;
   const [total, items] = await prisma.$transaction([
     prisma.opdQueue.count({ where }),
     prisma.opdQueue.findMany({

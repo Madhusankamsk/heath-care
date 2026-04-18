@@ -15,7 +15,7 @@ import {
   updateBatch,
   updateMedicine,
 } from "../services/inventoryService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 function parseNumber(value: unknown, field: string) {
   const n = Number(value);
@@ -36,7 +36,8 @@ function asKind(path: string) {
 export async function listInventoryMedicinesHandler(req: Request, res: Response) {
   const kind = asKind(req.path);
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await listMedicines(kind, { skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await listMedicines(kind, { skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 
@@ -97,7 +98,8 @@ export async function deleteInventoryMedicineHandler(req: Request, res: Response
 
 export async function listInventoryBatchesHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await listBatches({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await listBatches({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 
@@ -143,7 +145,8 @@ export async function deleteInventoryBatchHandler(req: Request, res: Response) {
 
 export async function listMobileSubstoresHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await listMobileSubstoresPaginated({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await listMobileSubstoresPaginated({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 
@@ -166,7 +169,8 @@ export async function assignMobileSubstoreHandler(req: Request, res: Response) {
 
 export async function listStockMovementsHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await listStockMovements({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await listStockMovements({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

@@ -1,4 +1,7 @@
 import prisma from "../prisma/client";
+import type { Prisma } from "@prisma/client";
+
+import { andBookingSearch } from "../lib/searchWhere";
 
 export type BookingListScope = "all" | "own";
 
@@ -119,14 +122,16 @@ export async function listBookingsForPatient(
     scope: BookingListScope;
     skip: number;
     take: number;
+    q?: string;
   },
 ) {
-  const scopeWhere =
+  const scopeWhere: Prisma.BookingWhereInput =
     params.scope === "own" && params.userId
       ? { requestedDoctorId: params.userId }
       : {};
 
-  const where = { patientId, ...scopeWhere };
+  const base: Prisma.BookingWhereInput = { patientId, ...scopeWhere };
+  const where = andBookingSearch(base, params.q) ?? base;
 
   const [total, items] = await prisma.$transaction([
     prisma.booking.count({ where }),
@@ -147,11 +152,14 @@ export async function listBookings(params: {
   scope: BookingListScope;
   skip: number;
   take: number;
+  q?: string;
 }) {
-  const where =
+  const base: Prisma.BookingWhereInput | undefined =
     params.scope === "own" && params.userId
       ? { requestedDoctorId: params.userId }
       : undefined;
+
+  const where = andBookingSearch(base, params.q) ?? base;
 
   const [total, items] = await prisma.$transaction([
     prisma.booking.count({ where }),

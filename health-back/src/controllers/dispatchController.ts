@@ -11,7 +11,7 @@ import {
   listUpcomingAcceptedForDispatchPaginated,
   updateDispatchStatus,
 } from "../services/dispatchService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 async function getScope(req: Request) {
   const keys = await loadPermissionKeys(req);
@@ -22,7 +22,14 @@ export async function listUpcomingDispatchHandler(req: Request, res: Response) {
   const scope = await getScope(req);
   const userId = req.authUser?.sub;
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await listUpcomingAcceptedForDispatchPaginated({ userId, scope, skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await listUpcomingAcceptedForDispatchPaginated({
+    userId,
+    scope,
+    skip,
+    take,
+    q,
+  });
   return okPaginated(res, { items, total, page, pageSize });
 }
 
@@ -30,7 +37,8 @@ export async function listOngoingDispatchHandler(req: Request, res: Response) {
   const scope = await getScope(req);
   const userId = req.authUser?.sub;
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await listOngoingForDispatchPaginated({ userId, scope, skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await listOngoingForDispatchPaginated({ userId, scope, skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

@@ -7,7 +7,7 @@ import {
   listSubscriptionPlanTypes,
   updateSubscriptionPlan,
 } from "../services/subscriptionPlanService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 function parseNumber(value: unknown): number | undefined {
   if (value === undefined || value === null || value === "") return undefined;
@@ -18,7 +18,8 @@ function parseNumber(value: unknown): number | undefined {
 
 export async function listSubscriptionPlansHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchSubscriptionPlansPage({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchSubscriptionPlansPage({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

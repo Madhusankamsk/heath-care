@@ -4,11 +4,12 @@ import {
   listOutstandingSubscriptionInvoices as fetchOutstandingSubscriptionInvoicesPage,
   recordSubscriptionInvoicePayment,
 } from "../services/subscriptionBillingService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listOutstandingSubscriptionInvoicesHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchOutstandingSubscriptionInvoicesPage({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchOutstandingSubscriptionInvoicesPage({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

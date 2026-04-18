@@ -4,11 +4,12 @@ import {
   listOutstandingVisitInvoices as fetchOutstandingVisitInvoicesPage,
   recordVisitInvoicePayment,
 } from "../services/visitInvoicePaymentService";
-import { okPaginated, parsePaginationQuery } from "../lib/pagination";
+import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listOutstandingVisitInvoicesHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
-  const { items, total } = await fetchOutstandingVisitInvoicesPage({ skip, take });
+  const q = parseOptionalQueryString(req);
+  const { items, total } = await fetchOutstandingVisitInvoicesPage({ skip, take, q });
   return okPaginated(res, { items, total, page, pageSize });
 }
 

@@ -32,7 +32,7 @@ type Patient = {
 export default async function ManageBookingsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -51,9 +51,10 @@ export default async function ManageBookingsPage({
 
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
+  const listQuery = typeof params.q === "string" ? params.q : undefined;
 
   const [bookingsResult, patientsResult, doctorsResult, doctorStatuses] = await Promise.all([
-    backendJsonPaginated<Booking>(`/api/bookings?${pageQueryString(pageNum)}`),
+    backendJsonPaginated<Booking>(`/api/bookings?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`),
     backendJsonPaginated<Patient>(withPaginationQuery("/api/patients", 1, 100)),
     backendJsonPaginated<DoctorProfileOption>(withPaginationQuery("/api/profiles", 1, 100)),
     backendJson<DoctorStatusOption[]>(
@@ -93,6 +94,7 @@ export default async function ManageBookingsPage({
             canCreate={canCreate}
             canEdit={canEdit}
             canDelete={canDelete}
+            initialQuery={listQuery ?? ""}
           />
         )}
       </Card>
