@@ -49,6 +49,25 @@ function formatWhen(value: string) {
   return d.toLocaleString();
 }
 
+function getStatusTone(statusKey: string | null | undefined): "success" | "warning" | "danger" | "info" {
+  const normalized = (statusKey ?? "").trim().toUpperCase();
+
+  if (normalized.includes("COMPLETE") || normalized.includes("DONE") || normalized.includes("CLOSED")) {
+    return "success";
+  }
+  if (normalized.includes("CANCEL") || normalized.includes("NO_SHOW") || normalized.includes("FAILED")) {
+    return "danger";
+  }
+  if (normalized.includes("WAIT") || normalized.includes("PENDING")) {
+    return "warning";
+  }
+  return "info";
+}
+
+function isWaitingStatus(statusKey: string | null | undefined): boolean {
+  return (statusKey ?? "").trim().toUpperCase() === "WAITING";
+}
+
 export function OpdQueueManager({
   rows,
   total,
@@ -151,36 +170,43 @@ export function OpdQueueManager({
           <div className="px-4 py-8 text-sm text-[var(--text-secondary)]">No OPD queue records today.</div>
         ) : (
           <ul className="divide-y divide-[var(--border)]">
-            {rows.map((row) => (
-              <li key={row.id} className="px-4 py-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[var(--text-primary)]">
-                      Token #{row.tokenNo} - {row.patient.fullName}
-                    </p>
-                    <p className="text-xs text-[var(--text-muted)]">
-                      {row.patient.contactNo ?? "No contact"} - {formatWhen(row.visitDate)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-9 items-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-medium text-[var(--text-primary)] sm:min-w-[10rem] sm:justify-center">
-                      {row.statusLookup?.lookupValue ?? row.status}
-                    </span>
-                    {canDelete ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="h-9 px-3 text-xs"
-                        disabled={deletingId === row.id}
-                        onClick={() => void removeFromQueue(row.id)}
+            {rows.map((row) => {
+              const statusKey = row.statusLookup?.lookupKey ?? row.status;
+              const canRemoveRow = canDelete && isWaitingStatus(statusKey);
+
+              return (
+                <li key={row.id} className="px-4 py-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[var(--text-primary)]">
+                        Token #{row.tokenNo} - {row.patient.fullName}
+                      </p>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {row.patient.contactNo ?? "No contact"} - {formatWhen(row.visitDate)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`pill pill-${getStatusTone(statusKey)} min-h-9 sm:min-w-[10rem] sm:justify-center`}
                       >
-                        {deletingId === row.id ? "Removing..." : "Remove"}
-                      </Button>
-                    ) : null}
+                        {row.statusLookup?.lookupValue ?? row.status}
+                      </span>
+                      {canRemoveRow ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-9 px-3 text-xs"
+                          disabled={deletingId === row.id}
+                          onClick={() => void removeFromQueue(row.id)}
+                        >
+                          {deletingId === row.id ? "Removing..." : "Remove"}
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
         <div className="border-t border-[var(--border)] px-4 py-3">

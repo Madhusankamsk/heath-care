@@ -4,6 +4,22 @@ import { backendFetch } from "@/lib/backend";
 
 type Params = { id: string };
 
+async function forwardBackendResponse(res: Response) {
+  const status = res.status;
+  const contentType = res.headers.get("content-type");
+
+  // 204/205/304 responses must not include a body.
+  if (status === 204 || status === 205 || status === 304) {
+    return new NextResponse(null, { status });
+  }
+
+  const bodyText = await res.text().catch(() => "");
+  return new NextResponse(bodyText, {
+    status,
+    headers: contentType ? { "Content-Type": contentType } : undefined,
+  });
+}
+
 export async function PATCH(request: Request, context: { params: Promise<Params> }) {
   const { id } = await context.params;
   const requestText = await request.text().catch(() => "");
@@ -20,11 +36,7 @@ export async function PATCH(request: Request, context: { params: Promise<Params>
     );
   });
 
-  const bodyText = await res.text().catch(() => "");
-  return new NextResponse(bodyText, {
-    status: res.status,
-    headers: { "Content-Type": res.headers.get("content-type") ?? "application/json" },
-  });
+  return forwardBackendResponse(res);
 }
 
 export async function DELETE(_request: Request, context: { params: Promise<Params> }) {
@@ -38,9 +50,5 @@ export async function DELETE(_request: Request, context: { params: Promise<Param
     );
   });
 
-  const bodyText = await res.text().catch(() => "");
-  return new NextResponse(bodyText, {
-    status: res.status,
-    headers: { "Content-Type": res.headers.get("content-type") ?? "application/json" },
-  });
+  return forwardBackendResponse(res);
 }
