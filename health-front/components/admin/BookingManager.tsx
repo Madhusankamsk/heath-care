@@ -17,6 +17,10 @@ import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
 import { useTableListSearch } from "@/lib/useTableListSearch";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 import { TableSearchBar } from "@/components/ui/TableSearchBar";
+import {
+  SearchablePatientSelect,
+  type SearchablePatientOption,
+} from "@/components/forms/SearchablePatientSelect";
 
 export type Booking = {
   id: string;
@@ -30,14 +34,6 @@ export type Booking = {
   doctorStatusLookup?: { id: string; lookupKey: string; lookupValue: string } | null;
 };
 
-type PatientOption = {
-  id: string;
-  fullName: string;
-  shortName?: string | null;
-  nicOrPassport?: string | null;
-  contactNo?: string | null;
-  whatsappNo?: string | null;
-};
 export type DoctorProfileOption = { id: string; fullName: string; email: string };
 export type DoctorStatusOption = { id: string; lookupKey: string; lookupValue: string };
 
@@ -46,7 +42,6 @@ type BookingManagerProps = {
   total: number;
   initialPage: number;
   pageSize?: number;
-  patients: PatientOption[];
   doctors: DoctorProfileOption[];
   doctorStatuses: DoctorStatusOption[];
   currentUserId: string;
@@ -67,7 +62,6 @@ export function BookingManager({
   total: initialTotal,
   initialPage,
   pageSize = DEFAULT_PAGE_SIZE,
-  patients,
   doctors,
   doctorStatuses,
   currentUserId,
@@ -291,7 +285,6 @@ export function BookingManager({
                 intent="create"
                 title="Create booking"
                 submitLabel="Create"
-                patients={patients}
                 doctors={doctors}
                 onCancel={() => {
                   setMode("none");
@@ -338,9 +331,20 @@ export function BookingManager({
                   intent="edit"
                   title="Edit booking"
                   submitLabel="Save changes"
-                  patients={patients}
                   doctors={doctors}
                   doctorStatuses={doctorStatuses}
+                  initialPatient={
+                    selected.patient
+                      ? {
+                          id: selected.patientId,
+                          fullName: selected.patient.fullName,
+                          shortName: null,
+                          nicOrPassport: null,
+                          contactNo: null,
+                          whatsappNo: null,
+                        }
+                      : null
+                  }
                   initial={{
                     patientId: selected.patientId,
                     scheduledDate: toDateTimeLocalInput(selected.scheduledDate),
@@ -554,21 +558,6 @@ export function BookingManager({
   );
 }
 
-function patientMatchesQuery(p: PatientOption, q: string) {
-  const s = q.trim().toLowerCase();
-  if (!s) return true;
-  const parts = [
-    p.fullName,
-    p.shortName,
-    p.nicOrPassport,
-    p.contactNo,
-    p.whatsappNo,
-  ]
-    .filter(Boolean)
-    .map((x) => String(x).toLowerCase());
-  return parts.some((part) => part.includes(s));
-}
-
 function doctorMatchesQuery(d: DoctorProfileOption, q: string) {
   const s = q.trim().toLowerCase();
   if (!s) return true;
@@ -580,107 +569,6 @@ const searchDropdownTriggerClass =
 
 const searchDropdownPanelClass =
   "absolute left-0 right-0 z-[80] mt-1 max-h-64 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg";
-
-function SearchablePatientSelect({
-  label,
-  patients,
-  value,
-  onChange,
-  required,
-  disabled,
-}: {
-  label: string;
-  patients: PatientOption[];
-  value: string;
-  onChange: (id: string) => void;
-  required?: boolean;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  const filtered = useMemo(() => patients.filter((p) => patientMatchesQuery(p, q)), [patients, q]);
-  const selected = patients.find((p) => p.id === value);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleDoc(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleDoc);
-    return () => document.removeEventListener("mousedown", handleDoc);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      const timer = window.setTimeout(() => setQ(""), 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [open]);
-
-  return (
-    <div className="relative flex flex-col gap-2 text-sm" ref={rootRef}>
-      <span className="font-medium text-[var(--text-primary)]">
-        {label}
-        {required ? <span className="text-[var(--danger)]"> *</span> : null}
-      </span>
-      <button
-        type="button"
-        disabled={disabled}
-        className={searchDropdownTriggerClass + (disabled ? " cursor-not-allowed opacity-60" : "")}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        onClick={() => !disabled && setOpen((o) => !o)}
-      >
-        <span className="min-w-0 truncate">{selected ? selected.fullName : "Select patient…"}</span>
-        <span className="text-[var(--text-muted)]" aria-hidden>
-          ▾
-        </span>
-      </button>
-      {open ? (
-        <div className={searchDropdownPanelClass}>
-          <input
-            type="search"
-            autoComplete="off"
-            placeholder="Search…"
-            className="w-full border-b border-[var(--border)] bg-transparent px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            autoFocus
-          />
-          <ul className="max-h-52 overflow-y-auto py-1" role="listbox">
-            {filtered.length === 0 ? (
-              <li className="px-3 py-4 text-center text-xs text-[var(--text-secondary)]">
-                No matches
-              </li>
-            ) : (
-              filtered.map((p) => (
-                <li key={p.id} role="none">
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={value === p.id}
-                    className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
-                    onClick={() => {
-                      onChange(p.id);
-                      setOpen(false);
-                    }}
-                  >
-                    <span className="font-medium text-[var(--text-primary)]">{p.fullName}</span>
-                    <span className="text-xs text-[var(--text-muted)]">
-                      {[p.nicOrPassport, p.contactNo].filter(Boolean).join(" · ") || "—"}
-                    </span>
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 function SearchableDoctorSelect({
   label,
@@ -804,27 +692,27 @@ function BookingForm({
   title,
   submitLabel,
   intent,
-  patients,
   doctors,
   doctorStatuses,
   onCancel,
   onSubmit,
   initial,
+  initialPatient,
   layout = "card",
 }: {
   title: string;
   submitLabel: string;
   intent: "create" | "edit";
-  patients: PatientOption[];
   doctors: DoctorProfileOption[];
   doctorStatuses?: DoctorStatusOption[];
   onCancel: () => void;
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
   initial?: Partial<BookingFormValues>;
+  initialPatient?: SearchablePatientOption | null;
   layout?: "card" | "modal";
 }) {
   const [values, setValues] = useState<BookingFormValues>({
-    patientId: initial?.patientId ?? patients[0]?.id ?? "",
+    patientId: initial?.patientId ?? "",
     scheduledDate: initial?.scheduledDate ?? "",
     bookingRemark: initial?.bookingRemark ?? "",
     requestedDoctorId: initial?.requestedDoctorId ?? "",
@@ -892,9 +780,9 @@ function BookingForm({
         <div className="sm:col-span-1">
           <SearchablePatientSelect
             label="Patient"
-            patients={patients}
             value={values.patientId}
             onChange={(patientId) => setValues((v) => ({ ...v, patientId }))}
+            initialPatient={initialPatient ?? null}
             required
             disabled={isSubmitting}
           />

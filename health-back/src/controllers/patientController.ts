@@ -5,9 +5,19 @@ import {
   deletePatient,
   getPatientById,
   listPatients,
+  searchPatientsForPicker,
   updatePatient,
 } from "../services/patientService";
 import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
+
+export async function searchPatientsPickerHandler(req: Request, res: Response) {
+  const q = parseOptionalQueryString(req);
+  if (!q) {
+    return res.json({ items: [] });
+  }
+  const result = await searchPatientsForPicker(q);
+  return res.json(result);
+}
 
 export async function listPatientsHandler(req: Request, res: Response) {
   const { page, pageSize, skip, take } = parsePaginationQuery(req);

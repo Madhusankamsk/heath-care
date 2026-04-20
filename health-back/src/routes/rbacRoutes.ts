@@ -44,6 +44,7 @@ import {
   deletePatientHandler,
   getPatientHandler,
   listPatientsHandler,
+  searchPatientsPickerHandler,
   updatePatientHandler,
 } from "../controllers/patientController";
 import { listLookupsHandler } from "../controllers/lookupController";
@@ -74,6 +75,7 @@ import {
   listOpdQueueHandler,
   patchOpdQueueHandler,
   pickOpdQueueHandler,
+  unpickOpdQueueHandler,
 } from "../controllers/opdController";
 import {
   deleteOpdEligibleDoctorHandler,
@@ -316,6 +318,11 @@ router.delete(
 );
 
 // Patients
+router.get(
+  "/patients/search",
+  requireAnyPermission(["patients:list", "patients:read"]),
+  searchPatientsPickerHandler,
+);
 router.get("/patients", requireAnyPermission(["patients:list"]), listPatientsHandler);
 router.post("/patients", requireAnyPermission(["patients:create"]), createPatientHandler);
 router.get("/patients/:id/bookings", requireAnyPermission(["patients:read"]), listBookingsForPatientHandler);
@@ -404,6 +411,7 @@ router.get(
   listOpdDoctorQueueHandler,
 );
 router.post("/opd/:id/pick", requireAnyPermission(["opd:pick"]), pickOpdQueueHandler);
+router.post("/opd/:id/unpick", requireAnyPermission(["opd:pick"]), unpickOpdQueueHandler);
 router.post("/opd/:id/complete", requireAnyPermission(["opd:pick"]), completeOpdQueueHandler);
 router.get("/opd", requireAnyPermission(["opd:list", "opd:read"]), listOpdQueueHandler);
 router.post("/opd", requireAnyPermission(["opd:create"]), createOpdQueueHandler);

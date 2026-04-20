@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../prisma/client";
 import { createOpdInvoiceIfAbsent } from "./opdInvoiceService";
 import { assertUserIsActiveOpdDoctor } from "./opdDoctorEligibilityService";
+import { opdQueueInclude } from "./opdService";
 
 const OPD_STATUS_CATEGORY = "OPD_STATUS";
 const DOCTOR_BOOKING_STATUS = "DOCTOR_BOOKING_STATUS";
@@ -229,5 +230,111 @@ export async function completeOpdConsultation(params: {
     });
 
     return updatedQueue;
+  });
+}
+
+/**
+ * Return a picked patient to the waiting pool: only the doctor who picked may unpick,
+ * and only while the visit is not completed and no billing exists for the booking.
+ */
+export async function unpickOpdPatient(params: { queueId: string; doctorUserId: string }) {
+  return prisma.$transaction(async (tx) => {
+    const queue = await tx.opdQueue.findFirst({
+      where: {
+        id: params.queueId,
+        visitDate: { gte: startOfToday(), lt: startOfTomorrow() },
+      },
+      include: {
+        statusLookup: { select: { lookupKey: true } },
+        booking: {
+          include: {
+            visitRecord: true,
+            invoices: { select: { id: true } },
+            visitInvoices: { select: { invoiceId: true } },
+            opdInvoiceRow: { select: { invoiceId: true } },
+            dispatchRecords: { select: { id: true } },
+          },
+        },
+      },
+    });
+
+    if (!queue) {
+      const err = new Error("QUEUE_NOT_FOUND") as Error & { code?: string };
+      err.code = "QUEUE_NOT_FOUND";
+      throw err;
+    }
+
+    if (queue.statusLookup?.lookupKey !== "IN_CONSULTATION") {
+      const err = new Error("QUEUE_NOT_IN_CONSULTATION") as Error & { code?: string };
+      err.code = "QUEUE_NOT_IN_CONSULTATION";
+      throw err;
+    }
+
+    if (queue.pickedByUserId !== params.doctorUserId) {
+      const err = new Error("NOT_YOUR_PATIENT") as Error & { code?: string };
+      err.code = "NOT_YOUR_PATIENT";
+      throw err;
+    }
+
+    if (!queue.bookingId || !queue.booking) {
+      const err = new Error("QUEUE_NO_BOOKING") as Error & { code?: string };
+      err.code = "QUEUE_NO_BOOKING";
+      throw err;
+    }
+
+    const booking = queue.booking;
+    const visit = booking.visitRecord;
+
+    if (!visit) {
+      const err = new Error("VISIT_NOT_FOUND") as Error & { code?: string };
+      err.code = "VISIT_NOT_FOUND";
+      throw err;
+    }
+
+    if (visit.completedAt) {
+      const err = new Error("VISIT_ALREADY_COMPLETED") as Error & { code?: string };
+      err.code = "VISIT_ALREADY_COMPLETED";
+      throw err;
+    }
+
+    if (
+      booking.invoices.length > 0 ||
+      booking.visitInvoices.length > 0 ||
+      booking.opdInvoiceRow != null ||
+      booking.dispatchRecords.length > 0
+    ) {
+      const err = new Error("CANNOT_UNPICK_LINKED_RECORDS") as Error & { code?: string };
+      err.code = "CANNOT_UNPICK_LINKED_RECORDS";
+      throw err;
+    }
+
+    const waitingId = await getOpdStatusId(tx, "WAITING");
+    const waitingLabel = await tx.lookup.findUnique({
+      where: { id: waitingId },
+      select: { lookupValue: true },
+    });
+
+    await tx.dispensedMedicine.deleteMany({ where: { visitId: visit.id } });
+    await tx.diagnosticReport.deleteMany({ where: { visitId: visit.id } });
+    await tx.labSample.deleteMany({ where: { visitId: visit.id } });
+    await tx.visitRecord.delete({ where: { id: visit.id } });
+
+    await tx.opdQueue.update({
+      where: { id: queue.id },
+      data: {
+        bookingId: null,
+        pickedByUserId: null,
+        pickedAt: null,
+        statusId: waitingId,
+        status: waitingLabel?.lookupValue ?? "Waiting",
+      },
+    });
+
+    await tx.booking.delete({ where: { id: booking.id } });
+
+    return tx.opdQueue.findUniqueOrThrow({
+      where: { id: queue.id },
+      include: opdQueueInclude,
+    });
   });
 }

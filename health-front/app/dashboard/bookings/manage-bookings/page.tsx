@@ -20,15 +20,6 @@ const PERMS = {
   delete: ["bookings:delete"],
 } as const;
 
-type Patient = {
-  id: string;
-  fullName: string;
-  shortName?: string | null;
-  nicOrPassport?: string | null;
-  contactNo?: string | null;
-  whatsappNo?: string | null;
-};
-
 export default async function ManageBookingsPage({
   searchParams,
 }: {
@@ -53,16 +44,13 @@ export default async function ManageBookingsPage({
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
   const listQuery = typeof params.q === "string" ? params.q : undefined;
 
-  const [bookingsResult, patientsResult, doctorsResult, doctorStatuses] = await Promise.all([
+  const [bookingsResult, doctorsResult, doctorStatuses] = await Promise.all([
     backendJsonPaginated<Booking>(`/api/bookings?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`),
-    backendJsonPaginated<Patient>(withPaginationQuery("/api/patients", 1, 100)),
     backendJsonPaginated<DoctorProfileOption>(withPaginationQuery("/api/profiles", 1, 100)),
     backendJson<DoctorStatusOption[]>(
       `/api/lookups?category=${encodeURIComponent("DOCTOR_BOOKING_STATUS")}`,
     ),
   ]);
-
-  const patients = patientsResult?.items ?? [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -71,21 +59,12 @@ export default async function ManageBookingsPage({
           <div className="text-sm text-red-700 dark:text-red-300">
             Failed to load bookings.
           </div>
-        ) : !patientsResult ? (
-          <div className="text-sm text-red-700 dark:text-red-300">
-            Failed to load patients (required for booking assignment).
-          </div>
-        ) : patients.length === 0 ? (
-          <div className="text-sm text-zinc-700 dark:text-zinc-300">
-            No patients found. Create patients first.
-          </div>
         ) : (
           <BookingManager
             initialBookings={bookingsResult.items}
             total={bookingsResult.total}
             initialPage={bookingsResult.page}
             pageSize={bookingsResult.pageSize ?? DEFAULT_PAGE_SIZE}
-            patients={patients}
             doctors={doctorsResult?.items ?? []}
             doctorStatuses={doctorStatuses ?? []}
             currentUserId={me.user.id}

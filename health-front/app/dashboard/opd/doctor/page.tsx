@@ -50,6 +50,7 @@ export default async function OpdDoctorPage({
         <p className="text-sm text-red-700 dark:text-red-300">Failed to load doctor queue.</p>
       ) : (
         <OpdDoctorConsole
+          currentUserId={me.user.id}
           rows={rows}
           total={queueResult.total}
           page={queueResult.page}

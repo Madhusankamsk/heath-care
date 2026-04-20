@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 
 type OpdQueueRow = {
@@ -20,6 +21,7 @@ type OpdQueueRow = {
 };
 
 export function OpdDoctorConsole(props: {
+  currentUserId: string;
   rows: OpdQueueRow[];
   total: number;
   page: number;
@@ -27,6 +29,8 @@ export function OpdDoctorConsole(props: {
 }) {
   const router = useRouter();
   const [pickingId, setPickingId] = useState<string | null>(null);
+  const [unpickQueueId, setUnpickQueueId] = useState<string | null>(null);
+  const [unpickingId, setUnpickingId] = useState<string | null>(null);
 
   async function pick(queueId: string) {
     setPickingId(queueId);
@@ -43,7 +47,23 @@ export function OpdDoctorConsole(props: {
     }
   }
 
-  const { rows, total, page, pageSize } = props;
+  async function unpick(queueId: string) {
+    setUnpickingId(queueId);
+    try {
+      const res = await fetch(`/api/opd/${encodeURIComponent(queueId)}/unpick`, { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      if (!res.ok) throw new Error(data.message || "Unable to unpick patient");
+      toast.success("Patient returned to the waiting queue.");
+      setUnpickQueueId(null);
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Unable to unpick");
+    } finally {
+      setUnpickingId(null);
+    }
+  }
+
+  const { currentUserId, rows, total, page, pageSize } = props;
 
   return (
     <div className="flex flex-col gap-4">
@@ -68,6 +88,8 @@ export function OpdDoctorConsole(props: {
               rows.map((row) => {
                 const waiting = row.statusLookup?.lookupKey === "WAITING";
                 const inConsult = row.statusLookup?.lookupKey === "IN_CONSULTATION";
+                const isMyPatient =
+                  inConsult && row.pickedBy?.id === currentUserId && row.booking?.id;
                 return (
                   <tr key={row.id} className="border-b border-[var(--border)]/80">
                     <td className="px-3 py-2 font-mono tabular-nums">#{row.tokenNo}</td>
@@ -87,12 +109,25 @@ export function OpdDoctorConsole(props: {
                           </Button>
                         ) : null}
                         {inConsult && row.booking?.id ? (
-                          <Link
-                            href={`/dashboard/clients/patient/${row.patient.id}`}
-                            className="text-sm font-medium text-[var(--brand-primary)] underline-offset-2 hover:underline"
-                          >
-                            Open patient
-                          </Link>
+                          <>
+                            <Link
+                              href={`/dashboard/clients/patient/${row.patient.id}`}
+                              className="text-sm font-medium text-[var(--brand-primary)] underline-offset-2 hover:underline"
+                            >
+                              Open patient
+                            </Link>
+                            {isMyPatient ? (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className="h-8 px-3 text-xs"
+                                disabled={unpickingId !== null}
+                                onClick={() => setUnpickQueueId(row.id)}
+                              >
+                                Unpick
+                              </Button>
+                            ) : null}
+                          </>
                         ) : null}
                       </div>
                     </td>
@@ -109,6 +144,19 @@ export function OpdDoctorConsole(props: {
         pageSize={pageSize}
         total={total}
         hrefForPage={(p) => `/dashboard/opd/doctor?page=${p}`}
+      />
+
+      <ConfirmModal
+        open={unpickQueueId !== null}
+        title="Return patient to queue?"
+        message="This will cancel the in-progress visit for this token and put the patient back in the waiting pool. You can pick them again later."
+        confirmLabel="Unpick"
+        confirmVariant="delete"
+        isConfirming={unpickQueueId !== null && unpickingId === unpickQueueId}
+        onCancel={() => setUnpickQueueId(null)}
+        onConfirm={() => {
+          if (unpickQueueId) void unpick(unpickQueueId);
+        }}
       />
     </div>
   );

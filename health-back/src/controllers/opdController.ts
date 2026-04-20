@@ -7,7 +7,7 @@ import {
   listTodayOpdQueue as fetchTodayOpdQueuePage,
   updateOpdQueueEntryStatus,
 } from "../services/opdService";
-import { completeOpdConsultation, pickOpdPatient } from "../services/opdEncounterService";
+import { completeOpdConsultation, pickOpdPatient, unpickOpdPatient } from "../services/opdEncounterService";
 import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listOpdQueueHandler(req: Request, res: Response) {
@@ -107,6 +107,45 @@ export async function pickOpdQueueHandler(req: Request, res: Response) {
       return res.status(409).json({ message: "Patient is no longer available to pick" });
     }
     return res.status(500).json({ message: err.message ?? "Unable to pick patient" });
+  }
+}
+
+export async function unpickOpdQueueHandler(req: Request, res: Response) {
+  const userId = req.authUser?.sub?.trim();
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const queueId = typeof req.params.id === "string" ? req.params.id.trim() : "";
+  if (!queueId) {
+    return res.status(400).json({ message: "Queue id is required" });
+  }
+
+  try {
+    const row = await unpickOpdPatient({ queueId, doctorUserId: userId });
+    return res.json(row);
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === "QUEUE_NOT_FOUND") {
+      return res.status(404).json({ message: "OPD queue record not found" });
+    }
+    if (err.code === "QUEUE_NOT_IN_CONSULTATION") {
+      return res.status(409).json({ message: "Patient is not in consultation" });
+    }
+    if (err.code === "NOT_YOUR_PATIENT") {
+      return res.status(403).json({ message: "You did not pick this patient" });
+    }
+    if (err.code === "QUEUE_NO_BOOKING" || err.code === "VISIT_NOT_FOUND") {
+      return res.status(400).json({ message: "No active visit for this queue entry" });
+    }
+    if (err.code === "VISIT_ALREADY_COMPLETED") {
+      return res.status(409).json({ message: "Visit already completed; cannot unpick" });
+    }
+    if (err.code === "CANNOT_UNPICK_LINKED_RECORDS") {
+      return res.status(409).json({
+        message: "Cannot return this patient: billing or dispatch is linked to this visit",
+      });
+    }
+    return res.status(500).json({ message: err.message ?? "Unable to unpick patient" });
   }
 }
 

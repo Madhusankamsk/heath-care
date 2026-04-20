@@ -3,13 +3,11 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { TableSearchBar } from "@/components/ui/TableSearchBar";
-
+import { SearchablePatientSelect } from "@/components/forms/SearchablePatientSelect";
 import { Button } from "@/components/ui/Button";
 import { SelectBase } from "@/components/ui/select-base";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
 import { pageQueryString } from "@/lib/pagination";
-import { useTableListSearch } from "@/lib/useTableListSearch";
 import { toast } from "@/lib/toast";
 
 type OpdStatusOption = {
@@ -24,6 +22,7 @@ type PatientOption = {
   shortName?: string | null;
   nicOrPassport?: string | null;
   contactNo?: string | null;
+  whatsappNo?: string | null;
 };
 
 type OpdQueueRow = {
@@ -40,12 +39,10 @@ type OpdQueueManagerProps = {
   total: number;
   page: number;
   pageSize: number;
-  patients: PatientOption[];
   statuses: OpdStatusOption[];
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
-  initialQuery?: string;
 };
 
 function formatWhen(value: string) {
@@ -59,15 +56,12 @@ export function OpdQueueManager({
   total,
   page,
   pageSize,
-  patients,
   statuses,
   canCreate,
   canUpdate,
   canDelete,
-  initialQuery = "",
 }: OpdQueueManagerProps) {
   const router = useRouter();
-  const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
   const [patientId, setPatientId] = useState("");
   const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -126,7 +120,7 @@ export function OpdQueueManager({
   }
 
   function goToPage(nextPage: number) {
-    router.push(`/dashboard/opd/queue?${pageQueryString(nextPage, pageSize, searchInput)}`);
+    router.push(`/dashboard/opd/queue?${pageQueryString(nextPage, pageSize)}`);
   }
 
   async function removeFromQueue(id: string) {
@@ -150,29 +144,24 @@ export function OpdQueueManager({
     <div className="flex flex-col gap-4">
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
         <h2 className="text-sm font-semibold text-[var(--text-primary)]">Add Patient to Queue</h2>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-          <label className="flex flex-1 flex-col gap-1 text-xs">
-            <span className="font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-              Patient
-            </span>
-            <SelectBase
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+          Search patients on the server (same as Create booking / dashboard search). Type at least two characters,
+          then pick a patient to add to the queue.
+        </p>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <SearchablePatientSelect
+              label="Patient"
               value={patientId}
+              onChange={setPatientId}
+              required
               disabled={!canCreate || creating}
-              onChange={(e) => setPatientId(e.target.value)}
-              className="h-10 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm text-[var(--text-primary)]"
-            >
-              <option value="">Select patient</option>
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.fullName}
-                  {p.nicOrPassport ? ` - ${p.nicOrPassport}` : ""}
-                </option>
-              ))}
-            </SelectBase>
-          </label>
+            />
+          </div>
           <Button
             type="button"
             variant="primary"
+            className="h-11 shrink-0 sm:self-end"
             disabled={!canCreate || creating || !patientId.trim()}
             onClick={() => void addToQueue()}
           >
@@ -182,18 +171,6 @@ export function OpdQueueManager({
       </section>
 
       <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-        <div className="border-b border-[var(--border)] px-4 py-3">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Today OPD Queue</h2>
-          <div className="mt-3 max-w-md">
-            <TableSearchBar
-              id="opd-queue-search"
-              value={searchInput}
-              onChange={setSearchInput}
-              placeholder="Patient name, phone, NIC…"
-              label="Filter queue"
-            />
-          </div>
-        </div>
         {rows.length === 0 ? (
           <div className="px-4 py-8 text-sm text-[var(--text-secondary)]">No OPD queue records today.</div>
         ) : (

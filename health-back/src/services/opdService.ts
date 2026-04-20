@@ -39,7 +39,7 @@ function startOfTomorrow() {
   return d;
 }
 
-const opdQueueInclude = {
+export const opdQueueInclude = {
   patient: {
     select: {
       id: true,
@@ -79,7 +79,7 @@ export async function listTodayOpdQueue(params: { skip: number; take: number; q?
     prisma.opdQueue.count({ where }),
     prisma.opdQueue.findMany({
       where,
-      orderBy: [{ tokenNo: "asc" }, { visitDate: "asc" }],
+      orderBy: [{ tokenNo: "desc" }, { visitDate: "desc" }],
       skip: params.skip,
       take: params.take,
       include: opdQueueInclude,
