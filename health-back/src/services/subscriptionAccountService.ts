@@ -19,6 +19,7 @@ export type SubscriptionAccountCreateInput = {
   statusId?: string | null;
   /** When set, patient is added as a member (billing is always created; invoice has no patient for corporate). */
   primaryPatientId?: string | null;
+  createdByUserId?: string | null;
 };
 
 export type AddSubscriptionMemberInput = {
@@ -195,6 +196,7 @@ export async function createSubscriptionAccount(data: SubscriptionAccountCreateI
       planId: data.planId,
       payments: [],
       collectedByUserId: "",
+      createdByUserId: data.createdByUserId,
     });
     const invoiceId = billing.invoiceId;
 

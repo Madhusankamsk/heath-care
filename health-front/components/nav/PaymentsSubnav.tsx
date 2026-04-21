@@ -4,9 +4,6 @@ import { SubnavTabs } from "@/components/ui/SubnavTabs";
 
 const TABS = [
   { href: "/dashboard/payments/invoices", label: "Invoices" },
-  { href: "/dashboard/payments/membership-invoices", label: "Membership invoices" },
-  { href: "/dashboard/payments/visit-invoices", label: "Visit invoices" },
-  { href: "/dashboard/payments/opd-invoices", label: "OPD invoices" },
   { href: "/dashboard/payments/accounts", label: "Accounts" },
   { href: "/dashboard/payments/collector", label: "Collector" },
 ] as const;

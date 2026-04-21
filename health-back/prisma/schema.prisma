@@ -53,6 +53,7 @@ model User {
   uploadedDiagnosticReports DiagnosticReport[]  @relation("DiagnosticUploadedBy")
   collectedLabSamples       LabSample[]         @relation("LabCollectedBy")
   requestedBookings         Booking[]           @relation("BookingRequestedDoctor")
+  createdInvoices          Invoice[]           @relation("InvoiceCreatedBy")
   dispatchAssignments       DispatchAssignment[]
   paymentsCollected         Payment[]             @relation("PaymentCollectedBy")
   collectorSettlements      PaymentCollectorSettlement[] @relation("CollectorSettlementCollector")
@@ -362,6 +363,7 @@ model DispensedMedicine {
 model Invoice {
   id                    String   @id @default(uuid())
   invoiceTypeId         String
+  createdById           String?
   bookingId             String?
   /** Null for corporate subscription bills billed to the account only. */
   patientId             String?
@@ -375,6 +377,7 @@ model Invoice {
   paymentStatus         String   @default("Unpaid")
   paymentStatusId       String?
   invoiceTypeLookup     Lookup   @relation("InvoiceType", fields: [invoiceTypeId], references: [id])
+  createdBy             User?    @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade)
   paymentStatusLookup   Lookup?  @relation("InvoicePaymentStatus", fields: [paymentStatusId], references: [id])
   booking               Booking? @relation(fields: [bookingId], references: [id])
   patient               Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull, onUpdate: Cascade)
@@ -386,6 +389,7 @@ model Invoice {
   createdAt             DateTime @default(now())
 
   @@index([invoiceTypeId])
+  @@index([createdById])
   @@index([subscriptionAccountId])
 }
 

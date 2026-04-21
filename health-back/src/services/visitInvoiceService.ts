@@ -49,7 +49,7 @@ async function requireInvoiceTypeVisitId(tx: Tx): Promise<string> {
  */
 export async function createVisitInvoiceIfAbsent(
   tx: Tx,
-  params: { bookingId: string; patientId: string },
+  params: { bookingId: string; patientId: string; createdByUserId?: string | null },
 ): Promise<{ invoiceId: string; created: boolean }> {
   const existing = await tx.visitInvoice.findUnique({
     where: { bookingId: params.bookingId },
@@ -67,6 +67,7 @@ export async function createVisitInvoiceIfAbsent(
   const inv = await tx.invoice.create({
     data: {
       invoiceTypeId,
+      createdById: params.createdByUserId?.trim() || null,
       bookingId: params.bookingId,
       patientId: params.patientId,
       subscriptionAccountId: null,

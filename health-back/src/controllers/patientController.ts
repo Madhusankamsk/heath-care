@@ -104,6 +104,7 @@ export async function createPatientHandler(req: Request, res: Response) {
       billingRecipientId: billingRecipientId ?? undefined,
       subscriptionPlanId: subscriptionPlanId ?? undefined,
       subscriptionStatusId: subscriptionStatusId ?? undefined,
+      createdByUserId: req.authUser?.sub,
     });
 
     return res.status(201).json({ ...created.patient, invoiceId: created.invoiceId });

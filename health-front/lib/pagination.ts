@@ -12,12 +12,19 @@ export function pageQueryString(
   page: number,
   pageSize: number = DEFAULT_PAGE_SIZE,
   q?: string,
+  extraParams?: Record<string, string | null | undefined>,
 ): string {
   const p = new URLSearchParams();
   p.set("page", String(page));
   p.set("pageSize", String(pageSize));
   const trimmed = typeof q === "string" ? q.trim() : "";
   if (trimmed.length > 0) p.set("q", trimmed);
+  if (extraParams) {
+    for (const [key, value] of Object.entries(extraParams)) {
+      const nextValue = typeof value === "string" ? value.trim() : "";
+      if (nextValue) p.set(key, nextValue);
+    }
+  }
   return p.toString();
 }
 

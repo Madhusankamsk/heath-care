@@ -8,12 +8,13 @@ import { backendJson, backendJsonPaginated, type BackendMeResponse } from "@/lib
 import { getIsAuthenticated } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE, pageQueryString } from "@/lib/pagination";
 import { hasAnyPermission } from "@/lib/rbac";
+import { InvoiceTypeFilter } from "./InvoiceTypeFilter";
 
 const VIEW_PERMS = ["invoices:read", "patients:read", "profiles:read"] as const;
 
 type OutstandingInvoiceRow = {
   id: string;
-  invoiceType: "MEMBERSHIP" | "VISIT";
+  invoiceType: "MEMBERSHIP" | "VISIT" | "OPD";
   createdAt: string;
   balanceDue: string;
   totalAmount: string;
@@ -35,13 +36,24 @@ function formatDate(iso: string | null) {
 }
 
 function invoiceTypeLabel(invoiceType: OutstandingInvoiceRow["invoiceType"]) {
-  return invoiceType === "MEMBERSHIP" ? "Membership" : "Visit";
+  if (invoiceType === "MEMBERSHIP") return "Membership";
+  if (invoiceType === "OPD") return "OPD";
+  return "Visit";
+}
+
+function normalizeInvoiceTypeFilter(
+  input: string | undefined,
+): "all" | "membership" | "visit" | "opd" {
+  if (input === "membership") return "membership";
+  if (input === "visit") return "visit";
+  if (input === "opd") return "opd";
+  return "all";
 }
 
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; q?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string; type?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -55,9 +67,14 @@ export default async function InvoicesPage({
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
   const q = typeof params.q === "string" ? params.q : "";
+  const type = normalizeInvoiceTypeFilter(
+    typeof params.type === "string" ? params.type : undefined,
+  );
 
   const result = await backendJsonPaginated<OutstandingInvoiceRow>(
-    `/api/invoices/outstanding?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, q)}`,
+    `/api/invoices/outstanding?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, q, {
+      type: type === "all" ? undefined : type,
+    })}`,
   );
   const invoices = result?.items ?? [];
 
@@ -67,7 +84,9 @@ export default async function InvoicesPage({
         <CrudToolbar
           title="Invoices"
           description="All outstanding invoices with invoice type."
-        />
+        >
+          <InvoiceTypeFilter initialType={type} />
+        </CrudToolbar>
         <TableSearchBarUrlSync
           initialQuery={q}
           id="invoices-search"
@@ -137,6 +156,7 @@ export default async function InvoicesPage({
               total={result.total}
               pathname="/dashboard/payments/invoices"
               q={q}
+              extraParams={{ type: type === "all" ? undefined : type }}
             />
           </>
         )}

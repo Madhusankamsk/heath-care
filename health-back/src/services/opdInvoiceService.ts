@@ -46,7 +46,7 @@ async function requireInvoiceTypeOpdId(tx: Tx): Promise<string> {
  */
 export async function createOpdInvoiceIfAbsent(
   tx: Tx,
-  params: { opdQueueId: string; bookingId: string; patientId: string },
+  params: { opdQueueId: string; bookingId: string; patientId: string; createdByUserId?: string | null },
 ): Promise<{ invoiceId: string; created: boolean }> {
   const existing = await tx.opdInvoice.findUnique({
     where: { bookingId: params.bookingId },
@@ -64,6 +64,7 @@ export async function createOpdInvoiceIfAbsent(
   const inv = await tx.invoice.create({
     data: {
       invoiceTypeId,
+      createdById: params.createdByUserId?.trim() || null,
       bookingId: params.bookingId,
       patientId: params.patientId,
       subscriptionAccountId: null,

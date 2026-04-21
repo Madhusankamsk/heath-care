@@ -7,7 +7,6 @@ import {
   Activity,
   ArrowLeftRight,
   BarChart3,
-  Banknote,
   CalendarCheck2,
   Building2,
   ChevronRight,
@@ -235,24 +234,6 @@ const navItems: NavItem[] = [
         href: "/dashboard/payments/invoices",
         label: "Invoices",
         icon: <Receipt className="h-4 w-4" aria-hidden />,
-        requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
-      },
-      {
-        href: "/dashboard/payments/membership-invoices",
-        label: "Membership invoices",
-        icon: <Banknote className="h-4 w-4" aria-hidden />,
-        requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
-      },
-      {
-        href: "/dashboard/payments/visit-invoices",
-        label: "Visit invoices",
-        icon: <CalendarCheck2 className="h-4 w-4" aria-hidden />,
-        requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
-      },
-      {
-        href: "/dashboard/payments/opd-invoices",
-        label: "OPD invoices",
-        icon: <Stethoscope className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["invoices:read", "patients:read", "profiles:read"],
       },
       {

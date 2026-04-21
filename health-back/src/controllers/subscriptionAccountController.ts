@@ -76,6 +76,7 @@ export async function createSubscriptionAccountHandler(req: Request, res: Respon
       contactPhone: contactPhone?.trim() || undefined,
       whatsappNo: whatsappNo?.trim() || undefined,
       primaryPatientId: primaryPatientId?.trim() || undefined,
+      createdByUserId: req.authUser?.sub,
     });
 
     return res.status(201).json(created);

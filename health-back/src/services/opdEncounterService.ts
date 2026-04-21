@@ -229,6 +229,7 @@ export async function completeOpdConsultation(params: {
       opdQueueId: queue.id,
       bookingId: queue.bookingId,
       patientId: queue.booking.patientId,
+      createdByUserId: params.doctorUserId,
     });
 
     const updatedQueue = await tx.opdQueue.update({

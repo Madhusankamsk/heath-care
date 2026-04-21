@@ -1,6 +1,10 @@
 import prisma from "../prisma/client";
+import type { Prisma } from "@prisma/client";
 
 import { invoiceOutstandingTextSearchWhere } from "../lib/searchWhere";
+
+export type InvoiceListScope = "all" | "own";
+export type OutstandingInvoiceTypeFilter = "all" | string;
 
 export type OutstandingInvoiceRow = {
   id: string;
@@ -17,6 +21,34 @@ export type OutstandingInvoiceRow = {
   bookingId: string | null;
   bookingScheduledDate: string | null;
 };
+
+export function resolveInvoiceListScope(permissionKeys: string[]): InvoiceListScope {
+  if (permissionKeys.includes("invoices:scope_all")) return "all";
+  if (permissionKeys.includes("invoices:scope_own")) return "own";
+  return "own";
+}
+
+async function resolveInvoiceTypeWhere(
+  invoiceType: OutstandingInvoiceTypeFilter,
+): Promise<Prisma.InvoiceWhereInput | undefined> {
+  const normalized = invoiceType.trim().toUpperCase().replace(/[\s-]+/g, "_");
+  if (!normalized || normalized === "ALL") return undefined;
+
+  const invoiceTypeLookup = await prisma.lookup.findFirst({
+    where: {
+      lookupKey: normalized,
+      isActive: true,
+      category: { categoryName: "INVOICE_TYPE" },
+    },
+    select: { id: true },
+  });
+  if (!invoiceTypeLookup) {
+    // Unknown invoice type: force empty result instead of falling back to all.
+    return { invoiceTypeId: "__invalid_invoice_type__" };
+  }
+
+  return { invoiceTypeId: invoiceTypeLookup.id };
+}
 
 function mapOutstandingInvoiceRow(
   row: {
@@ -80,14 +112,24 @@ export async function listOutstandingInvoices(params: {
   skip: number;
   take: number;
   q?: string;
+  userId?: string;
+  scope: InvoiceListScope;
+  invoiceType: OutstandingInvoiceTypeFilter;
 }): Promise<{
   items: OutstandingInvoiceRow[];
   total: number;
 }> {
-  const base = { balanceDue: { gt: 0 } };
-  const where = params.q?.trim()
-    ? { AND: [base, invoiceOutstandingTextSearchWhere(params.q)] }
-    : base;
+  const base: Prisma.InvoiceWhereInput = { balanceDue: { gt: 0 } };
+  const whereAnd: Prisma.InvoiceWhereInput[] = [base];
+  const invoiceTypeWhere = await resolveInvoiceTypeWhere(params.invoiceType);
+  if (invoiceTypeWhere) whereAnd.push(invoiceTypeWhere);
+  if (params.scope === "own") {
+    whereAnd.push({ createdById: params.userId ?? "__no-user__" });
+  }
+  if (params.q?.trim()) {
+    whereAnd.push(invoiceOutstandingTextSearchWhere(params.q));
+  }
+  const where: Prisma.InvoiceWhereInput = whereAnd.length === 1 ? base : { AND: whereAnd };
 
   const [total, rows] = await prisma.$transaction([
     prisma.invoice.count({ where }),

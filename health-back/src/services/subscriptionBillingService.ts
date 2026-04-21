@@ -78,6 +78,7 @@ export async function createSubscriptionInvoiceWithLedger(
     planId: string;
     payments: SubscriptionPaymentInput[];
     collectedByUserId: string;
+    createdByUserId?: string | null;
   },
 ): Promise<{ invoiceId: string }> {
   const plan = await tx.subscriptionPlan.findUnique({
@@ -139,10 +140,12 @@ export async function createSubscriptionInvoiceWithLedger(
   const creditTypeId = await requireLookupId(tx, "ACCOUNT_TRANSACTION_TYPE", "CREDIT");
 
   const resolvedPatientId = params.patientId?.trim() || null;
+  const createdById = params.createdByUserId?.trim() || null;
 
   const invoice = await tx.invoice.create({
     data: {
       invoiceTypeId,
+      createdById,
       patientId: resolvedPatientId,
       subscriptionAccountId: params.subscriptionAccountId,
       bookingId: null,

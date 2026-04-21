@@ -90,6 +90,8 @@ async function main() {
     "files:delete",
 
     "invoices:read",
+    "invoices:scope_own",
+    "invoices:scope_all",
 
     "inventory:list",
     "inventory:read",
@@ -578,6 +580,7 @@ async function main() {
             "bookings:scope_own",
             "bookings:scope_all",
             "invoices:read",
+            "invoices:scope_all",
             "opd:list",
             "opd:read",
             "opd:create",

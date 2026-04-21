@@ -1,15 +1,41 @@
 import type { Request, Response } from "express";
 
+import { loadPermissionKeys } from "../middleware/permissions";
 import prisma from "../prisma/client";
 import { sendEmail } from "../services/email/sendEmail";
-import { listOutstandingInvoices as fetchOutstandingInvoicesPage } from "../services/invoiceService";
+import {
+  listOutstandingInvoices as fetchOutstandingInvoicesPage,
+  resolveInvoiceListScope,
+  type OutstandingInvoiceTypeFilter,
+} from "../services/invoiceService";
 import { buildSubscriptionInvoicePdfBuffer, buildVisitInvoicePdfBuffer } from "../services/invoicePdfService";
 import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
+async function getInvoiceScope(req: Request) {
+  const keys = await loadPermissionKeys(req);
+  return resolveInvoiceListScope(keys);
+}
+
+function parseInvoiceTypeFilter(req: Request): OutstandingInvoiceTypeFilter {
+  const rawType = parseOptionalQueryString(req, "type");
+  if (!rawType) return "all";
+  return rawType.toLowerCase();
+}
+
 export async function listOutstandingInvoicesHandler(req: Request, res: Response) {
+  const scope = await getInvoiceScope(req);
+  const userId = req.authUser?.sub;
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
   const q = parseOptionalQueryString(req);
-  const { items, total } = await fetchOutstandingInvoicesPage({ skip, take, q });
+  const invoiceType = parseInvoiceTypeFilter(req);
+  const { items, total } = await fetchOutstandingInvoicesPage({
+    skip,
+    take,
+    q,
+    userId,
+    scope,
+    invoiceType,
+  });
   return okPaginated(res, { items, total, page, pageSize });
 }
 
@@ -62,6 +88,12 @@ export async function getInvoicePdfHandler(req: Request, res: Response) {
   });
 
   if (!invoice) {
+    return res.status(404).json({ message: "Invoice not found" });
+  }
+  const scope = await getInvoiceScope(req);
+  const userId = req.authUser?.sub;
+  const createdById = invoice.createdById ?? null;
+  if (scope === "own" && createdById !== userId) {
     return res.status(404).json({ message: "Invoice not found" });
   }
 
@@ -140,6 +172,12 @@ export async function postSendInvoiceEmailHandler(req: Request, res: Response) {
   });
 
   if (!invoice) {
+    return res.status(404).json({ message: "Invoice not found" });
+  }
+  const scope = await getInvoiceScope(req);
+  const userId = req.authUser?.sub;
+  const createdById = invoice.createdById ?? null;
+  if (scope === "own" && createdById !== userId) {
     return res.status(404).json({ message: "Invoice not found" });
   }
 

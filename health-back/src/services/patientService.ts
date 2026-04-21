@@ -26,6 +26,7 @@ export type PatientCreateInput = {
   billingRecipientId?: string | null;
   subscriptionPlanId?: string | null;
   subscriptionStatusId?: string | null;
+  createdByUserId?: string | null;
 };
 
 async function resolveSubscriptionStatusId(
@@ -278,6 +279,7 @@ export async function createPatient(data: PatientCreateInput) {
           planId: plan.id,
           payments: [],
           collectedByUserId: "",
+          createdByUserId: data.createdByUserId,
         });
         invoiceId = billing.invoiceId;
         subscriptionAccountId = account.id;
