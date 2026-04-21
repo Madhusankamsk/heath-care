@@ -39,6 +39,8 @@ export default async function PatientFullPreviewPage({
   const { id } = await params;
   const patient = await backendJson<Patient>(`/api/patients/${id}`);
   if (!patient) redirect("/dashboard/clients/patient");
+  const formattedDob = formatDateOnly(patient.dob);
+  const age = calculateAge(patient.dob);
 
   const canSeeBookings = hasAnyPermission(me.permissions, [...PERMS.bookingsHistory]);
   const canUpdateDispatch = hasAnyPermission(me.permissions, ["dispatch:update"]);
@@ -95,7 +97,8 @@ export default async function PatientFullPreviewPage({
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 lg:col-span-2">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <CompactItem label="NIC/Passport" value={patient.nicOrPassport ?? "—"} />
-              <CompactItem label="DOB" value={patient.dob ? String(patient.dob) : "—"} />
+              <CompactItem label="DOB" value={formattedDob} />
+              <CompactItem label="Age" value={age} />
               <CompactItem
                 label="Gender"
                 value={patient.genderLookup?.lookupValue ?? patient.gender ?? "—"}
@@ -176,5 +179,37 @@ function CompactItem({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm font-medium text-[var(--text-primary)]">{value}</p>
     </section>
   );
+}
+
+function formatDateOnly(dob: unknown): string {
+  if (!dob) return "—";
+  const raw = String(dob);
+  const isoDate = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoDate?.[1]) return isoDate[1];
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return parsed.toISOString().slice(0, 10);
+}
+
+function calculateAge(dob: unknown): string {
+  const dateOnly = formatDateOnly(dob);
+  if (dateOnly === "—") return "—";
+
+  const [yearStr, monthStr, dayStr] = dateOnly.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  if (!year || !month || !day) return "—";
+
+  const today = new Date();
+  let age = today.getUTCFullYear() - year;
+  const hasBirthdayPassed =
+    today.getUTCMonth() + 1 > month ||
+    (today.getUTCMonth() + 1 === month && today.getUTCDate() >= day);
+  if (!hasBirthdayPassed) age -= 1;
+
+  if (age < 0) return "—";
+  return `${age} years`;
 }
 
