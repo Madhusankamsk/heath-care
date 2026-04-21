@@ -5,16 +5,12 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { TablePaginationBar } from "@/components/ui/TablePaginationBar";
+import type { QueuedMedicineRow } from "@/components/clients/patient-bookings/types";
 import { totalPages } from "@/lib/pagination";
 
 const BILL_PAGE_SIZE = 2;
 
-const DUMMY_BILL_LINES: { label: string; amount: number }[] = [
-  { label: "Consultation / visit fee", amount: 1200 },
-  { label: "Diagnostic & lab services", amount: 850 },
-  { label: "Medicines dispensed", amount: 420 },
-  { label: "GST (18%)", amount: 444.6 },
-];
+type BillLine = { label: string; amount: number };
 
 function formatInr(n: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -29,6 +25,7 @@ export type VisitBillModalProps = {
   onClose: () => void;
   bookingId: string;
   patientDisplayName: string;
+  queuedMedicines: QueuedMedicineRow[];
   completeDisabled: boolean;
   onComplete: () => void;
 };
@@ -38,17 +35,26 @@ export function VisitBillModal({
   onClose,
   bookingId,
   patientDisplayName,
+  queuedMedicines,
   completeDisabled,
   onComplete,
 }: VisitBillModalProps) {
-  const billTotal = DUMMY_BILL_LINES.reduce((sum, row) => sum + row.amount, 0);
+  const billLines: BillLine[] = useMemo(
+    () =>
+      queuedMedicines.map((row) => ({
+        label: `${row.medicineName} (batch ${row.batchNo}) x ${row.quantity}`,
+        amount: row.quantity * row.unitPrice,
+      })),
+    [queuedMedicines],
+  );
+  const billTotal = billLines.reduce((sum, row) => sum + row.amount, 0);
   const [page, setPage] = useState(1);
-  const linePages = totalPages(DUMMY_BILL_LINES.length, BILL_PAGE_SIZE);
+  const linePages = totalPages(billLines.length, BILL_PAGE_SIZE);
   const lineSlice = useMemo(() => {
     const safe = Math.min(Math.max(1, page), linePages);
     const start = (safe - 1) * BILL_PAGE_SIZE;
-    return DUMMY_BILL_LINES.slice(start, start + BILL_PAGE_SIZE);
-  }, [page, linePages]);
+    return billLines.slice(start, start + BILL_PAGE_SIZE);
+  }, [billLines, page, linePages]);
 
   return (
     <ModalShell
@@ -56,7 +62,7 @@ export function VisitBillModal({
       onClose={onClose}
       titleId={`patient-booking-${bookingId}-bill-modal-title`}
       title="Bill preview"
-      subtitle="Sample charges for this visit. Confirm when you are ready to complete."
+      subtitle="Queued medicines for this visit. Confirm to persist medicines and complete."
       maxWidthClass="max-w-lg"
     >
       <div className="flex flex-col gap-4 text-sm text-[var(--text-primary)]">
@@ -75,12 +81,20 @@ export function VisitBillModal({
             </tr>
           </thead>
           <tbody>
-            {lineSlice.map((row) => (
-              <tr key={row.label} className="border-b border-[var(--border)]/80">
-                <td className="py-2 pr-2 text-[var(--text-secondary)]">{row.label}</td>
-                <td className="py-2 text-right tabular-nums">{formatInr(row.amount)}</td>
+            {lineSlice.length === 0 ? (
+              <tr>
+                <td colSpan={2} className="py-4 text-center text-[var(--text-muted)]">
+                  No medicines added yet.
+                </td>
               </tr>
-            ))}
+            ) : (
+              lineSlice.map((row) => (
+                <tr key={row.label} className="border-b border-[var(--border)]/80">
+                  <td className="py-2 pr-2 text-[var(--text-secondary)]">{row.label}</td>
+                  <td className="py-2 text-right tabular-nums">{formatInr(row.amount)}</td>
+                </tr>
+              ))
+            )}
           </tbody>
           <tfoot>
             <tr className="font-semibold text-[var(--text-primary)]">
@@ -89,16 +103,16 @@ export function VisitBillModal({
             </tr>
           </tfoot>
         </table>
-        {DUMMY_BILL_LINES.length > BILL_PAGE_SIZE ? (
+        {billLines.length > BILL_PAGE_SIZE ? (
           <TablePaginationBar
             page={page}
             pageSize={BILL_PAGE_SIZE}
-            total={DUMMY_BILL_LINES.length}
+            total={billLines.length}
             onPageChange={setPage}
           />
         ) : null}
         <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">
-          This is a placeholder bill for workflow preview. Final invoicing may differ.
+          Medicines are saved to the database only after you click Complete.
         </p>
         <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-4">
           <Button

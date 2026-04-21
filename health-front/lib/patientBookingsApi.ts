@@ -10,10 +10,18 @@ export type PatchDispatchStatusResponse = {
   visitInvoiceId?: string | null;
 };
 
+export type CompletionMedicinePayload = {
+  batchId: string;
+  quantity: number;
+  bookingId: string;
+  patientId: string;
+};
+
 export async function patchDispatchStatusApi(
   dispatchId: string,
   statusLookupKey: "ARRIVED" | "COMPLETED",
   remark?: string | null,
+  medicines?: CompletionMedicinePayload[],
 ): Promise<PatchDispatchStatusResponse> {
   const res = await fetch(`/api/dispatch/${dispatchId}/status`, {
     method: "PATCH",
@@ -21,11 +29,31 @@ export async function patchDispatchStatusApi(
     body: JSON.stringify({
       statusLookupKey,
       ...(remark !== undefined ? { remark } : {}),
+      ...(medicines !== undefined ? { medicines } : {}),
     }),
   });
   const data = await readJson<MessageResponse & PatchDispatchStatusResponse>(res, {});
   if (!res.ok) throw new Error(data.message || "Update failed");
   return { visitInvoiceId: data.visitInvoiceId };
+}
+
+export async function completeOpdConsultationApi(
+  queueId: string,
+  payload?: {
+    remark?: string | null;
+    medicines?: CompletionMedicinePayload[];
+  },
+) {
+  const res = await fetch(`/api/opd/${encodeURIComponent(queueId)}/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...(payload?.remark !== undefined ? { remark: payload.remark } : {}),
+      ...(payload?.medicines !== undefined ? { medicines: payload.medicines } : {}),
+    }),
+  });
+  const data = await readJson<MessageResponse>(res, {});
+  if (!res.ok) throw new Error(data.message || "Unable to complete OPD visit");
 }
 
 export async function saveVisitDraftApi(bookingId: string, remark: string | null) {

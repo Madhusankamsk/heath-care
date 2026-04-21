@@ -1,21 +1,22 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { UpcomingBookingRow } from "@/components/dispatch/types";
-import type { InventoryBatchRow } from "@/components/clients/patient-bookings/types";
+import type { InventoryBatchRow, QueuedMedicineRow } from "@/components/clients/patient-bookings/types";
 import { preferredDispatchForInventory } from "@/components/clients/patient-bookings/utils";
-import { issueMedicineToPatientApi, listInventoryBatchesApi } from "@/lib/patientBookingsApi";
+import { listInventoryBatchesApi } from "@/lib/patientBookingsApi";
 import { toast } from "@/lib/toast";
 
 export function useInventoryIssue() {
-  const router = useRouter();
   const [inventoryBatches, setInventoryBatches] = useState<InventoryBatchRow[] | null>(null);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
   const [selectedBatchByBookingId, setSelectedBatchByBookingId] = useState<Record<string, string>>({});
   const [issueQtyByBookingId, setIssueQtyByBookingId] = useState<Record<string, string>>({});
   const [issuingBookingId, setIssuingBookingId] = useState<string | null>(null);
+  const [queuedMedicinesByBookingId, setQueuedMedicinesByBookingId] = useState<
+    Record<string, QueuedMedicineRow[]>
+  >({});
 
   async function ensureInventoryLoaded() {
     if (inventoryBatches !== null || inventoryError) return;
@@ -59,26 +60,56 @@ export function useInventoryIssue() {
       return;
     }
 
-    setIssuingBookingId(b.id);
-    try {
-      await issueMedicineToPatientApi({
-        batchId,
-        quantity,
-        patientId: b.patient.id,
-        bookingId: b.id,
-      });
-
-      toast.success("Medicine issued to patient.");
-      setIssueQtyByBookingId((prev) => ({ ...prev, [b.id]: "1" }));
-      setSelectedBatchByBookingId((prev) => ({ ...prev, [b.id]: "" }));
-      setInventoryBatches(null);
-      setInventoryError(null);
-      router.refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not issue medicine");
-    } finally {
-      setIssuingBookingId(null);
+    const selectedBatch = teamLeaderBatchesForBooking(b).find((row) => row.id === batchId);
+    if (!selectedBatch) {
+      toast.error("Selected medicine batch is no longer available.");
+      return;
     }
+    if (quantity > selectedBatch.quantity) {
+      toast.error("Quantity is higher than available stock.");
+      return;
+    }
+
+    setIssuingBookingId(b.id);
+    const queued: QueuedMedicineRow = {
+      id: `${b.id}:${batchId}:${Date.now()}`,
+      batchId,
+      medicineId: selectedBatch.medicineId,
+      medicineName: selectedBatch.medicine?.name ?? "Medicine",
+      batchNo: selectedBatch.batchNo,
+      quantity,
+      bookingId: b.id,
+      patientId: b.patient.id,
+      unitLabel: selectedBatch.medicine?.uom?.trim() || "units",
+      unitPrice: Number(selectedBatch.buyingPrice ?? 0),
+    };
+    setQueuedMedicinesByBookingId((prev) => ({
+      ...prev,
+      [b.id]: [...(prev[b.id] ?? []), queued],
+    }));
+    toast.success("Medicine added to bill.");
+    setIssueQtyByBookingId((prev) => ({ ...prev, [b.id]: "1" }));
+    setSelectedBatchByBookingId((prev) => ({ ...prev, [b.id]: "" }));
+    setIssuingBookingId(null);
+  }
+
+  function queuedMedicinesForBooking(bookingId: string) {
+    return queuedMedicinesByBookingId[bookingId] ?? [];
+  }
+
+  function removeQueuedMedicine(bookingId: string, queuedId: string) {
+    setQueuedMedicinesByBookingId((prev) => ({
+      ...prev,
+      [bookingId]: (prev[bookingId] ?? []).filter((row) => row.id !== queuedId),
+    }));
+  }
+
+  function clearQueuedMedicinesForBooking(bookingId: string) {
+    setQueuedMedicinesByBookingId((prev) => {
+      const next = { ...prev };
+      delete next[bookingId];
+      return next;
+    });
   }
 
   return {
@@ -90,6 +121,9 @@ export function useInventoryIssue() {
     ensureInventoryLoaded,
     teamLeaderBatchesForBooking,
     issueMedicineToPatient,
+    queuedMedicinesForBooking,
+    removeQueuedMedicine,
+    clearQueuedMedicinesForBooking,
     setSelectedBatchByBookingId,
     setIssueQtyByBookingId,
   };

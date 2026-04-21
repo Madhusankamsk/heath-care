@@ -10,7 +10,15 @@ import { ReportsTab } from "@/components/clients/patient-bookings/tabs/ReportsTa
 import { RemarkTab } from "@/components/clients/patient-bookings/tabs/RemarkTab";
 import { SamplesTab } from "@/components/clients/patient-bookings/tabs/SamplesTab";
 import { VisitBillModal } from "@/components/clients/patient-bookings/VisitBillModal";
-import { DIAGNOSTIC_TABS, type DiagnosticTabId, type InventoryBatchRow, type IssuedMedicineSampleRow, type LabSampleTypeLookup, type SampleForm } from "@/components/clients/patient-bookings/types";
+import {
+  DIAGNOSTIC_TABS,
+  type DiagnosticTabId,
+  type InventoryBatchRow,
+  type IssuedMedicineSampleRow,
+  type LabSampleTypeLookup,
+  type QueuedMedicineRow,
+  type SampleForm,
+} from "@/components/clients/patient-bookings/types";
 import { arrivedDispatchForBooking } from "@/components/clients/patient-bookings/utils";
 
 type Props = {
@@ -48,6 +56,8 @@ type Props = {
   onChangeQty: (qty: string) => void;
   issuingBookingId: string | null;
   onIssueMedicine: () => void;
+  queuedMedicines: QueuedMedicineRow[];
+  onRemoveQueuedMedicine: (queuedId: string) => void;
   onConfirmComplete: () => void;
 };
 
@@ -87,6 +97,8 @@ export function DiagnosticWorkflowPanel(props: Props) {
     onChangeQty,
     issuingBookingId,
     onIssueMedicine,
+    queuedMedicines,
+    onRemoveQueuedMedicine,
     onConfirmComplete,
   } = props;
 
@@ -209,6 +221,8 @@ export function DiagnosticWorkflowPanel(props: Props) {
             onChangeQty={onChangeQty}
             issuingBookingId={issuingBookingId}
             onIssueMedicine={onIssueMedicine}
+            queuedMedicines={queuedMedicines}
+            onRemoveQueuedMedicine={onRemoveQueuedMedicine}
             issuedMedicineSamples={issuedMedicineSamples}
           />
         </div>
@@ -244,6 +258,7 @@ export function DiagnosticWorkflowPanel(props: Props) {
         onClose={() => setBillModalOpen(false)}
         bookingId={b.id}
         patientDisplayName={b.patient?.fullName?.trim() || "Patient"}
+        queuedMedicines={queuedMedicines}
         completeDisabled={busyDispatchId !== null || opdCompleting}
         onComplete={onConfirmComplete}
       />

@@ -26,12 +26,20 @@ function medicineKindWhere(kind: "medicine" | "item"): Prisma.MedicineWhereInput
   return { OR: [{ genericName: null }, { genericName: { not: { startsWith: ITEM_MARKER } } }] };
 }
 
-async function getLookupId(categoryName: string, lookupKey: string) {
-  const row = await prisma.lookup.findFirst({
+async function getLookupIdWithClient(
+  client: Prisma.TransactionClient | typeof prisma,
+  categoryName: string,
+  lookupKey: string,
+) {
+  const row = await client.lookup.findFirst({
     where: { category: { categoryName }, lookupKey },
     select: { id: true },
   });
   return row?.id ?? null;
+}
+
+async function getLookupId(categoryName: string, lookupKey: string) {
+  return getLookupIdWithClient(prisma, categoryName, lookupKey);
 }
 
 export async function listMedicines(
@@ -304,6 +312,72 @@ async function moveBatchQuantity(
   return fromBatch;
 }
 
+export type PatientDispenseInput = {
+  batchId: string;
+  quantity: number;
+  patientId: string;
+  bookingId: string;
+  transferredById: string;
+  existingVisitId?: string;
+};
+
+export async function createPatientDispenseInTransaction(
+  tx: Prisma.TransactionClient,
+  input: PatientDispenseInput,
+) {
+  const completedStatusId = await getLookupIdWithClient(tx, "TRANSFER_STATUS", "COMPLETED");
+  const sourceBatch = await moveBatchQuantity(tx, input.batchId, input.quantity, {
+    locationType: "PATIENT",
+    locationId: input.patientId.trim(),
+  });
+  await tx.stockTransfer.create({
+    data: {
+      medicineId: sourceBatch.medicineId,
+      batchId: sourceBatch.id,
+      fromLocationId: sourceBatch.locationId ?? "MAIN_STORE",
+      toLocationId: input.patientId.trim(),
+      quantity: input.quantity,
+      status: "Completed",
+      statusId: completedStatusId,
+      transferredById: input.transferredById,
+    },
+  });
+
+  const visitId = input.existingVisitId?.trim();
+  let resolvedVisitId = visitId || "";
+  if (!resolvedVisitId) {
+    const existingVisit = await tx.visitRecord.findUnique({
+      where: { bookingId: input.bookingId.trim() },
+      select: { id: true },
+    });
+    if (existingVisit) {
+      resolvedVisitId = existingVisit.id;
+    } else {
+      const booking = await tx.booking.findUnique({
+        where: { id: input.bookingId.trim() },
+        select: { patientId: true },
+      });
+      if (!booking) throw new Error("Booking not found");
+      const visit = await tx.visitRecord.create({
+        data: { bookingId: input.bookingId.trim(), patientId: booking.patientId },
+        select: { id: true },
+      });
+      resolvedVisitId = visit.id;
+    }
+  }
+
+  await tx.dispensedMedicine.create({
+    data: {
+      visitId: resolvedVisitId,
+      medicineId: sourceBatch.medicineId,
+      batchId: sourceBatch.id,
+      quantity: input.quantity,
+      dispensedById: input.transferredById,
+      unitPriceAtTime: sourceBatch.buyingPrice,
+    },
+  });
+}
+
 export async function assignBatchToUserSubstore(input: {
   userId: string;
   batchId: string;
@@ -367,6 +441,29 @@ export async function createStockMovement(input: {
   const completedStatusId = await getLookupId("TRANSFER_STATUS", "COMPLETED");
   const toLocationType = input.toLocationType.toUpperCase();
   return prisma.$transaction(async (tx) => {
+    if (toLocationType === "PATIENT" && input.bookingId?.trim()) {
+      const patientId = input.toLocationId?.trim();
+      if (!patientId) throw new Error("Patient reference is required");
+      await createPatientDispenseInTransaction(tx, {
+        batchId: input.batchId,
+        quantity: input.quantity,
+        patientId,
+        bookingId: input.bookingId.trim(),
+        transferredById: input.transferredById,
+      });
+      const transfer = await tx.stockTransfer.findFirst({
+        where: {
+          batchId: input.batchId,
+          transferredById: input.transferredById,
+          toLocationId: patientId,
+        },
+        orderBy: { createdAt: "desc" },
+        include: { medicine: true, batch: true, transferredBy: true, statusLookup: true },
+      });
+      if (!transfer) throw new Error("Could not create stock transfer");
+      return transfer;
+    }
+
     const sourceBatch = await moveBatchQuantity(tx, input.batchId, input.quantity, {
       locationType: toLocationType,
       locationId: input.toLocationId?.trim() || null,
@@ -384,36 +481,6 @@ export async function createStockMovement(input: {
       },
       include: { medicine: true, batch: true, transferredBy: true, statusLookup: true },
     });
-
-    if (toLocationType === "PATIENT" && input.bookingId?.trim()) {
-      const bookingId = input.bookingId.trim();
-      let visit = await tx.visitRecord.findUnique({
-        where: { bookingId },
-        select: { id: true },
-      });
-      if (!visit) {
-        const booking = await tx.booking.findUnique({
-          where: { id: bookingId },
-          select: { patientId: true },
-        });
-        if (!booking) throw new Error("Booking not found");
-        visit = await tx.visitRecord.create({
-          data: { bookingId, patientId: booking.patientId },
-          select: { id: true },
-        });
-      }
-      await tx.dispensedMedicine.create({
-        data: {
-          visitId: visit.id,
-          medicineId: sourceBatch.medicineId,
-          batchId: sourceBatch.id,
-          quantity: input.quantity,
-          dispensedById: input.transferredById,
-          unitPriceAtTime: sourceBatch.buyingPrice,
-        },
-      });
-    }
-
     return transfer;
   });
 }

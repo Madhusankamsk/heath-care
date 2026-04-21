@@ -13,6 +13,7 @@ import type { DiagnosticTabId, LabSampleTypeLookup, PendingConfirm } from "@/com
 import { useInventoryIssue } from "@/components/clients/patient-bookings/useInventoryIssue";
 import { usePatientBookingActions } from "@/components/clients/patient-bookings/usePatientBookingActions";
 import { issuedMedicineRowsFromVisit } from "@/components/clients/patient-bookings/utils";
+import { completeOpdConsultationApi, type CompletionMedicinePayload } from "@/lib/patientBookingsApi";
 
 export type { LabSampleTypeLookup } from "@/components/clients/patient-bookings/types";
 
@@ -52,6 +53,15 @@ export function PatientBookingsHistory({
     ? list.find((x) => x.id === detailBookingId)
     : null;
 
+  function queuedMedicinePayload(bookingId: string): CompletionMedicinePayload[] {
+    return inventory.queuedMedicinesForBooking(bookingId).map((row) => ({
+      batchId: row.batchId,
+      quantity: row.quantity,
+      bookingId: row.bookingId,
+      patientId: row.patientId,
+    }));
+  }
+
   async function completeOpdConsultation(queueId: string) {
     const activeBooking = list.find((row) => row.opdQueueEntry?.id === queueId);
     const remarkText = activeBooking
@@ -59,14 +69,14 @@ export function PatientBookingsHistory({
       : "";
     setBusyOpdQueueId(queueId);
     try {
-      const res = await fetch(`/api/opd/${encodeURIComponent(queueId)}/complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(remarkText ? { remark: remarkText } : {}),
+      const medicines =
+        activeBooking != null ? queuedMedicinePayload(activeBooking.id) : [];
+      await completeOpdConsultationApi(queueId, {
+        ...(remarkText ? { remark: remarkText } : {}),
+        medicines,
       });
-      const data = (await res.json().catch(() => ({}))) as { message?: string };
-      if (!res.ok) {
-        throw new Error(data.message || "Unable to complete OPD visit");
+      if (activeBooking) {
+        inventory.clearQueuedMedicinesForBooking(activeBooking.id);
       }
       toast.success("OPD consultation completed.");
       router.refresh();
@@ -94,6 +104,7 @@ export function PatientBookingsHistory({
         const options = inventory.teamLeaderBatchesForBooking(b);
         const selectedBatchId = inventory.selectedBatchByBookingId[b.id] ?? "";
         const qtyText = inventory.issueQtyByBookingId[b.id] ?? "1";
+        const queuedMedicines = inventory.queuedMedicinesForBooking(b.id);
 
         return (
           <PatientBookingCard
@@ -149,6 +160,8 @@ export function PatientBookingsHistory({
             }
             issuingBookingId={inventory.issuingBookingId}
             onIssueMedicine={() => void inventory.issueMedicineToPatient(b)}
+            queuedMedicines={queuedMedicines}
+            onRemoveQueuedMedicine={(queuedId) => inventory.removeQueuedMedicine(b.id, queuedId)}
             onCompleteOpdConsultation={(queueId) => void completeOpdConsultation(queueId)}
             opdCompleting={
               b.opdQueueEntry?.id != null && busyOpdQueueId === b.opdQueueEntry.id
@@ -195,11 +208,18 @@ export function PatientBookingsHistory({
             const remarkText = activeBooking
               ? bookingActions.diagnosisRemarkDraftForBooking(activeBooking).trim()
               : "";
-            void bookingActions.patchDispatchStatus(
-              pendingConfirm.dispatchId,
-              "COMPLETED",
-              remarkText ? remarkText : null,
-            );
+            const medicines = activeBooking ? queuedMedicinePayload(activeBooking.id) : [];
+            void (async () => {
+              const ok = await bookingActions.patchDispatchStatus(
+                pendingConfirm.dispatchId,
+                "COMPLETED",
+                remarkText ? remarkText : null,
+                medicines,
+              );
+              if (ok && activeBooking) {
+                inventory.clearQueuedMedicinesForBooking(activeBooking.id);
+              }
+            })();
             setPendingConfirm(null);
           }
         }}

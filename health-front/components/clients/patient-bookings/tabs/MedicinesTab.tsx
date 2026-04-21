@@ -4,7 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { formatScheduled } from "@/components/dispatch/dispatchDisplay";
 import type { UpcomingBookingRow } from "@/components/dispatch/types";
-import type { InventoryBatchRow, IssuedMedicineSampleRow } from "@/components/clients/patient-bookings/types";
+import type {
+  InventoryBatchRow,
+  IssuedMedicineSampleRow,
+  QueuedMedicineRow,
+} from "@/components/clients/patient-bookings/types";
 
 function medicineBatchMatchesQuery(row: InventoryBatchRow, q: string) {
   const s = q.trim().toLowerCase();
@@ -28,6 +32,8 @@ type Props = {
   onChangeQty: (qty: string) => void;
   issuingBookingId: string | null;
   onIssueMedicine: () => void;
+  queuedMedicines: QueuedMedicineRow[];
+  onRemoveQueuedMedicine: (queuedId: string) => void;
   issuedMedicineSamples: IssuedMedicineSampleRow[];
 };
 
@@ -46,6 +52,8 @@ export function MedicinesTab({
   onChangeQty,
   issuingBookingId,
   onIssueMedicine,
+  queuedMedicines,
+  onRemoveQueuedMedicine,
   issuedMedicineSamples,
 }: Props) {
   const [batchDropdownOpen, setBatchDropdownOpen] = useState(false);
@@ -212,7 +220,7 @@ export function MedicinesTab({
                     disabled={issuingBookingId === b.id || !selectedBatchId || qtyInvalid || qtyTooHigh}
                     onClick={onIssueMedicine}
                   >
-                    {issuingBookingId === b.id ? "Issuing..." : "Issue to patient"}
+                    {issuingBookingId === b.id ? "Adding..." : "Add to bill"}
                   </Button>
                 </div>
                 {qtyTooHigh ? (
@@ -222,6 +230,41 @@ export function MedicinesTab({
             )}
           </div>
         )}
+
+        <div className="overflow-hidden rounded-lg border border-[var(--border)]">
+          <div className="border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+            Queued medicines for bill
+          </div>
+          {queuedMedicines.length === 0 ? (
+            <div className="px-3 py-4 text-sm text-[var(--text-muted)]">
+              No medicines queued for billing.
+            </div>
+          ) : (
+            <ul className="divide-y divide-[var(--border)]">
+              {queuedMedicines.map((row) => (
+                <li
+                  key={row.id}
+                  className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-[var(--text-primary)]">{row.medicineName}</p>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      Batch {row.batchNo} · Qty {row.quantity} {row.unitLabel}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => onRemoveQueuedMedicine(row.id)}
+                  >
+                    Remove
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="overflow-hidden rounded-lg border border-[var(--border)]">
           <div className="border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">

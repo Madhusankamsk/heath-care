@@ -25,6 +25,7 @@ export type InventoryBatchRow = {
   medicineId: string;
   batchNo: string;
   quantity: number;
+  buyingPrice?: number;
   expiryDate: string;
   locationType: string;
   locationId?: string | null;
@@ -33,6 +34,19 @@ export type InventoryBatchRow = {
     name: string;
     uom?: string | null;
   };
+};
+
+export type QueuedMedicineRow = {
+  id: string;
+  batchId: string;
+  medicineId: string;
+  medicineName: string;
+  batchNo: string;
+  quantity: number;
+  bookingId: string;
+  patientId: string;
+  unitLabel: string;
+  unitPrice: number;
 };
 
 export type IssuedMedicineSampleRow = {

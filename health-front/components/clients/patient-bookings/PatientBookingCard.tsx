@@ -4,7 +4,14 @@ import { Button } from "@/components/ui/Button";
 import { formatScheduled } from "@/components/dispatch/dispatchDisplay";
 import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import { DiagnosticWorkflowPanel } from "@/components/clients/patient-bookings/DiagnosticWorkflowPanel";
-import type { DiagnosticTabId, InventoryBatchRow, IssuedMedicineSampleRow, LabSampleTypeLookup, SampleForm } from "@/components/clients/patient-bookings/types";
+import type {
+  DiagnosticTabId,
+  InventoryBatchRow,
+  IssuedMedicineSampleRow,
+  LabSampleTypeLookup,
+  QueuedMedicineRow,
+  SampleForm,
+} from "@/components/clients/patient-bookings/types";
 import { arrivedDispatchForBooking, inTransitDispatchForBooking, preferredDispatchForInventory } from "@/components/clients/patient-bookings/utils";
 
 type Props = {
@@ -44,6 +51,8 @@ type Props = {
   onChangeQty: (qty: string) => void;
   issuingBookingId: string | null;
   onIssueMedicine: () => void;
+  queuedMedicines: QueuedMedicineRow[];
+  onRemoveQueuedMedicine: (queuedId: string) => void;
   /** When set, OPD walk-in completions use POST /api/opd/:queueId/complete instead of dispatch complete. */
   onCompleteOpdConsultation?: (queueId: string) => void;
   opdCompleting?: boolean;
@@ -87,6 +96,8 @@ export function PatientBookingCard(props: Props) {
     onChangeQty,
     issuingBookingId,
     onIssueMedicine,
+    queuedMedicines,
+    onRemoveQueuedMedicine,
     onCompleteOpdConsultation,
     opdCompleting = false,
   } = props;
@@ -177,6 +188,8 @@ export function PatientBookingCard(props: Props) {
         onChangeQty={onChangeQty}
         issuingBookingId={issuingBookingId}
         onIssueMedicine={onIssueMedicine}
+        queuedMedicines={queuedMedicines}
+        onRemoveQueuedMedicine={onRemoveQueuedMedicine}
         onConfirmComplete={() => {
           if (isOpdBooking && b.opdQueueEntry?.id && onCompleteOpdConsultation) {
             onCompleteOpdConsultation(b.opdQueueEntry.id);

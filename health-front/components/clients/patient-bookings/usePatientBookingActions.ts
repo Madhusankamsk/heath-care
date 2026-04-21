@@ -6,6 +6,7 @@ import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import type { SampleForm } from "@/components/clients/patient-bookings/types";
 import { diagnosisRemarkFromVisit, safeFileKeySegment } from "@/components/clients/patient-bookings/utils";
 import {
+  type CompletionMedicinePayload,
   createDiagnosticReportApi,
   createLabSampleApi,
   deleteLabSampleApi,
@@ -50,10 +51,11 @@ export function usePatientBookingActions(onAfterSuccess: () => void) {
     dispatchId: string,
     statusLookupKey: "ARRIVED" | "COMPLETED",
     remark?: string | null,
+    medicines?: CompletionMedicinePayload[],
   ) {
     setBusyDispatchId(dispatchId);
     try {
-      const result = await patchDispatchStatusApi(dispatchId, statusLookupKey, remark);
+      const result = await patchDispatchStatusApi(dispatchId, statusLookupKey, remark, medicines);
       const msg =
         statusLookupKey === "ARRIVED"
           ? "Marked as arrived."
@@ -67,8 +69,10 @@ export function usePatientBookingActions(onAfterSuccess: () => void) {
         );
       }
       onAfterSuccess();
+      return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Update failed");
+      return false;
     } finally {
       setBusyDispatchId(null);
     }

@@ -7,7 +7,12 @@ import {
   listTodayOpdQueue as fetchTodayOpdQueuePage,
   updateOpdQueueEntryStatus,
 } from "../services/opdService";
-import { completeOpdConsultation, pickOpdPatient, unpickOpdPatient } from "../services/opdEncounterService";
+import {
+  completeOpdConsultation,
+  pickOpdPatient,
+  type OpdCompletionMedicineInput,
+  unpickOpdPatient,
+} from "../services/opdEncounterService";
 import { okPaginated, parseOptionalQueryString, parsePaginationQuery } from "../lib/pagination";
 
 export async function listOpdQueueHandler(req: Request, res: Response) {
@@ -159,14 +164,40 @@ export async function completeOpdQueueHandler(req: Request, res: Response) {
     return res.status(400).json({ message: "Queue id is required" });
   }
 
-  const body = req.body as Partial<{ remark: string | null }>;
+  const body = req.body as Partial<{ remark: string | null; medicines: OpdCompletionMedicineInput[] }>;
   const remark = body.remark === undefined ? undefined : body.remark;
+  let medicines: OpdCompletionMedicineInput[] | undefined;
+  if (body.medicines !== undefined) {
+    if (!Array.isArray(body.medicines)) {
+      return res.status(400).json({ message: "medicines must be an array" });
+    }
+    medicines = body.medicines.map((row) => ({
+      batchId: String(row.batchId ?? "").trim(),
+      quantity: Number(row.quantity),
+      bookingId: String(row.bookingId ?? "").trim(),
+      patientId: String(row.patientId ?? "").trim(),
+    }));
+    const hasInvalid = medicines.some(
+      (row) =>
+        !row.batchId ||
+        !row.bookingId ||
+        !row.patientId ||
+        !Number.isInteger(row.quantity) ||
+        row.quantity <= 0,
+    );
+    if (hasInvalid) {
+      return res.status(400).json({
+        message: "Each medicine must include batchId, bookingId, patientId and positive quantity",
+      });
+    }
+  }
 
   try {
     const row = await completeOpdConsultation({
       queueId,
       doctorUserId: userId,
       remark,
+      medicines,
     });
     return res.json(row);
   } catch (e) {
@@ -182,6 +213,9 @@ export async function completeOpdQueueHandler(req: Request, res: Response) {
     }
     if (err.code === "VISIT_NOT_FOUND") {
       return res.status(500).json({ message: "Visit record missing" });
+    }
+    if (err.code === "INVALID_MEDICINE_CONTEXT") {
+      return res.status(400).json({ message: "Medicine rows do not match this OPD booking" });
     }
     return res.status(500).json({ message: err.message ?? "Unable to complete consultation" });
   }

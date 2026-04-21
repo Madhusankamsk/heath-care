@@ -4,10 +4,17 @@ import prisma from "../prisma/client";
 import { createOpdInvoiceIfAbsent } from "./opdInvoiceService";
 import { assertUserIsActiveOpdDoctor } from "./opdDoctorEligibilityService";
 import { opdQueueInclude } from "./opdService";
+import { createPatientDispenseInTransaction } from "./inventoryService";
 
 const OPD_STATUS_CATEGORY = "OPD_STATUS";
 const DOCTOR_BOOKING_STATUS = "DOCTOR_BOOKING_STATUS";
 const BOOKING_TYPE_CATEGORY = "BOOKING_TYPE";
+export type OpdCompletionMedicineInput = {
+  batchId: string;
+  quantity: number;
+  bookingId: string;
+  patientId: string;
+};
 
 function startOfToday() {
   const now = new Date();
@@ -172,6 +179,7 @@ export async function completeOpdConsultation(params: {
   queueId: string;
   doctorUserId: string;
   remark?: string | null;
+  medicines?: OpdCompletionMedicineInput[];
 }) {
   return prisma.$transaction(async (tx) => {
     const queue = await tx.opdQueue.findUnique({
@@ -216,6 +224,22 @@ export async function completeOpdConsultation(params: {
       where: { id: completedId },
       select: { lookupValue: true },
     });
+
+    for (const medicine of params.medicines ?? []) {
+      if (medicine.bookingId !== queue.bookingId || medicine.patientId !== queue.booking.patientId) {
+        const err = new Error("INVALID_MEDICINE_CONTEXT") as Error & { code?: string };
+        err.code = "INVALID_MEDICINE_CONTEXT";
+        throw err;
+      }
+      await createPatientDispenseInTransaction(tx, {
+        batchId: medicine.batchId,
+        quantity: medicine.quantity,
+        bookingId: medicine.bookingId,
+        patientId: medicine.patientId,
+        transferredById: params.doctorUserId,
+        existingVisitId: visit.id,
+      });
+    }
 
     await tx.visitRecord.update({
       where: { id: visit.id },

@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import prisma from "../prisma/client";
 import { loadPermissionKeys } from "../middleware/permissions";
 import { resolveBookingListScope } from "../services/bookingService";
-import type { DispatchStatusUpdateKey } from "../services/dispatchService";
+import type { CompletionMedicineInput, DispatchStatusUpdateKey } from "../services/dispatchService";
 import {
   createDispatchFromTeam,
   listDispatchMemberCandidates,
@@ -125,9 +125,10 @@ const DISPATCH_STATUS_KEYS: DispatchStatusUpdateKey[] = ["ARRIVED", "COMPLETED"]
 
 export async function patchDispatchStatusHandler(req: Request, res: Response) {
   const { id } = req.params;
-  const { statusLookupKey, remark } = req.body as Partial<{
+  const { statusLookupKey, remark, medicines } = req.body as Partial<{
     statusLookupKey: string;
     remark: string | null;
+    medicines: CompletionMedicineInput[];
   }>;
 
   if (!id?.trim()) {
@@ -141,13 +142,42 @@ export async function patchDispatchStatusHandler(req: Request, res: Response) {
     });
   }
 
+  let normalizedMedicines: CompletionMedicineInput[] | undefined;
+  if (medicines !== undefined) {
+    if (!Array.isArray(medicines)) {
+      return res.status(400).json({ message: "medicines must be an array" });
+    }
+    normalizedMedicines = medicines.map((row) => ({
+      batchId: String(row.batchId ?? "").trim(),
+      quantity: Number(row.quantity),
+      bookingId: String(row.bookingId ?? "").trim(),
+      patientId: String(row.patientId ?? "").trim(),
+    }));
+    const hasInvalid = normalizedMedicines.some(
+      (row) =>
+        !row.batchId ||
+        !row.bookingId ||
+        !row.patientId ||
+        !Number.isInteger(row.quantity) ||
+        row.quantity <= 0,
+    );
+    if (hasInvalid) {
+      return res.status(400).json({
+        message: "Each medicine must include batchId, bookingId, patientId and positive quantity",
+      });
+    }
+  }
+
   try {
     const scope = await getScope(req);
     const userId = req.authUser?.sub;
     const updated = await updateDispatchStatus(
       id.trim(),
       key,
-      { remark: remark === undefined ? undefined : remark },
+      {
+        remark: remark === undefined ? undefined : remark,
+        medicines: normalizedMedicines,
+      },
       { userId, scope },
     );
 
@@ -175,6 +205,12 @@ export async function patchDispatchStatusHandler(req: Request, res: Response) {
     }
     if (err.code === "INVALID_STATUS") {
       return res.status(400).json({ message: "Invalid status" });
+    }
+    if (err.code === "INVALID_MEDICINE_CONTEXT") {
+      return res.status(400).json({ message: "Medicine rows do not match this dispatch booking" });
+    }
+    if (err.code === "ACTOR_REQUIRED") {
+      return res.status(401).json({ message: "Unauthorized" });
     }
     return res.status(500).json({ message: err.message ?? "Unable to update dispatch" });
   }

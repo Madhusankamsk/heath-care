@@ -2,6 +2,7 @@ import prisma from "../prisma/client";
 import type { BookingListScope } from "./bookingService";
 import { mergeBookingWhere } from "../lib/searchWhere";
 import { createVisitInvoiceIfAbsent } from "./visitInvoiceService";
+import { createPatientDispenseInTransaction } from "./inventoryService";
 
 const dispatchAssignmentUserSelect = {
   id: true,
@@ -379,6 +380,12 @@ export async function createDispatchFromTeam(
 }
 
 export type DispatchStatusUpdateKey = "ARRIVED" | "COMPLETED";
+export type CompletionMedicineInput = {
+  batchId: string;
+  quantity: number;
+  bookingId: string;
+  patientId: string;
+};
 
 const dispatchUpdateInclude = {
   statusLookup: { select: { id: true, lookupKey: true, lookupValue: true } },
@@ -399,7 +406,7 @@ const dispatchUpdateInclude = {
 export async function updateDispatchStatus(
   dispatchId: string,
   statusLookupKey: DispatchStatusUpdateKey,
-  data?: { remark?: string | null },
+  data?: { remark?: string | null; medicines?: CompletionMedicineInput[] },
   access?: { userId: string | undefined; scope: BookingListScope },
 ) {
   const dispatch = await prisma.dispatchRecord.findUnique({
@@ -453,15 +460,39 @@ export async function updateDispatchStatus(
     if (!completedId) throw new Error("DISPATCH_STATUS COMPLETED lookup missing");
 
     return prisma.$transaction(async (tx) => {
-      await tx.visitRecord.upsert({
+      const actorId = access?.userId?.trim();
+      if (!actorId) {
+        const err = new Error("ACTOR_REQUIRED") as Error & { code?: string };
+        err.code = "ACTOR_REQUIRED";
+        throw err;
+      }
+      const visit = await tx.visitRecord.upsert({
         where: { bookingId: dispatch.booking.id },
         create: {
           bookingId: dispatch.booking.id,
           patientId: dispatch.booking.patientId,
-          ...(data?.remark !== undefined ? { remark: data.remark } : {}),
-          completedAt: new Date(),
         },
-        update: {
+        update: {},
+        select: { id: true },
+      });
+      for (const medicine of data?.medicines ?? []) {
+        if (medicine.bookingId !== dispatch.booking.id || medicine.patientId !== dispatch.booking.patientId) {
+          const err = new Error("INVALID_MEDICINE_CONTEXT") as Error & { code?: string };
+          err.code = "INVALID_MEDICINE_CONTEXT";
+          throw err;
+        }
+        await createPatientDispenseInTransaction(tx, {
+          batchId: medicine.batchId,
+          quantity: medicine.quantity,
+          bookingId: medicine.bookingId,
+          patientId: medicine.patientId,
+          transferredById: actorId,
+          existingVisitId: visit.id,
+        });
+      }
+      await tx.visitRecord.update({
+        where: { id: visit.id },
+        data: {
           completedAt: new Date(),
           ...(data?.remark !== undefined ? { remark: data.remark } : {}),
         },
