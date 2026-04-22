@@ -30,7 +30,15 @@ export async function listBookingsHandler(req: Request, res: Response) {
   const userId = req.authUser?.sub;
   const { page, pageSize, skip, take } = parsePaginationQuery(req);
   const q = parseOptionalQueryString(req);
-  const { items, total } = await fetchBookingsPage({ userId, scope, skip, take, q });
+  const bookingType = normalizeBookingTypeQuery(parseOptionalQueryString(req, "type"));
+  const { items, total } = await fetchBookingsPage({
+    userId,
+    scope,
+    skip,
+    take,
+    q,
+    bookingType,
+  });
   return okPaginated(res, { items, total, page, pageSize });
 }
 
@@ -351,4 +359,11 @@ export async function deleteBookingHandler(req: Request, res: Response) {
   } catch {
     return res.status(409).json({ message: "Unable to delete booking. Remove linked records first." });
   }
+}
+
+function normalizeBookingTypeQuery(
+  value: string | undefined,
+): string | undefined {
+  const normalized = value?.trim().toUpperCase() ?? "";
+  return normalized || undefined;
 }

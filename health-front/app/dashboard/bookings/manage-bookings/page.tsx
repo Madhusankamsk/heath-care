@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   BookingManager,
   type Booking,
+  type BookingTypeOption,
   type DoctorProfileOption,
   type DoctorStatusOption,
 } from "@/components/admin/BookingManager";
@@ -23,7 +24,7 @@ const PERMS = {
 export default async function ManageBookingsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; q?: string }>;
+  searchParams?: Promise<{ page?: string; q?: string; type?: string }>;
 }) {
   const isAuthenticated = await getIsAuthenticated();
   if (!isAuthenticated) redirect("/");
@@ -43,12 +44,22 @@ export default async function ManageBookingsPage({
   const params = (await searchParams) ?? {};
   const pageNum = Math.max(1, Number.parseInt(String(params.page ?? "1"), 10) || 1);
   const listQuery = typeof params.q === "string" ? params.q : undefined;
+  const bookingType = normalizeBookingTypeFilter(
+    typeof params.type === "string" ? params.type : undefined,
+  );
 
-  const [bookingsResult, doctorsResult, doctorStatuses] = await Promise.all([
-    backendJsonPaginated<Booking>(`/api/bookings?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery)}`),
+  const [bookingsResult, doctorsResult, doctorStatuses, bookingTypes] = await Promise.all([
+    backendJsonPaginated<Booking>(
+      `/api/bookings?${pageQueryString(pageNum, DEFAULT_PAGE_SIZE, listQuery, {
+        type: bookingType || undefined,
+      })}`,
+    ),
     backendJsonPaginated<DoctorProfileOption>(withPaginationQuery("/api/profiles", 1, 100)),
     backendJson<DoctorStatusOption[]>(
       `/api/lookups?category=${encodeURIComponent("DOCTOR_BOOKING_STATUS")}`,
+    ),
+    backendJson<BookingTypeOption[]>(
+      `/api/lookups?category=${encodeURIComponent("BOOKING_TYPE")}`,
     ),
   ]);
 
@@ -74,9 +85,16 @@ export default async function ManageBookingsPage({
             canEdit={canEdit}
             canDelete={canDelete}
             initialQuery={listQuery ?? ""}
+            bookingTypes={bookingTypes ?? []}
+            initialType={bookingType}
           />
         )}
       </Card>
     </div>
   );
+}
+
+function normalizeBookingTypeFilter(input: string | undefined): string {
+  const normalized = typeof input === "string" ? input.trim().toUpperCase() : "";
+  return normalized || "";
 }

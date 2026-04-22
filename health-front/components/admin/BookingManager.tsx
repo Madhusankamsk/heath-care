@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -32,10 +33,12 @@ export type Booking = {
   patient?: { id: string; fullName: string } | null;
   requestedDoctor?: { id: string; fullName: string; email: string } | null;
   doctorStatusLookup?: { id: string; lookupKey: string; lookupValue: string } | null;
+  bookingTypeLookup?: { id: string; lookupKey: string; lookupValue: string } | null;
 };
 
 export type DoctorProfileOption = { id: string; fullName: string; email: string };
 export type DoctorStatusOption = { id: string; lookupKey: string; lookupValue: string };
+export type BookingTypeOption = { id: string; lookupKey: string; lookupValue: string };
 
 type BookingManagerProps = {
   initialBookings: Booking[];
@@ -44,6 +47,7 @@ type BookingManagerProps = {
   pageSize?: number;
   doctors: DoctorProfileOption[];
   doctorStatuses: DoctorStatusOption[];
+  bookingTypes: BookingTypeOption[];
   currentUserId: string;
   scopeAll: boolean;
   canPreview: boolean;
@@ -51,6 +55,7 @@ type BookingManagerProps = {
   canEdit: boolean;
   canDelete: boolean;
   initialQuery?: string;
+  initialType?: string;
 };
 
 type Mode = "none" | "create" | "edit" | "preview";
@@ -64,6 +69,7 @@ export function BookingManager({
   pageSize = DEFAULT_PAGE_SIZE,
   doctors,
   doctorStatuses,
+  bookingTypes,
   currentUserId,
   scopeAll,
   canPreview,
@@ -71,11 +77,16 @@ export function BookingManager({
   canEdit,
   canDelete,
   initialQuery = "",
+  initialType = "",
 }: BookingManagerProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(initialPage);
   const { searchInput, setSearchInput } = useTableListSearch(initialQuery);
+  const [bookingType, setBookingType] = useState<string>(initialType);
   const [mode, setMode] = useState<Mode>("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -86,6 +97,11 @@ export function BookingManager({
     if (!selectedId) return null;
     return bookings.find((b) => b.id === selectedId) ?? null;
   }, [bookings, selectedId]);
+  const normalizedBookingType = useMemo(() => {
+    if (!bookingType) return "";
+    const hasMatch = bookingTypes.some((option) => option.lookupKey === bookingType);
+    return hasMatch ? bookingType : "";
+  }, [bookingType, bookingTypes]);
 
   const useFullEdit = scopeAll;
 
@@ -104,11 +120,19 @@ export function BookingManager({
     setTotal(initialTotal);
     setPage(initialPage);
   }, [initialBookings, initialTotal, initialPage]);
+  useEffect(() => {
+    setBookingType(initialType);
+  }, [initialType]);
 
   async function loadPage(nextPage: number) {
-    const res = await fetch(`/api/bookings?${pageQueryString(nextPage, pageSize, searchInput)}`, {
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `/api/bookings?${pageQueryString(nextPage, pageSize, searchInput, {
+        type: normalizedBookingType || undefined,
+      })}`,
+      {
+        cache: "no-store",
+      },
+    );
     if (!res.ok) throw new Error("Failed to refresh bookings");
     const data = (await res.json()) as PaginatedResult<Booking>;
     setBookings(data.items);
@@ -125,9 +149,14 @@ export function BookingManager({
   }
 
   async function refresh() {
-    const res = await fetch(`/api/bookings?${pageQueryString(page, pageSize, searchInput)}`, {
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `/api/bookings?${pageQueryString(page, pageSize, searchInput, {
+        type: normalizedBookingType || undefined,
+      })}`,
+      {
+        cache: "no-store",
+      },
+    );
     if (!res.ok) throw new Error("Failed to refresh bookings");
     const data = (await res.json()) as PaginatedResult<Booking>;
     setBookings(data.items);
@@ -189,6 +218,15 @@ export function BookingManager({
     } finally {
       setBusyId(null);
     }
+  }
+
+  function onBookingTypeChange(nextType: string) {
+    setBookingType(nextType);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    if (!nextType) params.delete("type");
+    else params.set("type", nextType);
+    router.replace(`${pathname}?${params.toString()}`);
   }
 
   return (
@@ -261,12 +299,33 @@ export function BookingManager({
           </Button>
       </CrudToolbar>
 
-      <TableSearchBar
-        id="bookings-table-search"
-        value={searchInput}
-        onChange={setSearchInput}
-        placeholder="Patient, remark, booking id…"
-      />
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <TableSearchBar
+          id="bookings-table-search"
+          value={searchInput}
+          onChange={setSearchInput}
+          placeholder="Patient, remark, booking id…"
+        />
+        <label
+          htmlFor="bookings-type-filter"
+          className="flex items-center gap-2 text-sm text-[var(--text-secondary)]"
+        >
+          Booking type
+          <SelectBase
+            id="bookings-type-filter"
+            className="h-9 min-w-44 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] shadow-xs outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/30"
+            value={normalizedBookingType}
+            onChange={(event) => onBookingTypeChange(event.target.value)}
+          >
+            <option value="">All booking types</option>
+            {bookingTypes.map((option) => (
+              <option key={option.id} value={option.lookupKey}>
+                {option.lookupValue || option.lookupKey}
+              </option>
+            ))}
+          </SelectBase>
+        </label>
+      </div>
 
       {mode === "create" && canCreate ? (
         <ModalShell
@@ -455,6 +514,7 @@ export function BookingManager({
               <TableHead>Date & Time</TableHead>
               <TableHead>Doctor</TableHead>
               <TableHead>Dr. status</TableHead>
+              <TableHead>Booking type</TableHead>
               <TableHead>Booking remark</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -477,6 +537,9 @@ export function BookingManager({
                   </TableCell>
                   <TableCell className="text-[var(--text-secondary)]">
                     {booking.doctorStatusLookup?.lookupValue ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-[var(--text-secondary)]">
+                    {formatBookingType(booking.bookingTypeLookup)}
                   </TableCell>
                   <TableCell className="text-[var(--text-secondary)]">{booking.bookingRemark ?? "—"}</TableCell>
                   <TableCell>
@@ -955,6 +1018,16 @@ function formatDateTime(value: string | null) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString();
+}
+
+function formatBookingType(
+  bookingTypeLookup: { lookupKey: string; lookupValue: string } | null | undefined,
+) {
+  if (!bookingTypeLookup) return "—";
+  if (bookingTypeLookup.lookupValue?.trim()) return bookingTypeLookup.lookupValue;
+  if (bookingTypeLookup.lookupKey === "OPD") return "OPD";
+  if (bookingTypeLookup.lookupKey === "VISIT") return "Visit";
+  return bookingTypeLookup.lookupKey;
 }
 
 function toDateTimeLocalInput(value: string | null) {

@@ -177,11 +177,24 @@ export async function listBookings(params: {
   skip: number;
   take: number;
   q?: string;
+  bookingType?: string;
 }) {
+  const filters: Prisma.BookingWhereInput[] = [];
+  if (params.scope === "own" && params.userId) {
+    filters.push({ requestedDoctorId: params.userId });
+  }
+  if (params.bookingType) {
+    filters.push({
+      bookingTypeLookup: {
+        is: {
+          lookupKey: params.bookingType,
+          category: { categoryName: "BOOKING_TYPE" },
+        },
+      },
+    });
+  }
   const base: Prisma.BookingWhereInput | undefined =
-    params.scope === "own" && params.userId
-      ? { requestedDoctorId: params.userId }
-      : undefined;
+    filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : { AND: filters };
 
   const where = andBookingSearch(base, params.q) ?? base;
 
