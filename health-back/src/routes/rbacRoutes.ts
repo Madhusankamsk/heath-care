@@ -78,6 +78,21 @@ import {
   unpickOpdQueueHandler,
 } from "../controllers/opdController";
 import {
+  listInHouseDischargedHandler,
+  listInHouseDoctorQueueHandler,
+  listInHouseInCareHandler,
+  listInHousePendingHandler,
+  postInHouseAdmitHandler,
+  postInHouseBookingHandler,
+  postInHouseCompleteHandler,
+  postInHousePickHandler,
+} from "../controllers/inHouseController";
+import {
+  deleteInHouseEligibleDoctorHandler,
+  listInHouseEligibleDoctorsHandler,
+  putInHouseEligibleDoctorHandler,
+} from "../controllers/inHouseEligibleDoctorController";
+import {
   deleteOpdEligibleDoctorHandler,
   listOpdEligibleDoctorsHandler,
   putOpdEligibleDoctorHandler,
@@ -335,7 +350,14 @@ router.delete(
 );
 router.get(
   "/lookups",
-  requireAnyPermission(["patients:list", "patients:read", "opd:list", "opd:read"]),
+  requireAnyPermission([
+    "patients:list",
+    "patients:read",
+    "opd:list",
+    "opd:read",
+    "inhouse:list",
+    "inhouse:read",
+  ]),
   listLookupsHandler,
 );
 
@@ -387,6 +409,59 @@ router.patch(
   "/dispatch/:id/status",
   requireAnyPermission(["dispatch:update"]),
   patchDispatchStatusHandler,
+);
+
+// In-house nursing
+router.post("/in-house/bookings", requireAnyPermission(["inhouse:admit"]), postInHouseBookingHandler);
+router.get(
+  "/in-house/pending-admissions",
+  requireAnyPermission(["inhouse:list", "inhouse:read"]),
+  listInHousePendingHandler,
+);
+router.get(
+  "/in-house/in-care",
+  requireAnyPermission(["inhouse:list", "inhouse:read"]),
+  listInHouseInCareHandler,
+);
+router.get(
+  "/in-house/doctor-queue",
+  requireAnyPermission(["inhouse:pick", "inhouse:clinical"]),
+  listInHouseDoctorQueueHandler,
+);
+router.post(
+  "/in-house/bookings/:id/pick",
+  requireAnyPermission(["inhouse:pick", "inhouse:clinical"]),
+  postInHousePickHandler,
+);
+router.get(
+  "/in-house/discharged",
+  requireAnyPermission(["inhouse:list", "inhouse:read"]),
+  listInHouseDischargedHandler,
+);
+router.post(
+  "/in-house/bookings/:id/admit",
+  requireAnyPermission(["inhouse:admit"]),
+  postInHouseAdmitHandler,
+);
+router.post(
+  "/in-house/bookings/:id/complete",
+  requireAnyPermission(["inhouse:discharge"]),
+  postInHouseCompleteHandler,
+);
+router.get(
+  "/in-house/eligible-doctors",
+  requireAnyPermission(["inhouse:manage_doctors"]),
+  listInHouseEligibleDoctorsHandler,
+);
+router.put(
+  "/in-house/eligible-doctors/:userId",
+  requireAnyPermission(["inhouse:manage_doctors"]),
+  putInHouseEligibleDoctorHandler,
+);
+router.delete(
+  "/in-house/eligible-doctors/:userId",
+  requireAnyPermission(["inhouse:manage_doctors"]),
+  deleteInHouseEligibleDoctorHandler,
 );
 
 // OPD queue & doctor workflow

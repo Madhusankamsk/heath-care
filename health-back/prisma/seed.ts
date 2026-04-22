@@ -82,6 +82,14 @@ async function main() {
     "opd:manage_doctors",
     "opd:pick",
 
+    "inhouse:list",
+    "inhouse:read",
+    "inhouse:admit",
+    "inhouse:manage_doctors",
+    "inhouse:pick",
+    "inhouse:discharge",
+    "inhouse:clinical",
+
     "dispatch:list",
     "dispatch:read",
     "dispatch:update",
@@ -365,6 +373,7 @@ async function main() {
     { lookupKey: "MEMBERSHIP", lookupValue: "Membership" },
     { lookupKey: "VISIT", lookupValue: "Visit" },
     { lookupKey: "OPD", lookupValue: "OPD" },
+    { lookupKey: "IN_HOUSE", lookupValue: "In-house nursing" },
   ] as const) {
     await prisma.lookup.upsert({
       where: {
@@ -391,6 +400,7 @@ async function main() {
   for (const item of [
     { lookupKey: "VISIT", lookupValue: "Visit" },
     { lookupKey: "OPD", lookupValue: "OPD" },
+    { lookupKey: "IN_HOUSE_NURSING", lookupValue: "In-house nursing" },
   ] as const) {
     await prisma.lookup.upsert({
       where: {
@@ -588,6 +598,13 @@ async function main() {
             "opd:delete",
             "opd:manage_doctors",
             "opd:pick",
+            "inhouse:list",
+            "inhouse:read",
+            "inhouse:admit",
+            "inhouse:manage_doctors",
+            "inhouse:pick",
+            "inhouse:discharge",
+            "inhouse:clinical",
             "lab:list",
             "lab:read",
             "dashboard:tile_bookings_pending",

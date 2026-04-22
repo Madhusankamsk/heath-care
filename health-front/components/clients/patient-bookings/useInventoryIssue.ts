@@ -31,7 +31,16 @@ export function useInventoryIssue() {
   function teamLeaderBatchesForBooking(b: UpcomingBookingRow) {
     if (!inventoryBatches) return [];
     const sourceDispatch = preferredDispatchForInventory(b);
-    const leadUserId = sourceDispatch?.assignments.find((a) => a.isTeamLeader)?.user.id;
+    let leadUserId = sourceDispatch?.assignments.find((a) => a.isTeamLeader)?.user.id;
+    const isInHouse = b.bookingTypeLookup?.lookupKey === "IN_HOUSE_NURSING";
+    if (!leadUserId && isInHouse && b.inHouseDetail?.assignedDoctor?.id) {
+      leadUserId = b.inHouseDetail.assignedDoctor.id;
+    }
+    if (!leadUserId && isInHouse) {
+      return inventoryBatches
+        .filter((row) => row.quantity > 0)
+        .sort((a, z) => new Date(a.expiryDate).getTime() - new Date(z.expiryDate).getTime());
+    }
     if (!leadUserId) return [];
     return inventoryBatches
       .filter(

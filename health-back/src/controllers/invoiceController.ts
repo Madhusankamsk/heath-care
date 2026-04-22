@@ -109,10 +109,12 @@ export async function getInvoicePdfHandler(req: Request, res: Response) {
       return res.status(200).send(pdf);
     }
 
-    if (invoice.invoiceTypeLookup.lookupKey === "VISIT" || invoice.invoiceTypeLookup.lookupKey === "OPD") {
+    const itk = invoice.invoiceTypeLookup.lookupKey;
+    if (itk === "VISIT" || itk === "OPD" || itk === "IN_HOUSE") {
       const pdf = await buildVisitInvoicePdfBuffer(company, invoice);
       res.setHeader("Content-Type", "application/pdf");
-      const prefix = invoice.invoiceTypeLookup.lookupKey === "OPD" ? "opd-invoice" : "visit-invoice";
+      const prefix =
+        itk === "OPD" ? "opd-invoice" : itk === "IN_HOUSE" ? "in-house-invoice" : "visit-invoice";
       res.setHeader("Content-Disposition", `attachment; filename="${prefix}-${invoice.id}.pdf"`);
       return res.status(200).send(pdf);
     }
@@ -189,7 +191,9 @@ export async function postSendInvoiceEmailHandler(req: Request, res: Response) {
         invoice.subscriptionAccount?.contactEmail?.trim() ||
         null;
     } else if (
-      (invoice.invoiceTypeLookup.lookupKey === "VISIT" || invoice.invoiceTypeLookup.lookupKey === "OPD") &&
+      (invoice.invoiceTypeLookup.lookupKey === "VISIT" ||
+        invoice.invoiceTypeLookup.lookupKey === "OPD" ||
+        invoice.invoiceTypeLookup.lookupKey === "IN_HOUSE") &&
       invoice.patient
     ) {
       const p = invoice.patient;
@@ -229,6 +233,10 @@ export async function postSendInvoiceEmailHandler(req: Request, res: Response) {
       pdf = await buildVisitInvoicePdfBuffer(company, invoice);
       filename = `opd-invoice-${invoice.id}.pdf`;
       subject = `OPD invoice — ${invoice.patient?.fullName ?? "Patient"}`;
+    } else if (invoice.invoiceTypeLookup.lookupKey === "IN_HOUSE") {
+      pdf = await buildVisitInvoicePdfBuffer(company, invoice);
+      filename = `in-house-invoice-${invoice.id}.pdf`;
+      subject = `In-house nursing invoice — ${invoice.patient?.fullName ?? "Patient"}`;
     } else {
       return res.status(400).json({ message: "PDF is not available for this invoice type" });
     }

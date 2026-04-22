@@ -212,15 +212,24 @@ type VisitInvoicePdfRow = {
   } | null;
   booking: { scheduledDate: Date | null } | null;
   paymentStatusLookup: { lookupValue: string } | null;
+  invoiceTypeLookup?: { lookupKey: string } | null;
 };
 
-/** PDF for home-visit / OPD visit invoices (booking-linked, not subscription). */
+function visitInvoicePdfSubtitle(invoice: VisitInvoicePdfRow): string {
+  const k = invoice.invoiceTypeLookup?.lookupKey;
+  if (k === "OPD") return "OPD invoice";
+  if (k === "IN_HOUSE") return "In-house nursing invoice";
+  return "Visit invoice";
+}
+
+/** PDF for home-visit / OPD / in-house visit invoices (booking-linked, not subscription). */
 export function buildVisitInvoicePdfBuffer(
   company: CompanyRow | null,
   invoice: VisitInvoicePdfRow,
 ): Promise<Buffer> {
   const currency = company?.currencyCode?.trim() || "LKR";
   const displayName = resolveDisplayCompanyName(company);
+  const subtitle = visitInvoicePdfSubtitle(invoice);
 
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -237,7 +246,7 @@ export function buildVisitInvoicePdfBuffer(
       align: "center",
       width: pageW - 96,
     });
-    doc.font("Helvetica").fontSize(10).fillColor(COL.headerSub).text("Visit invoice", 48, 56, {
+    doc.font("Helvetica").fontSize(10).fillColor(COL.headerSub).text(subtitle, 48, 56, {
       align: "center",
       width: pageW - 96,
     });

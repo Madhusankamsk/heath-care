@@ -42,9 +42,9 @@ async function getDoctorStatusLookupId(
   return row?.id ?? null;
 }
 
-async function getBookingTypeLookupId(
-  lookupKey: "VISIT" | "OPD",
-): Promise<string> {
+export type BookingTypeLookupKey = "VISIT" | "OPD" | "IN_HOUSE_NURSING";
+
+async function getBookingTypeLookupId(lookupKey: BookingTypeLookupKey): Promise<string> {
   const row = await prisma.lookup.findFirst({
     where: {
       lookupKey,
@@ -68,6 +68,19 @@ const bookingInclude = {
   bookingTypeLookup: {
     select: { id: true, lookupKey: true, lookupValue: true },
   },
+  inHouseDetail: {
+    select: {
+      id: true,
+      status: true,
+      admittedAt: true,
+      dischargedAt: true,
+      admissionReason: true,
+      roomNo: true,
+      bedNo: true,
+      vitalsSummary: true,
+      assignedDoctor: { select: { id: true, fullName: true, email: true } },
+    },
+  },
 } as const;
 
 const dispatchAssignmentUserSelect = {
@@ -78,7 +91,7 @@ const dispatchAssignmentUserSelect = {
 } as const;
 
 /** Bookings for a patient profile: full dispatch history per booking. */
-const bookingWithDispatchInclude = {
+export const bookingWithDispatchInclude = {
   patient: { select: { id: true, fullName: true, nicOrPassport: true, contactNo: true } },
   requestedDoctor: { select: { id: true, fullName: true, email: true } },
   doctorStatusLookup: {
@@ -86,6 +99,19 @@ const bookingWithDispatchInclude = {
   },
   bookingTypeLookup: {
     select: { id: true, lookupKey: true, lookupValue: true },
+  },
+  inHouseDetail: {
+    select: {
+      id: true,
+      status: true,
+      admittedAt: true,
+      dischargedAt: true,
+      admissionReason: true,
+      roomNo: true,
+      bedNo: true,
+      vitalsSummary: true,
+      assignedDoctor: { select: { id: true, fullName: true, email: true } },
+    },
   },
   visitRecord: {
     select: {
@@ -228,6 +254,33 @@ export async function createBooking(data: BookingPayload) {
       requestedDoctorId,
       doctorStatusId,
       bookingTypeId,
+    },
+    include: bookingInclude,
+  });
+}
+
+/** Pending in-house admission (scheduled) before VisitRecord exists. */
+export async function createInHouseBooking(data: BookingPayload) {
+  const scheduled =
+    data.scheduledDate === undefined ? null : parseScheduledDate(data.scheduledDate ?? null);
+  const bookingTypeId = await getBookingTypeLookupId("IN_HOUSE_NURSING");
+
+  const remark =
+    data.bookingRemark?.trim() ? data.bookingRemark.trim() : "In-house nursing";
+
+  return prisma.booking.create({
+    data: {
+      patientId: data.patientId,
+      scheduledDate: scheduled,
+      bookingRemark: remark,
+      requestedDoctorId: null,
+      doctorStatusId: null,
+      bookingTypeId,
+      inHouseDetail: {
+        create: {
+          status: "PENDING",
+        },
+      },
     },
     include: bookingInclude,
   });

@@ -8,7 +8,7 @@ export type OutstandingInvoiceTypeFilter = "all" | string;
 
 export type OutstandingInvoiceRow = {
   id: string;
-  invoiceType: "MEMBERSHIP" | "VISIT" | "OPD";
+  invoiceType: "MEMBERSHIP" | "VISIT" | "OPD" | "IN_HOUSE";
   createdAt: string;
   balanceDue: string;
   totalAmount: string;
@@ -87,7 +87,13 @@ function mapOutstandingInvoiceRow(
   const patient = member?.patient ?? visit?.patient ?? opd?.patient ?? null;
   const key = row.invoiceTypeLookup.lookupKey;
   const invoiceType: OutstandingInvoiceRow["invoiceType"] =
-    key === "MEMBERSHIP" ? "MEMBERSHIP" : key === "OPD" ? "OPD" : "VISIT";
+    key === "MEMBERSHIP"
+      ? "MEMBERSHIP"
+      : key === "OPD"
+        ? "OPD"
+        : key === "IN_HOUSE"
+          ? "IN_HOUSE"
+          : "VISIT";
   const bookingId = visit?.bookingId ?? opd?.bookingId ?? null;
   const bookingScheduledDate =
     visit?.booking?.scheduledDate?.toISOString() ?? opd?.booking?.scheduledDate?.toISOString() ?? null;

@@ -13,7 +13,11 @@ import type { DiagnosticTabId, LabSampleTypeLookup, PendingConfirm } from "@/com
 import { useInventoryIssue } from "@/components/clients/patient-bookings/useInventoryIssue";
 import { usePatientBookingActions } from "@/components/clients/patient-bookings/usePatientBookingActions";
 import { issuedMedicineRowsFromVisit } from "@/components/clients/patient-bookings/utils";
-import { completeOpdConsultationApi, type CompletionMedicinePayload } from "@/lib/patientBookingsApi";
+import {
+  completeInHouseStayApi,
+  completeOpdConsultationApi,
+  type CompletionMedicinePayload,
+} from "@/lib/patientBookingsApi";
 
 export type { LabSampleTypeLookup } from "@/components/clients/patient-bookings/types";
 
@@ -23,6 +27,11 @@ type PatientBookingsHistoryProps = {
   canUpdateDispatch?: boolean;
   /** `bookings:update` — Save draft (diagnosis remark); booking remark is read-only here */
   canSaveVisitDraft?: boolean;
+  /** `inhouse:discharge` — Generate bill / discharge for in-house nursing stays */
+  canDischargeInHouse?: boolean;
+  /** Override discharge handler (default: POST /api/in-house/bookings/:id/complete) */
+  onCompleteInHouseStay?: (bookingId: string) => void | Promise<void>;
+  busyInHouseBookingId?: string | null;
   /** From `/api/lookups?category=LAB_SAMPLE_TYPE` — sample type dropdown */
   labSampleTypeLookups?: LabSampleTypeLookup[];
 };
@@ -31,6 +40,9 @@ export function PatientBookingsHistory({
   bookings,
   canUpdateDispatch = false,
   canSaveVisitDraft = false,
+  canDischargeInHouse = false,
+  onCompleteInHouseStay: onCompleteInHouseStayProp,
+  busyInHouseBookingId = null,
   labSampleTypeLookups = [],
 }: PatientBookingsHistoryProps) {
   const list = Array.isArray(bookings) ? bookings : [];
@@ -41,8 +53,9 @@ export function PatientBookingsHistory({
     Record<string, DiagnosticTabId>
   >({});
   const [busyOpdQueueId, setBusyOpdQueueId] = useState<string | null>(null);
+  const [busyInHouseInternal, setBusyInHouseInternal] = useState<string | null>(null);
 
-  const inventoryFeatureEnabled = canUpdateDispatch;
+  const inventoryFeatureEnabled = canUpdateDispatch || canDischargeInHouse;
   const bookingActions = usePatientBookingActions(() => {
       setPendingConfirm(null);
       router.refresh();
@@ -60,6 +73,37 @@ export function PatientBookingsHistory({
       bookingId: row.bookingId,
       patientId: row.patientId,
     }));
+  }
+
+  const busyInHouseId = busyInHouseBookingId ?? busyInHouseInternal;
+
+  async function completeInHouseStay(bookingId: string) {
+    if (onCompleteInHouseStayProp) {
+      await onCompleteInHouseStayProp(bookingId);
+      return;
+    }
+    const activeBooking = list.find((row) => row.id === bookingId);
+    const remarkText = activeBooking
+      ? bookingActions.diagnosisRemarkDraftForBooking(activeBooking).trim()
+      : "";
+    setBusyInHouseInternal(bookingId);
+    try {
+      const medicines =
+        activeBooking != null ? queuedMedicinePayload(activeBooking.id) : [];
+      await completeInHouseStayApi(bookingId, {
+        ...(remarkText ? { remark: remarkText } : {}),
+        medicines,
+      });
+      if (activeBooking) {
+        inventory.clearQueuedMedicinesForBooking(activeBooking.id);
+      }
+      toast.success("In-house stay discharged.");
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Unable to complete discharge");
+    } finally {
+      setBusyInHouseInternal(null);
+    }
   }
 
   async function completeOpdConsultation(queueId: string) {
@@ -131,7 +175,8 @@ export function PatientBookingsHistory({
               bookingActions.uploadingReportBookingId !== null ||
               bookingActions.addingSampleBookingId !== null ||
               bookingActions.removingSampleId !== null ||
-              (b.opdQueueEntry?.id != null && busyOpdQueueId === b.opdQueueEntry.id)
+              (b.opdQueueEntry?.id != null && busyOpdQueueId === b.opdQueueEntry.id) ||
+              busyInHouseId === b.id
             }
             savingBookingId={bookingActions.savingBookingId}
             onSaveVisitDraft={() => void bookingActions.saveVisitDraftForBooking(b)}
@@ -166,6 +211,9 @@ export function PatientBookingsHistory({
             opdCompleting={
               b.opdQueueEntry?.id != null && busyOpdQueueId === b.opdQueueEntry.id
             }
+            onCompleteInHouseStay={(bid) => void completeInHouseStay(bid)}
+            canDischargeInHouse={canDischargeInHouse}
+            inHouseCompleting={busyInHouseId === b.id}
           />
         );
       })}

@@ -37,6 +37,25 @@ export async function patchDispatchStatusApi(
   return { visitInvoiceId: data.visitInvoiceId };
 }
 
+export async function completeInHouseStayApi(
+  bookingId: string,
+  payload?: {
+    remark?: string | null;
+    medicines?: CompletionMedicinePayload[];
+  },
+) {
+  const res = await fetch(`/api/in-house/bookings/${encodeURIComponent(bookingId)}/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...(payload?.remark !== undefined ? { remark: payload.remark } : {}),
+      ...(payload?.medicines !== undefined ? { medicines: payload.medicines } : {}),
+    }),
+  });
+  const data = await readJson<MessageResponse>(res, {});
+  if (!res.ok) throw new Error(data.message || "Unable to discharge in-house stay");
+}
+
 export async function completeOpdConsultationApi(
   queueId: string,
   payload?: {

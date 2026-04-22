@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-type InvoiceTypeFilterValue = "all" | "membership" | "visit" | "opd";
+type InvoiceTypeFilterValue = "all" | "membership" | "visit" | "opd" | "in_house";
 
 const selectClass =
   "h-9 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)] shadow-xs outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/30";
@@ -39,6 +39,7 @@ export function InvoiceTypeFilter({
         <option value="membership">Membership invoices</option>
         <option value="visit">Visit invoices</option>
         <option value="opd">OPD invoices</option>
+        <option value="in_house">In-house nursing invoices</option>
       </select>
     </label>
   );

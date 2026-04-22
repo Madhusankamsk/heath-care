@@ -27,6 +27,9 @@ type Props = {
   canSaveVisitDraft: boolean;
   busyDispatchId: string | null;
   opdCompleting?: boolean;
+  /** In-house nursing: allow discharge bill / completion when admitted and visit open */
+  canDischargeInHouse?: boolean;
+  inHouseCompleting?: boolean;
   activeDiagnosticTab: DiagnosticTabId;
   setActiveDiagnosticTab: (tab: DiagnosticTabId) => void;
   diagnosisRemark: string;
@@ -68,6 +71,8 @@ export function DiagnosticWorkflowPanel(props: Props) {
     canSaveVisitDraft,
     busyDispatchId,
     opdCompleting = false,
+    canDischargeInHouse = false,
+    inHouseCompleting = false,
     activeDiagnosticTab,
     setActiveDiagnosticTab,
     diagnosisRemark,
@@ -108,10 +113,20 @@ export function DiagnosticWorkflowPanel(props: Props) {
   const completedDispatch = b.dispatchRecords.some((dr) => dr.statusLookup?.lookupKey === "COMPLETED");
   const isCompleted = visitDone || completedDispatch;
   const isOpdBooking = b.bookingTypeLookup?.lookupKey === "OPD";
+  const isInHouseBooking = b.bookingTypeLookup?.lookupKey === "IN_HOUSE_NURSING";
   const opdInProgress = isOpdBooking && Boolean(b.visitRecord) && !visitDone;
-  const inWorkflowPhase = !visitDone && (Boolean(arrived) || opdInProgress);
+  const inHouseInCare = isInHouseBooking && b.inHouseDetail?.status === "ADMITTED";
+  const inWorkflowPhase =
+    !visitDone && (Boolean(arrived) || opdInProgress || inHouseInCare);
   if (!inWorkflowPhase && !isCompleted) return null;
-  if (!canUpdateDispatch && !canSaveVisitDraft && !isCompleted) return null;
+  if (
+    !canUpdateDispatch &&
+    !canSaveVisitDraft &&
+    !(inHouseInCare && canDischargeInHouse) &&
+    !isCompleted
+  ) {
+    return null;
+  }
 
   const diagnosticTabIndex = Math.max(
     0,
@@ -240,12 +255,14 @@ export function DiagnosticWorkflowPanel(props: Props) {
             {savingBookingId === b.id ? "Saving…" : "Save draft"}
           </Button>
         ) : null}
-        {canUpdateDispatch || (isOpdBooking && b.opdQueueEntry?.id) ? (
+        {canUpdateDispatch ||
+        (isOpdBooking && b.opdQueueEntry?.id) ||
+        (inHouseInCare && canDischargeInHouse) ? (
           <Button
             type="button"
             variant="primary"
             className="h-9 px-4 text-xs font-medium"
-            disabled={busyDispatchId !== null || opdCompleting}
+            disabled={busyDispatchId !== null || opdCompleting || inHouseCompleting}
             onClick={() => setBillModalOpen(true)}
           >
             Generate bill
@@ -259,7 +276,7 @@ export function DiagnosticWorkflowPanel(props: Props) {
         bookingId={b.id}
         patientDisplayName={b.patient?.fullName?.trim() || "Patient"}
         queuedMedicines={queuedMedicines}
-        completeDisabled={busyDispatchId !== null || opdCompleting}
+        completeDisabled={busyDispatchId !== null || opdCompleting || inHouseCompleting}
         onComplete={onConfirmComplete}
       />
     </>

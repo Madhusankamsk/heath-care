@@ -21,9 +21,21 @@ export type UpcomingBookingRow = {
   patient?: { id: string; fullName: string; contactNo?: string | null };
   requestedDoctor?: { id: string; fullName: string; email: string } | null;
   doctorStatusLookup?: { id: string; lookupKey: string; lookupValue: string } | null;
+  inHouseDetail?: {
+    id: string;
+    status: "PENDING" | "ADMITTED" | "DISCHARGED";
+    admittedAt: string | null;
+    dischargedAt: string | null;
+    admissionReason?: string | null;
+    roomNo?: string | null;
+    bedNo?: string | null;
+    vitalsSummary?: unknown;
+    assignedDoctor?: { id: string; fullName: string; email: string } | null;
+  } | null;
   /** Set on GET /api/patients/:id/bookings responses. */
   visitRecord?: {
     id: string;
+    admittedAt?: string | null;
     completedAt: string | null;
     remark?: string | null;
     diagnosticReports?: Array<{

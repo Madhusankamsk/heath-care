@@ -57,7 +57,9 @@ export async function listOutstandingVisitInvoices(params: {
   q?: string;
 }): Promise<{ items: OutstandingVisitInvoiceRow[]; total: number }> {
   const base = {
-    invoiceTypeLookup: { is: { lookupKey: "VISIT" } },
+    invoiceTypeLookup: {
+      is: { lookupKey: { in: ["VISIT", "IN_HOUSE"] } },
+    },
     visitInvoice: { isNot: null },
     balanceDue: { gt: 0 },
   };
@@ -125,12 +127,13 @@ export async function recordVisitInvoicePayment(params: {
       },
     });
 
+    const invType = invoice?.invoiceTypeLookup.lookupKey;
     if (
       !invoice ||
-      invoice.invoiceTypeLookup.lookupKey !== "VISIT" ||
+      (invType !== "VISIT" && invType !== "IN_HOUSE") ||
       !invoice.visitInvoice?.bookingId
     ) {
-      throw new Error("Invoice is not a visit invoice");
+      throw new Error("Invoice is not a visit or in-house invoice");
     }
 
     const balanceDue = new Prisma.Decimal(invoice.balanceDue);

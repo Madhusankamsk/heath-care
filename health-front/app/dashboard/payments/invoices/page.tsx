@@ -14,7 +14,7 @@ const VIEW_PERMS = ["invoices:read", "patients:read", "profiles:read"] as const;
 
 type OutstandingInvoiceRow = {
   id: string;
-  invoiceType: "MEMBERSHIP" | "VISIT" | "OPD";
+  invoiceType: "MEMBERSHIP" | "VISIT" | "OPD" | "IN_HOUSE";
   createdAt: string;
   balanceDue: string;
   totalAmount: string;
@@ -38,15 +38,17 @@ function formatDate(iso: string | null) {
 function invoiceTypeLabel(invoiceType: OutstandingInvoiceRow["invoiceType"]) {
   if (invoiceType === "MEMBERSHIP") return "Membership";
   if (invoiceType === "OPD") return "OPD";
+  if (invoiceType === "IN_HOUSE") return "In-house";
   return "Visit";
 }
 
 function normalizeInvoiceTypeFilter(
   input: string | undefined,
-): "all" | "membership" | "visit" | "opd" {
+): "all" | "membership" | "visit" | "opd" | "in_house" {
   if (input === "membership") return "membership";
   if (input === "visit") return "visit";
   if (input === "opd") return "opd";
+  if (input === "in_house") return "in_house";
   return "all";
 }
 

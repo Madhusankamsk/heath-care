@@ -56,6 +56,10 @@ type Props = {
   /** When set, OPD walk-in completions use POST /api/opd/:queueId/complete instead of dispatch complete. */
   onCompleteOpdConsultation?: (queueId: string) => void;
   opdCompleting?: boolean;
+  /** In-house nursing discharge (POST /api/in-house/bookings/:id/complete). */
+  onCompleteInHouseStay?: (bookingId: string) => void;
+  canDischargeInHouse?: boolean;
+  inHouseCompleting?: boolean;
 };
 
 export function PatientBookingCard(props: Props) {
@@ -100,6 +104,9 @@ export function PatientBookingCard(props: Props) {
     onRemoveQueuedMedicine,
     onCompleteOpdConsultation,
     opdCompleting = false,
+    onCompleteInHouseStay,
+    canDischargeInHouse = false,
+    inHouseCompleting = false,
   } = props;
 
   const inTransit = inTransitDispatchForBooking(b);
@@ -108,9 +115,10 @@ export function PatientBookingCard(props: Props) {
   const lead = sourceDispatch?.assignments.find((a) => a.isTeamLeader)?.user ?? null;
   const bookingTypeKey = b.bookingTypeLookup?.lookupKey ?? "VISIT";
   const isOpdBooking = bookingTypeKey === "OPD";
+  const isInHouseBooking = bookingTypeKey === "IN_HOUSE_NURSING";
   const bookingTypeLabel =
     b.bookingTypeLookup?.lookupValue ??
-    (bookingTypeKey === "OPD" ? "OPD" : "Visit");
+    (bookingTypeKey === "OPD" ? "OPD" : bookingTypeKey === "IN_HOUSE_NURSING" ? "In-house" : "Visit");
 
   return (
     <article className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
@@ -118,7 +126,11 @@ export function PatientBookingCard(props: Props) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium text-[var(--text-primary)]">{formatScheduled(b.scheduledDate)}</p>
-            <span className={isOpdBooking ? "pill pill-info" : "pill pill-success"}>
+            <span
+              className={
+                isOpdBooking ? "pill pill-info" : isInHouseBooking ? "pill pill-warning" : "pill pill-success"
+              }
+            >
               {bookingTypeLabel}
             </span>
           </div>
@@ -127,7 +139,7 @@ export function PatientBookingCard(props: Props) {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-          {canUpdateDispatch && inTransit ? (
+          {canUpdateDispatch && inTransit && !isInHouseBooking ? (
             <Button
               type="button"
               variant="secondary"
@@ -159,6 +171,8 @@ export function PatientBookingCard(props: Props) {
         canSaveVisitDraft={canSaveVisitDraft}
         busyDispatchId={busyDispatchId}
         opdCompleting={opdCompleting}
+        canDischargeInHouse={canDischargeInHouse}
+        inHouseCompleting={inHouseCompleting}
         activeDiagnosticTab={activeDiagnosticTab}
         setActiveDiagnosticTab={setActiveDiagnosticTab}
         diagnosisRemark={diagnosisRemark}
@@ -180,7 +194,11 @@ export function PatientBookingCard(props: Props) {
         inventoryError={inventoryError}
         inventoryBatches={inventoryBatches}
         onEnsureInventoryLoaded={onEnsureInventoryLoaded}
-        teamLeaderName={lead?.fullName ?? "Not assigned"}
+        teamLeaderName={
+          isInHouseBooking && b.inHouseDetail?.assignedDoctor?.fullName?.trim()
+            ? b.inHouseDetail.assignedDoctor.fullName.trim()
+            : (lead?.fullName ?? "Not assigned")
+        }
         teamLeaderOptions={teamLeaderOptions}
         selectedBatchId={selectedBatchId}
         onSelectBatch={onSelectBatch}
@@ -193,6 +211,10 @@ export function PatientBookingCard(props: Props) {
         onConfirmComplete={() => {
           if (isOpdBooking && b.opdQueueEntry?.id && onCompleteOpdConsultation) {
             onCompleteOpdConsultation(b.opdQueueEntry.id);
+            return;
+          }
+          if (isInHouseBooking && onCompleteInHouseStay) {
+            onCompleteInHouseStay(b.id);
             return;
           }
           if (arrived) onSetPendingComplete(arrived.id);

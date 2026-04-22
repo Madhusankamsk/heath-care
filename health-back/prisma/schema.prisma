@@ -60,7 +60,9 @@ model User {
   settlementsRecorded       PaymentCollectorSettlement[] @relation("CollectorSettlementRecordedBy")
   passwordResetTokens       PasswordResetToken[]
   opdEligibleDoctor         OpdEligibleDoctor?
+  inHouseEligibleDoctor     InHouseEligibleDoctor?
   opdPickedQueues           OpdQueue[]           @relation("OpdQueuePickedBy")
+  inHouseAssignedDetails    InHouseDetail[]      @relation("InHouseAssignedDoctor")
 }
 
 model PasswordResetToken {
@@ -166,11 +168,38 @@ model Booking {
   visitInvoices       VisitInvoice[]
   opdInvoiceRow       OpdInvoice?
   opdQueueEntry       OpdQueue?
+  inHouseDetail       InHouseDetail?
   dispatchRecords     DispatchRecord[]
 
   @@index([requestedDoctorId])
   @@index([doctorStatusId])
   @@index([bookingTypeId])
+}
+
+enum InHouseStatus {
+  PENDING
+  ADMITTED
+  DISCHARGED
+}
+
+model InHouseDetail {
+  id               String        @id @default(uuid())
+  bookingId        String        @unique
+  assignedDoctorId String?
+  status           InHouseStatus @default(PENDING)
+  admittedAt       DateTime?
+  dischargedAt     DateTime?
+  admissionReason  String?
+  roomNo           String?
+  bedNo            String?
+  vitalsSummary    Json?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  booking          Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  assignedDoctor   User?         @relation("InHouseAssignedDoctor", fields: [assignedDoctorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([status])
+  @@index([assignedDoctorId])
 }
 
 model DispatchRecord {
@@ -434,6 +463,13 @@ model OpdInvoice {
 }
 
 model OpdEligibleDoctor {
+  userId    String   @id
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model InHouseEligibleDoctor {
   userId    String   @id
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
