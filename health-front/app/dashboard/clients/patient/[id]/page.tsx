@@ -56,6 +56,8 @@ export default async function PatientFullPreviewPage({
       )
     : null;
   const patientBookings = patientBookingsResult?.items ?? null;
+  const nonNursingBookings =
+    patientBookings?.filter((b) => b.bookingTypeLookup?.lookupKey !== "NURSING_ENCOUNTER") ?? null;
   const labSampleTypeLookups =
     canSaveVisitDraft && canSeeBookings
       ? (await backendJson<LabSampleTypeLookup[]>(
@@ -161,21 +163,24 @@ export default async function PatientFullPreviewPage({
         <PatientClinicalTimeline
           admissions={nursingAdmissionsPayload?.items ?? []}
           canAddNotes={canAddNursingNotes}
+          canUpdateDispatch={canUpdateDispatch}
+          canSaveVisitDraft={canSaveVisitDraft}
+          labSampleTypeLookups={labSampleTypeLookups}
         />
       ) : null}
 
       <Card
         title="Bookings and Dispatch"
-        description="Visit requests, dispatch runs, and crew assignments."
+        description="Non-nursing visit and OPD workflows, including dispatch and diagnostics."
       >
         {canSeeBookings ? (
-          patientBookings === null ? (
+          nonNursingBookings === null ? (
             <p className="text-sm text-[var(--text-secondary)]">
               Could not load booking history. Try again or check your network connection.
             </p>
           ) : (
             <PatientBookingsHistory
-              bookings={patientBookings}
+              bookings={nonNursingBookings}
               canUpdateDispatch={canUpdateDispatch}
               canSaveVisitDraft={canSaveVisitDraft}
               labSampleTypeLookups={labSampleTypeLookups}

@@ -47,14 +47,12 @@ export function PatientBookingsHistory({
   const [busyOpdQueueId, setBusyOpdQueueId] = useState<string | null>(null);
   const [busyNursingBookingId, setBusyNursingBookingId] = useState<string | null>(null);
 
-  /** OPD / in-house nursing have no dispatch — still allow issuing from nurse stock when user can update bookings. */
+  /** OPD has no dispatch — still allow issuing from nurse stock when user can update bookings. */
   const inventoryFeatureEnabled =
     canUpdateDispatch ||
     (canSaveVisitDraft &&
       list.some(
-        (row) =>
-          row.bookingTypeLookup?.lookupKey === "OPD" ||
-          row.bookingTypeLookup?.lookupKey === "NURSING_ENCOUNTER",
+        (row) => row.bookingTypeLookup?.lookupKey === "OPD",
       ));
   const bookingActions = usePatientBookingActions(() => {
       setPendingConfirm(null);
@@ -135,7 +133,7 @@ export function PatientBookingsHistory({
   if (list.length === 0) {
     return (
       <p className="text-sm text-[var(--text-secondary)]">
-        No bookings recorded for this patient yet.
+        No visit or OPD bookings recorded for this patient yet.
       </p>
     );
   }

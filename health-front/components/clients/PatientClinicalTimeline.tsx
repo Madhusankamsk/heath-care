@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  PatientBookingsHistory,
+  type LabSampleTypeLookup,
+} from "@/components/clients/PatientBookingsHistory";
+import type { UpcomingBookingRow } from "@/components/dispatch/types";
 import { formatScheduled } from "@/components/dispatch/dispatchDisplay";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -22,20 +27,21 @@ export type PatientNursingAdmissionTimeline = {
     note: string;
     recordedBy: { fullName: string };
   }>;
-  encounterBookings: Array<{
-    id: string;
-    scheduledDate: string | null;
-    bookingTypeLookup?: { lookupKey: string; lookupValue: string } | null;
-    visitRecord?: { completedAt: string | null } | null;
-  }>;
+  encounterBookings: UpcomingBookingRow[];
 };
 
 export function PatientClinicalTimeline({
   admissions,
   canAddNotes = false,
+  canUpdateDispatch = false,
+  canSaveVisitDraft = false,
+  labSampleTypeLookups = [],
 }: {
   admissions: PatientNursingAdmissionTimeline[];
   canAddNotes?: boolean;
+  canUpdateDispatch?: boolean;
+  canSaveVisitDraft?: boolean;
+  labSampleTypeLookups?: LabSampleTypeLookup[];
 }) {
   const router = useRouter();
   const [modalAdmissionId, setModalAdmissionId] = useState<string | null>(null);
@@ -84,7 +90,7 @@ export function PatientClinicalTimeline({
   return (
     <Card
       title="In-house nursing history"
-      description="Admissions, daily notes, and diagnostic encounters on company premises. Full visit workflows for encounters appear under Bookings and Dispatch below."
+      description="Admissions with one chronological activity timeline (daily notes + in-house nursing encounters). Nursing encounters are shown only in this section."
     >
       <div className="space-y-6">
         {admissions.map((a) => (
@@ -122,59 +128,82 @@ export function PatientClinicalTimeline({
               </p>
             ) : null}
 
-            <div className="mt-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Daily notes
-              </p>
-              {a.dailyNotes.length === 0 ? (
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">No notes yet.</p>
-              ) : (
-                <ul className="mt-2 space-y-3">
-                  {a.dailyNotes.map((n) => (
-                    <li
-                      key={n.id}
-                      className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                    >
-                      <p className="text-xs text-[var(--text-muted)]">
-                        {formatScheduled(n.recordedAt)} · {n.recordedBy.fullName}
-                      </p>
-                      <p className="mt-1 whitespace-pre-wrap text-[var(--text-primary)]">{n.note}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
             <div className="mt-4 border-t border-[var(--border)] pt-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Treatment encounters
+                Admission activity timeline
               </p>
-              {a.encounterBookings.length === 0 ? (
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                  No diagnostic encounters linked yet. Start one from the nursing board.
-                </p>
-              ) : (
-                <ul className="mt-2 space-y-2">
-                  {a.encounterBookings.map((eb) => (
-                    <li
-                      key={eb.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                    >
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {eb.bookingTypeLookup?.lookupValue ?? "Encounter"}
-                      </span>
-                      <span className="text-[var(--text-secondary)]">
-                        {eb.scheduledDate ? formatScheduled(eb.scheduledDate) : "—"}
-                      </span>
-                      <span className="text-xs text-[var(--text-muted)]">
-                        {eb.visitRecord?.completedAt
-                          ? `Completed ${formatScheduled(eb.visitRecord.completedAt)}`
-                          : "In progress"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {(() => {
+                const noteItems = a.dailyNotes.map((n) => ({
+                  id: `note-${n.id}`,
+                  kind: "note" as const,
+                  time: new Date(n.recordedAt).getTime(),
+                  recordedAt: n.recordedAt,
+                  note: n.note,
+                  recordedBy: n.recordedBy.fullName,
+                }));
+
+                const encounterItems = a.encounterBookings.map((b) => {
+                  const encounterTs = b.scheduledDate
+                    ? new Date(b.scheduledDate).getTime()
+                    : b.visitRecord?.completedAt
+                      ? new Date(b.visitRecord.completedAt).getTime()
+                      : 0;
+                  return {
+                    id: `encounter-${b.id}`,
+                    kind: "encounter" as const,
+                    time: Number.isFinite(encounterTs) ? encounterTs : 0,
+                    booking: b,
+                  };
+                });
+
+                const timeline = [...noteItems, ...encounterItems].sort((x, y) => y.time - x.time);
+
+                if (timeline.length === 0) {
+                  return (
+                    <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                      No activity yet. Add a daily note or start a treatment encounter.
+                    </p>
+                  );
+                }
+
+                return (
+                  <div className="mt-2 space-y-3">
+                    {timeline.map((item) =>
+                      item.kind === "note" ? (
+                        <div
+                          key={item.id}
+                          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                        >
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                            Daily note
+                          </p>
+                          <p className="mt-1 text-xs text-[var(--text-muted)]">
+                            {formatScheduled(item.recordedAt)} · {item.recordedBy}
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap text-[var(--text-primary)]">
+                            {item.note}
+                          </p>
+                        </div>
+                      ) : (
+                        <div
+                          key={item.id}
+                          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2"
+                        >
+                          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                            Treatment encounter
+                          </p>
+                          <PatientBookingsHistory
+                            bookings={[item.booking]}
+                            canUpdateDispatch={canUpdateDispatch}
+                            canSaveVisitDraft={canSaveVisitDraft}
+                            labSampleTypeLookups={labSampleTypeLookups}
+                          />
+                        </div>
+                      ),
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             <ModalShell
               open={modalAdmissionId === a.id}
