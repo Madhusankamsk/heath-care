@@ -3,6 +3,7 @@
 import { SubnavTabs } from "@/components/ui/SubnavTabs";
 
 const TABS = [
+  { href: "/dashboard/payments/outstanding", label: "Outstanding" },
   { href: "/dashboard/payments/invoices", label: "Invoices" },
   { href: "/dashboard/payments/accounts", label: "Accounts" },
   { href: "/dashboard/payments/collector", label: "Collector" },
