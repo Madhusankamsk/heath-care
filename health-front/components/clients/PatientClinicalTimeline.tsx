@@ -1,6 +1,13 @@
-import { formatScheduled } from "@/components/dispatch/dispatchDisplay";
+"use client";
 
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { formatScheduled } from "@/components/dispatch/dispatchDisplay";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ModalShell } from "@/components/ui/ModalShell";
 
 export type PatientNursingAdmissionTimeline = {
   id: string;
@@ -25,9 +32,44 @@ export type PatientNursingAdmissionTimeline = {
 
 export function PatientClinicalTimeline({
   admissions,
+  canAddNotes = false,
 }: {
   admissions: PatientNursingAdmissionTimeline[];
+  canAddNotes?: boolean;
 }) {
+  const router = useRouter();
+  const [modalAdmissionId, setModalAdmissionId] = useState<string | null>(null);
+  const [noteDraftByAdmissionId, setNoteDraftByAdmissionId] = useState<Record<string, string>>({});
+  const [savingAdmissionId, setSavingAdmissionId] = useState<string | null>(null);
+
+  async function saveAdmissionNote(admissionId: string) {
+    const text = (noteDraftByAdmissionId[admissionId] ?? "").trim();
+    if (!text) {
+      toast.error("Enter a note.");
+      return;
+    }
+
+    setSavingAdmissionId(admissionId);
+    try {
+      const res = await fetch(`/api/nursing/admissions/${encodeURIComponent(admissionId)}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: text }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      if (!res.ok) throw new Error(data.message || "Unable to save note");
+
+      toast.success("Note saved.");
+      setNoteDraftByAdmissionId((prev) => ({ ...prev, [admissionId]: "" }));
+      setModalAdmissionId(null);
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Unable to save note");
+    } finally {
+      setSavingAdmissionId(null);
+    }
+  }
+
   if (!admissions.length) {
     return (
       <Card
@@ -58,9 +100,19 @@ export function PatientClinicalTimeline({
                   {a.dischargedAt ? ` → ${formatScheduled(a.dischargedAt)}` : " → Active"}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="pill pill-info">{a.carePathwayLookup.lookupValue}</span>
                 <span className="pill pill-warning">{a.statusLookup.lookupValue}</span>
+                {canAddNotes ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => setModalAdmissionId(a.id)}
+                  >
+                    Add note
+                  </Button>
+                ) : null}
               </div>
             </div>
             {a.siteLabel?.trim() ? (
@@ -124,6 +176,41 @@ export function PatientClinicalTimeline({
                 </ul>
               )}
             </div>
+            <ModalShell
+              open={modalAdmissionId === a.id}
+              onClose={() => setModalAdmissionId(null)}
+              titleId={`admission-note-modal-${a.id}`}
+              title="Add daily note"
+              subtitle="Observations, vitals, and care details for this admission."
+              maxWidthClass="max-w-lg"
+            >
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-medium text-[var(--text-muted)]">
+                  Note
+                  <textarea
+                    className="mt-1 min-h-[120px] w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                    placeholder="Observations, vitals, care given…"
+                    value={noteDraftByAdmissionId[a.id] ?? ""}
+                    onChange={(e) =>
+                      setNoteDraftByAdmissionId((prev) => ({ ...prev, [a.id]: e.target.value }))
+                    }
+                  />
+                </label>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="secondary" onClick={() => setModalAdmissionId(null)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    disabled={savingAdmissionId === a.id}
+                    onClick={() => void saveAdmissionNote(a.id)}
+                  >
+                    {savingAdmissionId === a.id ? "Saving…" : "Save note"}
+                  </Button>
+                </div>
+              </div>
+            </ModalShell>
           </div>
         ))}
       </div>

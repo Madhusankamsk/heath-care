@@ -66,6 +66,7 @@ export default async function PatientFullPreviewPage({
   const canSeeNursingTimeline =
     hasAnyPermission(me.permissions, ["patients:read"]) &&
     hasAnyPermission(me.permissions, ["nursing:read"]);
+  const canAddNursingNotes = hasAnyPermission(me.permissions, ["nursing:manage"]);
 
   const nursingAdmissionsPayload = canSeeNursingTimeline
     ? await backendJson<{ items: PatientNursingAdmissionTimeline[] }>(
@@ -157,7 +158,10 @@ export default async function PatientFullPreviewPage({
       </section>
 
       {canSeeNursingTimeline ? (
-        <PatientClinicalTimeline admissions={nursingAdmissionsPayload?.items ?? []} />
+        <PatientClinicalTimeline
+          admissions={nursingAdmissionsPayload?.items ?? []}
+          canAddNotes={canAddNursingNotes}
+        />
       ) : null}
 
       <Card

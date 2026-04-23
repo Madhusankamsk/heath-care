@@ -46,7 +46,6 @@ export function NursingAdmissionsBoard({ initialAdmissions, canManage, canDischa
   const [pathway, setPathway] = useState<"OBSERVATION" | "TREATMENT">("OBSERVATION");
   const [admitting, setAdmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
 
   async function refresh() {
     const res = await fetch("/api/nursing/admissions/active", { cache: "no-store" });
@@ -85,31 +84,6 @@ export function NursingAdmissionsBoard({ initialAdmissions, canManage, canDischa
       toast.error(e instanceof Error ? e.message : "Unable to admit");
     } finally {
       setAdmitting(false);
-    }
-  }
-
-  async function addNote(admissionId: string) {
-    const text = (noteDrafts[admissionId] ?? "").trim();
-    if (!text) {
-      toast.error("Enter a note.");
-      return;
-    }
-    setBusyId(admissionId);
-    try {
-      const res = await fetch(`/api/nursing/admissions/${encodeURIComponent(admissionId)}/notes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: text }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { message?: string };
-      if (!res.ok) throw new Error(data.message || "Unable to save note");
-      toast.success("Note saved.");
-      setNoteDrafts((prev) => ({ ...prev, [admissionId]: "" }));
-      await refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unable to save note");
-    } finally {
-      setBusyId(null);
     }
   }
 
@@ -262,29 +236,6 @@ export function NursingAdmissionsBoard({ initialAdmissions, canManage, canDischa
                       }
                     >
                       Toggle pathway
-                    </Button>
-                  </div>
-                ) : null}
-
-                {canManage ? (
-                  <div className="mt-4 border-t border-[var(--border)] pt-3">
-                    <label className="text-xs font-medium text-[var(--text-muted)]">Daily note</label>
-                    <textarea
-                      className="mt-1 min-h-[72px] w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)]"
-                      value={noteDrafts[a.id] ?? ""}
-                      onChange={(e) =>
-                        setNoteDrafts((prev) => ({ ...prev, [a.id]: e.target.value }))
-                      }
-                      placeholder="Observations, vitals, care given…"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="mt-2 h-9 text-xs"
-                      disabled={busyId === a.id}
-                      onClick={() => void addNote(a.id)}
-                    >
-                      Save note
                     </Button>
                   </div>
                 ) : null}
