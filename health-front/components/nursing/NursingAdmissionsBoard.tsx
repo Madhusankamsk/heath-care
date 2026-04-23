@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { SearchablePatientSelect } from "@/components/forms/SearchablePatientSelect";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { SelectBase } from "@/components/ui/select-base";
 import { formatScheduled } from "@/components/dispatch/dispatchDisplay";
 
 type LookupLite = { id: string; lookupKey: string; lookupValue: string };
@@ -18,7 +17,6 @@ export type ActiveNursingAdmissionRow = {
   dischargedAt: string | null;
   siteLabel: string | null;
   statusLookup: LookupLite;
-  carePathwayLookup: LookupLite;
   patient: {
     id: string;
     fullName: string;
@@ -43,7 +41,6 @@ export function NursingAdmissionsBoard({ initialAdmissions, canManage, canDischa
   }, [initialAdmissions]);
   const [patientId, setPatientId] = useState("");
   const [siteLabel, setSiteLabel] = useState("");
-  const [pathway, setPathway] = useState<"OBSERVATION" | "TREATMENT">("OBSERVATION");
   const [admitting, setAdmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -71,7 +68,6 @@ export function NursingAdmissionsBoard({ initialAdmissions, canManage, canDischa
         body: JSON.stringify({
           patientId: patientId.trim(),
           siteLabel: siteLabel.trim() || null,
-          carePathwayKey: pathway,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { message?: string };
@@ -104,57 +100,13 @@ export function NursingAdmissionsBoard({ initialAdmissions, canManage, canDischa
     }
   }
 
-  async function startEncounter(admissionId: string) {
-    setBusyId(admissionId);
-    try {
-      const res = await fetch(
-        `/api/nursing/admissions/${encodeURIComponent(admissionId)}/start-encounter`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        },
-      );
-      const data = (await res.json().catch(() => ({}))) as { message?: string; id?: string };
-      if (!res.ok) throw new Error(data.message || "Unable to start encounter");
-      toast.success("Encounter started. Complete diagnostics from the patient profile bookings list.");
-      await refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unable to start encounter");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function updateAdmissionPathway(
-    admissionId: string,
-    carePathwayKey: "OBSERVATION" | "TREATMENT",
-  ) {
-    setBusyId(admissionId);
-    try {
-      const res = await fetch(`/api/nursing/admissions/${encodeURIComponent(admissionId)}/pathway`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ carePathwayKey }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { message?: string };
-      if (!res.ok) throw new Error(data.message || "Unable to update pathway");
-      toast.success("Care pathway updated.");
-      await refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Unable to update pathway");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-6">
       {canManage ? (
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">Admit patient</h2>
           <p className="mt-1 text-xs text-[var(--text-secondary)]">
-            Search and admit for multi-day observation or treatment on company premises.
+            Search and admit for multi-day in-house nursing on company premises.
           </p>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <SearchablePatientSelect label="Patient" value={patientId} onChange={setPatientId} />
@@ -163,18 +115,6 @@ export function NursingAdmissionsBoard({ initialAdmissions, canManage, canDischa
               value={siteLabel}
               onChange={(e) => setSiteLabel(e.target.value)}
             />
-            <div className="flex flex-col gap-1 md:col-span-2">
-              <span className="text-xs font-medium text-[var(--text-muted)]">Care pathway</span>
-              <SelectBase
-                value={pathway}
-                onChange={(e) =>
-                  setPathway(e.target.value === "TREATMENT" ? "TREATMENT" : "OBSERVATION")
-                }
-              >
-                <option value="OBSERVATION">Observation / caring</option>
-                <option value="TREATMENT">Treatment pathway</option>
-              </SelectBase>
-            </div>
           </div>
           <div className="mt-4">
             <Button type="button" variant="primary" disabled={admitting} onClick={() => void admit()}>
@@ -205,40 +145,7 @@ export function NursingAdmissionsBoard({ initialAdmissions, canManage, canDischa
                       {a.siteLabel?.trim() ? ` · ${a.siteLabel.trim()}` : ""}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="pill pill-info">{a.carePathwayLookup.lookupValue}</span>
-                  </div>
                 </div>
-
-                {canManage ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-9 text-xs"
-                      disabled={busyId === a.id}
-                      onClick={() => void startEncounter(a.id)}
-                    >
-                      Start treatment encounter
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-9 text-xs"
-                      disabled={busyId === a.id}
-                      onClick={() =>
-                        void updateAdmissionPathway(
-                          a.id,
-                          a.carePathwayLookup.lookupKey === "TREATMENT"
-                            ? "OBSERVATION"
-                            : "TREATMENT",
-                        )
-                      }
-                    >
-                      Toggle pathway
-                    </Button>
-                  </div>
-                ) : null}
 
                 {canDischarge ? (
                   <div className="mt-4 flex justify-end border-t border-[var(--border)] pt-3">

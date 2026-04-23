@@ -20,7 +20,6 @@ export type PatientNursingAdmissionTimeline = {
   dischargedAt: string | null;
   siteLabel: string | null;
   statusLookup: { lookupKey: string; lookupValue: string };
-  carePathwayLookup: { lookupKey: string; lookupValue: string };
   dailyNotes: Array<{
     id: string;
     recordedAt: string;
@@ -47,6 +46,7 @@ export function PatientClinicalTimeline({
   const [modalAdmissionId, setModalAdmissionId] = useState<string | null>(null);
   const [noteDraftByAdmissionId, setNoteDraftByAdmissionId] = useState<Record<string, string>>({});
   const [savingAdmissionId, setSavingAdmissionId] = useState<string | null>(null);
+  const [startingEncounterAdmissionId, setStartingEncounterAdmissionId] = useState<string | null>(null);
 
   async function saveAdmissionNote(admissionId: string) {
     const text = (noteDraftByAdmissionId[admissionId] ?? "").trim();
@@ -73,6 +73,28 @@ export function PatientClinicalTimeline({
       toast.error(e instanceof Error ? e.message : "Unable to save note");
     } finally {
       setSavingAdmissionId(null);
+    }
+  }
+
+  async function initiateNursingEncounter(admissionId: string) {
+    setStartingEncounterAdmissionId(admissionId);
+    try {
+      const res = await fetch(
+        `/api/nursing/admissions/${encodeURIComponent(admissionId)}/start-encounter`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+      );
+      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      if (!res.ok) throw new Error(data.message || "Unable to initiate encounter");
+      toast.success("In-house nursing encounter initiated.");
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Unable to initiate encounter");
+    } finally {
+      setStartingEncounterAdmissionId(null);
     }
   }
 
@@ -107,8 +129,18 @@ export function PatientClinicalTimeline({
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="pill pill-info">{a.carePathwayLookup.lookupValue}</span>
                 <span className="pill pill-warning">{a.statusLookup.lookupValue}</span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-8 px-3 text-xs"
+                  disabled={startingEncounterAdmissionId === a.id}
+                  onClick={() => void initiateNursingEncounter(a.id)}
+                >
+                  {startingEncounterAdmissionId === a.id
+                    ? "Initiating…"
+                    : "Initiate In-house nursing encounter"}
+                </Button>
                 {canAddNotes ? (
                   <Button
                     type="button"
@@ -161,7 +193,7 @@ export function PatientClinicalTimeline({
                 if (timeline.length === 0) {
                   return (
                     <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                      No activity yet. Add a daily note or start a treatment encounter.
+                      No activity yet. Add a daily note or initiate an in-house nursing encounter.
                     </p>
                   );
                 }
