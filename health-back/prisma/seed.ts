@@ -124,6 +124,8 @@ async function main() {
     "nursing:read",
     "nursing:manage",
     "nursing:discharge",
+    "nursing:encounter:start",
+    "nursing:note:add",
   ] as const;
 
   for (const permissionKey of permissionKeys) {
@@ -666,6 +668,8 @@ async function main() {
             "nursing:read",
             "nursing:manage",
             "nursing:discharge",
+            "nursing:encounter:start",
+            "nursing:note:add",
           ],
         },
       },

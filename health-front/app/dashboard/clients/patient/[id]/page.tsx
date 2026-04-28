@@ -68,7 +68,8 @@ export default async function PatientFullPreviewPage({
   const canSeeNursingTimeline =
     hasAnyPermission(me.permissions, ["patients:read"]) &&
     hasAnyPermission(me.permissions, ["nursing:read"]);
-  const canAddNursingNotes = hasAnyPermission(me.permissions, ["nursing:manage"]);
+  const canStartNursingEncounter = hasAnyPermission(me.permissions, ["nursing:encounter:start"]);
+  const canAddNursingNotes = hasAnyPermission(me.permissions, ["nursing:note:add"]);
 
   const nursingAdmissionsPayload = canSeeNursingTimeline
     ? await backendJson<{ items: PatientNursingAdmissionTimeline[] }>(
@@ -78,6 +79,7 @@ export default async function PatientFullPreviewPage({
   const admissionsContent = canSeeNursingTimeline ? (
     <PatientClinicalTimeline
       admissions={nursingAdmissionsPayload?.items ?? []}
+      canStartEncounter={canStartNursingEncounter}
       canAddNotes={canAddNursingNotes}
       canUpdateDispatch={canUpdateDispatch}
       canSaveVisitDraft={canSaveVisitDraft}

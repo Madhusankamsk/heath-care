@@ -30,12 +30,14 @@ export type PatientNursingAdmissionTimeline = {
 
 export function PatientClinicalTimeline({
   admissions,
+  canStartEncounter = false,
   canAddNotes = false,
   canUpdateDispatch = false,
   canSaveVisitDraft = false,
   labSampleTypeLookups = [],
 }: {
   admissions: PatientNursingAdmissionTimeline[];
+  canStartEncounter?: boolean;
   canAddNotes?: boolean;
   canUpdateDispatch?: boolean;
   canSaveVisitDraft?: boolean;
@@ -105,7 +107,9 @@ export function PatientClinicalTimeline({
 
   return (
     <section className="space-y-4">
-        {admissions.map((a) => (
+      {admissions.map((a) => {
+        const isDischarged = Boolean(a.dischargedAt);
+        return (
           <div
             key={a.id}
             className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3 sm:p-4"
@@ -122,18 +126,18 @@ export function PatientClinicalTimeline({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="pill pill-warning">{a.statusLookup.lookupValue}</span>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="h-8 px-3 text-xs"
-                  disabled={startingEncounterAdmissionId === a.id}
-                  onClick={() => void initiateNursingEncounter(a.id)}
-                >
-                  {startingEncounterAdmissionId === a.id
-                    ? "Initiating…"
-                    : "Diagnostic"}
-                </Button>
-                {canAddNotes ? (
+                {canStartEncounter && !isDischarged ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-8 px-3 text-xs"
+                    disabled={startingEncounterAdmissionId === a.id}
+                    onClick={() => void initiateNursingEncounter(a.id)}
+                  >
+                    {startingEncounterAdmissionId === a.id ? "Initiating…" : "Diagnostic"}
+                  </Button>
+                ) : null}
+                {canAddNotes && !isDischarged ? (
                   <Button
                     type="button"
                     variant="secondary"
@@ -252,7 +256,8 @@ export function PatientClinicalTimeline({
               </div>
             </ModalShell>
           </div>
-        ))}
+        );
+      })}
     </section>
   );
 }

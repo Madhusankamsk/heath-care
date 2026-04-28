@@ -12,6 +12,15 @@ type OpdStatusOption = {
   lookupValue: string;
 };
 
+type PatientOption = {
+  id: string;
+  fullName: string;
+  shortName?: string | null;
+  nicOrPassport?: string | null;
+  contactNo?: string | null;
+  whatsappNo?: string | null;
+};
+
 type OpdQueueRow = {
   id: string;
   tokenNo: number;
