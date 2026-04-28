@@ -1,5 +1,6 @@
-import type { ActiveNursingAdmissionRow } from "@/components/nursing/NursingAdmissionsBoard";
-import { NursingAdmissionsBoard } from "@/components/nursing/NursingAdmissionsBoard";
+import { NursingActiveAdmissionsManager } from "@/components/nursing/NursingActiveAdmissionsManager";
+import type { NursingAdmissionRow } from "@/components/nursing/types";
+import { Card } from "@/components/ui/Card";
 import { getIsAuthenticated } from "@/lib/auth";
 import { backendJson, type BackendMeResponse } from "@/lib/backend";
 import { hasAnyPermission } from "@/lib/rbac";
@@ -27,26 +28,21 @@ export default async function NursingBoardPage() {
   const active = await backendJson<{ items: unknown[] }>("/api/nursing/admissions/active");
 
   const initialAdmissions =
-    active && Array.isArray(active.items) ? (active.items as ActiveNursingAdmissionRow[]) : [];
+    active && Array.isArray(active.items) ? (active.items as NursingAdmissionRow[]) : [];
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-[var(--text-primary)]">In-house nursing</h1>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Company premises admissions, daily notes, discharge, and starting diagnostic encounters (completed
-          under the patient profile bookings list).
-        </p>
-      </div>
-      {!active ? (
-        <p className="text-sm text-red-700 dark:text-red-300">Unable to load active admissions.</p>
-      ) : (
-        <NursingAdmissionsBoard
-          initialAdmissions={initialAdmissions}
-          canManage={canManage}
-          canDischarge={canDischarge}
-        />
-      )}
+    <div className="flex flex-col gap-4">
+      <Card>
+        {!active ? (
+          <p className="text-sm text-red-700 dark:text-red-300">Unable to load active admissions.</p>
+        ) : (
+          <NursingActiveAdmissionsManager
+            initialAdmissions={initialAdmissions}
+            canManage={canManage}
+            canDischarge={canDischarge}
+          />
+        )}
+      </Card>
     </div>
   );
 }

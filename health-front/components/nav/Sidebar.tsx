@@ -131,7 +131,13 @@ const navItems: NavItem[] = [
     children: [
       {
         href: "/dashboard/nursing/board",
-        label: "Admissions board",
+        label: "Admissions",
+        icon: <HeartPulse className="h-4 w-4" aria-hidden />,
+        requiresAnyPermissions: ["nursing:list", "nursing:read"],
+      },
+      {
+        href: "/dashboard/nursing/discharged-completed",
+        label: "Discharged",
         icon: <HeartPulse className="h-4 w-4" aria-hidden />,
         requiresAnyPermissions: ["nursing:list", "nursing:read"],
       },

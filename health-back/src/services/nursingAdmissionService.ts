@@ -51,6 +51,7 @@ export async function admitPatient(params: {
   patientId: string;
   siteLabel?: string | null;
   carePathwayKey: "OBSERVATION" | "TREATMENT";
+  admittedAt?: Date | null;
 }) {
   const admittedStatusId = await lookupId(prisma, STATUS_CAT, "ADMITTED");
   const pathwayId = await lookupId(prisma, PATHWAY_CAT, params.carePathwayKey);
@@ -83,6 +84,7 @@ export async function admitPatient(params: {
     data: {
       patientId: params.patientId,
       siteLabel: params.siteLabel?.trim() ? params.siteLabel.trim() : null,
+      admittedAt: params.admittedAt ?? undefined,
       statusId: admittedStatusId,
       carePathwayId: pathwayId,
     },
@@ -157,7 +159,7 @@ export async function updateCarePathway(params: {
   });
 }
 
-export async function dischargeAdmission(nursingAdmissionId: string) {
+export async function dischargeAdmission(nursingAdmissionId: string, dischargedAt?: Date | null) {
   const dischargedStatusId = await lookupId(prisma, STATUS_CAT, "DISCHARGED");
 
   const admission = await prisma.nursingAdmission.findUnique({
@@ -174,11 +176,17 @@ export async function dischargeAdmission(nursingAdmissionId: string) {
     err.code = "ADMISSION_CLOSED";
     throw err;
   }
+  const resolvedDischargedAt = dischargedAt ?? new Date();
+  if (resolvedDischargedAt.getTime() < admission.admittedAt.getTime()) {
+    const err = new Error("INVALID_DISCHARGE_TIME") as Error & { code?: string };
+    err.code = "INVALID_DISCHARGE_TIME";
+    throw err;
+  }
 
   return prisma.nursingAdmission.update({
     where: { id: nursingAdmissionId },
     data: {
-      dischargedAt: new Date(),
+      dischargedAt: resolvedDischargedAt,
       statusId: dischargedStatusId,
     },
     include: admissionInclude,
@@ -254,6 +262,19 @@ export async function listActiveAdmissions() {
       dischargedAt: null,
     },
     orderBy: { admittedAt: "desc" },
+    include: admissionInclude,
+  });
+}
+
+export async function listDischargedAdmissions() {
+  const dischargedId = await lookupId(prisma, STATUS_CAT, "DISCHARGED");
+
+  return prisma.nursingAdmission.findMany({
+    where: {
+      statusId: dischargedId,
+      dischargedAt: { not: null },
+    },
+    orderBy: [{ dischargedAt: "desc" }, { admittedAt: "desc" }],
     include: admissionInclude,
   });
 }

@@ -74,6 +74,7 @@ import {
   appendNursingDailyNoteHandler,
   dischargeNursingAdmissionHandler,
   listActiveNursingAdmissionsHandler,
+  listDischargedNursingAdmissionsHandler,
   patchNursingCarePathwayHandler,
   startNursingEncounterHandler,
 } from "../controllers/nursingAdmissionController";
@@ -414,6 +415,11 @@ router.get(
   "/nursing/admissions/active",
   requireAnyPermission(["nursing:list", "nursing:read"]),
   listActiveNursingAdmissionsHandler,
+);
+router.get(
+  "/nursing/admissions/discharged",
+  requireAnyPermission(["nursing:list", "nursing:read"]),
+  listDischargedNursingAdmissionsHandler,
 );
 router.post("/nursing/admissions", requireAnyPermission(["nursing:manage"]), admitNursingPatientHandler);
 router.post(

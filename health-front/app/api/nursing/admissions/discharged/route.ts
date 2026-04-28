@@ -2,16 +2,8 @@ import { NextResponse } from "next/server";
 
 import { backendFetch } from "@/lib/backend";
 
-type Params = { id: string };
-
-export async function POST(request: Request, context: { params: Promise<Params> }) {
-  const { id } = await context.params;
-  const requestText = await request.text().catch(() => "");
-  const res = await backendFetch(`/api/nursing/admissions/${id}/discharge`, {
-    method: "POST",
-    headers: { "Content-Type": request.headers.get("content-type") ?? "application/json" },
-    body: requestText,
-  }).catch((error) => {
+export async function GET() {
+  const res = await backendFetch("/api/nursing/admissions/discharged").catch((error) => {
     return new Response(
       JSON.stringify({
         message:
