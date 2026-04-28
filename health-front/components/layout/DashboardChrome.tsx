@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/nav/Sidebar";
 import { useEscapeKey } from "@/lib/useEscapeKey";
@@ -77,10 +76,6 @@ export function DashboardChrome({
             {children}
           </div>
         </main>
-      </div>
-
-      <div className="sticky bottom-0 z-50">
-        <Footer />
       </div>
 
       {isMobileNavOpen ? (

@@ -281,11 +281,6 @@ export default async function DashboardPage() {
 
   const summary = await backendJson<DashboardSummaryResponse>("/api/dashboard/summary");
   const tiles = summary?.tiles ?? {};
-  const currencyCode = summary?.currencyCode?.trim();
-  const countsDescription =
-    currencyCode != null && currencyCode.length > 0
-      ? `Totals and figures for modules you can access. Amounts use ${currencyCode}.`
-      : "Totals and figures for modules you can access.";
 
   const kpiKeys = TILE_LABELS.filter((t) => t.section === "kpi")
     .map((t) => t.key)
@@ -311,7 +306,7 @@ export default async function DashboardPage() {
       ) : (
         <>
           {kpiKeys.length > 0 ? (
-            <Card title="Counts and totals" description={countsDescription}>
+            <Card title="Counts and totals">
               <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                 {TILE_LABELS.filter((t) => t.section === "kpi").map(({ key, title }) => {
                   const tile = tiles[key];
@@ -325,7 +320,6 @@ export default async function DashboardPage() {
           {listKeys.length > 0 ? (
             <Card
               title="Urgent and queues"
-              description="Open items and waiting queues that need attention."
             >
               <div className="grid gap-4 md:grid-cols-2">
                 {TILE_LABELS.filter((t) => t.section === "list").map(({ key, title }) => {
