@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 
 type TabId = "bookings" | "admissions";
+type TabOption = { id: TabId; label: string };
 
 type PatientPreviewTabsProps = {
   showBookings: boolean;
@@ -18,11 +19,13 @@ export function PatientPreviewTabs({
   admissionsContent,
 }: PatientPreviewTabsProps) {
   const availableTabs = useMemo(
-    () =>
-      [
+    () => {
+      const tabs: Array<TabOption | null> = [
         showBookings ? ({ id: "bookings", label: "Bookings" } as const) : null,
         showAdmissions ? ({ id: "admissions", label: "Admissions" } as const) : null,
-      ].filter((tab): tab is { id: TabId; label: string } => tab !== null),
+      ];
+      return tabs.filter((tab): tab is TabOption => tab !== null);
+    },
     [showAdmissions, showBookings],
   );
   const [activeTab, setActiveTab] = useState<TabId>("bookings");
